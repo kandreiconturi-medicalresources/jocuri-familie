@@ -2,6 +2,7 @@
 import { ROUND_STEPS, HZ, CORNERS } from '../logic/rules.js';
 import { drawAvatar } from '../../../../shared/engine/profiles.js';
 import { T, OY } from './arena.js';
+import { drawBonusIcon } from './icons.js';
 
 const FONT = '"Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif';
 
@@ -14,7 +15,7 @@ export function text(c, str, x, y, size, color = '#fff', align = 'center', strok
 const clip = (str, n) => (str.length > n ? str.slice(0, n - 1) + '…' : str);
 
 function card(c, p, x, y, w, right) {
-  const h = 118;
+  const h = 160;
   c.fillStyle = 'rgba(30,10,60,.55)'; c.strokeStyle = p.alive ? p.color : 'rgba(255,255,255,.25)'; c.lineWidth = 4;
   c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, 16) : c.rect(x, y, w, h); c.fill(); c.stroke();
   c.globalAlpha = p.alive ? 1 : 0.4;
@@ -25,6 +26,13 @@ function card(c, p, x, y, w, right) {
   if (!p.alive) text(c, 'Ieșit', x + w / 2, y + 36, 18, '#ffdede');
   else if (p.shield > 0) text(c, '🛡' + (p.shield > 1 ? p.shield : ''), x + (right ? 14 : w - 14), y + 20, 15, '#7ee9ff');
   text(c, String(p.idx + 1), x + (right ? w - 12 : 12), y + 20, 14, p.color);
+  c.globalAlpha = p.alive ? 1 : 0.4; // câte bombe, ce rază și ce puteri are
+  const mini = (k, px, py, r) => { c.save(); c.translate(px, py); drawBonusIcon(c, k, r); c.restore(); };
+  mini(1, x + w * 0.2, y + 133, 8); text(c, String(p.maxBombs), x + w * 0.2 + 16, y + 139, 16, '#fff', 'left');
+  mini(2, x + w * 0.58, y + 133, 8); text(c, String(p.range), x + w * 0.58 + 16, y + 139, 16, '#fff', 'left');
+  const own = [p.kick && 4, p.glove && 6, p.remote && 7, p.cu && 8].filter(Boolean);
+  own.forEach((k, i) => mini(k, x + w / 2 + (i - (own.length - 1) / 2) * 24, y + 152, 8));
+  c.globalAlpha = 1;
 }
 
 export function drawHud(c, view, s, ready, ox) {
@@ -40,7 +48,7 @@ export function drawHud(c, view, s, ready, ox) {
     p.idx = i;
     const [cx, cy] = CORNERS[p.corner % 4], right = cx > 7, top = cy < 6;
     const x = right ? ox + aw + 8 : ox - 8 - w;
-    card(c, p, x, top ? OY + 4 : OY + 13 * T - 122, w, right);
+    card(c, p, x, top ? OY + 4 : OY + 13 * T - 164, w, right);
   });
   // bannere
   const mid = ox + aw / 2, my = OY + 6.5 * T;

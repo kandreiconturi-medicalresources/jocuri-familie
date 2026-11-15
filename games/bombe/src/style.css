@@ -33,10 +33,11 @@ kbd { background: #fff; color: #222; border-radius: 5px; padding: 0 6px; font-fa
 /* butoane tactile: cruce + bombă */
 .tp { --tp-size: clamp(36px, 10vh, 58px); }
 .tp-side { display: grid; grid-template-columns: repeat(4, var(--tp-size)); grid-template-rows: repeat(3, var(--tp-size)); gap: 3px; align-items: stretch;
-  grid-template-areas: ". up . ." "left . right a" ". down . ."; }
+  grid-template-areas: ". up . b" "left . right a" ". down . ."; }
 .tp-btn { font-size: 20px; width: auto; height: auto; border-width: 3px; opacity: .85; }
 .tp-btn.up { grid-area: up; } .tp-btn.down { grid-area: down; } .tp-btn.left { grid-area: left; } .tp-btn.right { grid-area: right; }
 .tp-btn.a { grid-area: a; background: rgba(255,120,60,.45); margin-left: 8px; font-size: 30px; }
+.tp-btn.b { grid-area: b; margin-left: 8px; font-size: 24px; }
 .tp.one .tp-side:last-child { display: flex; }
 .tp.one .tp-side:last-child .tp-btn { width: calc(var(--tp-size) * 1.5); height: calc(var(--tp-size) * 1.5); margin: 0; }
 /* camera de rețea: cod și tastatură */
@@ -69,3 +70,8 @@ button.key.wide { grid-column: span 3; }
   .code .slot, .code .ch { height: 50px; width: 46px; font-size: 32px; }
   .pl { width: 100px; padding: 6px 4px; } .pl b { font-size: 15px; }
 }
+/* legenda bonusurilor */
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 12px; margin-top: 8px; text-align: left; }
+.legend .lg { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.legend canvas { flex: none; }
+.score .pl small { display: block; font-size: 13px; opacity: .9; margin-top: 2px; }

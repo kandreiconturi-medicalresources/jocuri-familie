@@ -11,19 +11,24 @@ export const INVULN = 45;
 export const HIT_R = 0.34;
 export const BASE_SPEED = 3.4;     // plăci/s
 export const SPEED_ADD = 0.55;
-export const MAX_SPEED = 3, MAX_BOMBS = 6, MAX_RANGE = 7, MAX_SHIELD = 2;
+export const MAX_SPEED = 3, MAX_BOMBS = 8, MAX_RANGE = 8, MAX_SHIELD = 2;
+export const THROW = 3, FLIGHT = 12, DOUBLE = 9; // aruncare: plăci, pași de zbor; dublu-apăsare: pași
+export const CURSE_T = 300, CURSE_SPEED = 1.3;   // „Ciudățel”: 10 s
 export const CORNERS = [[1, 1], [13, 11], [13, 1], [1, 11]];
-export const BONUS = ['', 'bomb', 'fire', 'speed', 'kick', 'shield'];
+// 1 bombă, 2 rază, 3 viteză, 4 șut, 5 scut, 6 mănușă (aruncare), 7 telecomandă, 8 Ciudățel (negativ)
+export const BONUS = ['', 'bomb', 'fire', 'speed', 'kick', 'shield', 'glove', 'remote', 'curse'];
 export const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 export const DEFAULT_RULES = { rounds: 3, gentle: true, botLevel: 'easy' };
+/** `kickAll` urmează modul blând, dacă nu e dat explicit. */
+export const makeRules = (r = {}) => { const o = { ...DEFAULT_RULES, ...r }; if (r.kickAll === undefined) o.kickAll = !!o.gentle; return o; };
 export const EMPTY = 0, WALL = 1, CRATE = 2, BUSH = 3;
 
 export const idx = (x, y) => y * W + x;
 export const inB = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
-export const speedOf = (p) => BASE_SPEED + SPEED_ADD * p.spd;
+export const speedOf = (p) => (p.cu === 3 ? CURSE_SPEED : BASE_SPEED + SPEED_ADD * p.spd);
 
 export function bombAt(s, x, y) {
-  for (const b of s.bombs) if (b.x === x && b.y === y) return b;
+  for (const b of s.bombs) if (b.x === x && b.y === y) return b; // și cea în zbor: ocupă locul unde aterizează
   return null;
 }
 

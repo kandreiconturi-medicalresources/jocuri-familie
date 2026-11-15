@@ -19,7 +19,7 @@ export function createEnd(app) {
     const st = play.state, w = st.players.find((p) => p.id === st.matchWinner);
     title.textContent = w ? `🏆 ${w.name} a câștigat meciul!` : 'Meci terminat!';
     board.replaceChildren(...st.players.slice().sort((a, b) => b.score - a.score).map((p) =>
-      playerCard(p, p.id === st.matchWinner ? 'win' : '', h('span', { class: 'st' }, '★ ' + p.score))));
+      playerCard(p, p.id === st.matchWinner ? 'win' : '', h('span', { class: 'st' }, '★ ' + p.score), h('small', null, `💣 ${p.bestB} bombe · 🔥 rază ${p.bestR}`))));
     const canRematch = !app.net || play.isHost;
     btns.replaceChildren(
       canRematch ? btn('🔁 Revanșă', () => app.rematch()) : h('p', { class: 'sub' }, 'Așteptăm gazda…'),

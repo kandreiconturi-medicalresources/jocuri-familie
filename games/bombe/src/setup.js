@@ -3,12 +3,14 @@ import { AVATARS, PROFILE_COLORS, currentProfile, gameSave } from '../../../shar
 import { rng } from '../../../shared/engine/rng.js';
 
 const NAMES = { bear: 'Ursulețul', bunny: 'Iepurașul', fox: 'Vulpița', cat: 'Pisicuța', panda: 'Panda', frog: 'Broscuța', owl: 'Bufnița', pig: 'Purcelușul' };
-const DEFAULTS = { humans: 1, bots: 2, level: 'easy', arena: 0, rounds: 3, gentle: true };
+const DEFAULTS = { humans: 1, bots: 2, level: 'easy', arena: 0, rounds: 3, gentle: true, kickAll: true };
 
 export function loadSetup() {
   let v = null;
   try { v = gameSave('bombe').get('setup', null); } catch (e) { v = null; }
-  return { ...DEFAULTS, ...(v || {}) };
+  const o = { ...DEFAULTS, ...(v || {}) };
+  if (!v || v.kickAll === undefined) o.kickAll = o.gentle; // salvările vechi: șutul urmează modul blând
+  return o;
 }
 export function saveSetup(st) { try { gameSave('bombe').set('setup', st); } catch (e) { /* fără salvare */ } }
 
@@ -46,5 +48,5 @@ export function localConfig(st) {
   }
   const slots = {};
   humans.forEach((p, i) => { slots[p.id] = i; });
-  return { cfg: { arenaId: st.arena, players: addBots(humans, st.bots, st.level, seed), seed, rules: { rounds: st.rounds, gentle: st.gentle } }, slots, humans: st.humans };
+  return { cfg: { arenaId: st.arena, players: addBots(humans, st.bots, st.level, seed), seed, rules: { rounds: st.rounds, gentle: st.gentle, kickAll: st.kickAll } }, slots, humans: st.humans };
 }

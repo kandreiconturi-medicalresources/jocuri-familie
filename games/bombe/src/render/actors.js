@@ -1,8 +1,9 @@
 // Elemente dinamice: bombe, flăcări, bonusuri, benzi, teleportoare, lavă, personaje.
-import { W, H, FLAME_T, FUSE, BUSH, lavaPhase } from '../logic/rules.js';
+import { W, H, FLAME_T, FUSE, FLIGHT, BUSH, lavaPhase } from '../logic/rules.js';
 import { drawSpr, hasFrame } from '../../../bobo/src/atlas.js';
 import { drawAvatar } from '../../../../shared/engine/profiles.js';
 import { T } from './arena.js';
+import { drawBonusIcon } from './icons.js';
 
 const TAU = Math.PI * 2;
 const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
@@ -49,15 +50,6 @@ export function drawLava(c, s, now) {
   }
 }
 
-const BADGE = ['', '#555', '#ff7a1a', '#3a8dff', '#3fbf5a', '#31c6e8'];
-function glyph(c, k, r) {
-  c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 2;
-  if (k === 1) { circle(c, 0, 2, r * 0.5); c.fillRect(-1, -r * 0.65, 3, r * 0.4); } else if (k === 2) {
-    c.beginPath(); c.moveTo(0, -r * 0.7); c.quadraticCurveTo(r * 0.7, 0, 0, r * 0.65); c.quadraticCurveTo(-r * 0.7, 0, 0, -r * 0.7); c.fill();
-  } else if (k === 3) { c.beginPath(); c.moveTo(2, -r * 0.7); c.lineTo(-r * 0.5, 2); c.lineTo(0, 2); c.lineTo(-2, r * 0.7); c.lineTo(r * 0.5, -2); c.lineTo(0, -2); c.fill(); } else if (k === 4) {
-    c.beginPath(); c.moveTo(-r * 0.5, -r * 0.5); c.lineTo(r * 0.6, 0); c.lineTo(-r * 0.5, r * 0.5); c.fill();
-  } else { c.beginPath(); c.arc(0, 0, r * 0.55, 0, TAU); c.stroke(); }
-}
 export function drawPickups(c, s, now) {
   for (let i = 0; i < s.pick.length; i++) {
     const k = s.pick[i];
@@ -65,9 +57,7 @@ export function drawPickups(c, s, now) {
     const x = cx(i % W) + T / 2, y = cy((i / W) | 0) + T / 2 + Math.sin(now * 5 + i) * 2.5, r = T * 0.34;
     c.save(); c.translate(x, y);
     c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(0, r + 2, r * 0.8, 3, 0, 0, TAU); c.fill();
-    c.fillStyle = '#fff'; circle(c, 0, 0, r + 2.5);
-    c.fillStyle = BADGE[k]; circle(c, 0, 0, r);
-    glyph(c, k, r);
+    drawBonusIcon(c, k, r);
     c.restore();
   }
 }
@@ -77,10 +67,15 @@ export function drawBombs(c, s, now, pos) {
   for (const b of s.bombs) {
     let q = pos.get(b.uid);
     if (!q) { q = { x: b.x, y: b.y }; pos.set(b.uid, q); }
-    q.x += (b.x - q.x) * 0.4; q.y += (b.y - q.y) * 0.4; live.add(b.uid);
+    live.add(b.uid);
+    let lift = 0;
+    if (b.fl > 0) { // zboară de la (fx, fy) la (x, y), pe o curbă
+      const u = 1 - b.fl / FLIGHT;
+      q.x = b.fx + (b.x - b.fx) * u; q.y = b.fy + (b.y - b.fy) * u; lift = Math.sin(u * Math.PI) * T * 0.9;
+    } else { q.x += (b.x - q.x) * 0.4; q.y += (b.y - q.y) * 0.4; }
     const k = 1 + 0.1 * Math.sin(now * (7 + (FUSE - b.t) * 0.2)) + (b.t < 12 ? 0.08 : 0);
-    const w = T * 0.86 * k, x = cx(q.x) + T / 2, y = cy(q.y) + T / 2 + 2;
-    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, y + T * 0.33, w * 0.4, 4, 0, 0, TAU); c.fill();
+    const w = T * 0.86 * k, x = cx(q.x) + T / 2, ys = cy(q.y) + T / 2 + 2, y = ys - lift;
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, ys + T * 0.33, w * 0.4, 4, 0, 0, TAU); c.fill();
     const name = b.t < 28 && ((b.t >> 2) & 1) && hasFrame('tiles', 'bomb_active') ? 'bomb_active' : 'bomb';
     if (hasFrame('tiles', name)) drawSpr(c, 'tiles', name, x - w / 2, y - w / 2, w, w);
     else { c.fillStyle = '#222'; circle(c, x, y, w * 0.4); }
@@ -143,6 +138,12 @@ export function drawPlayers(c, s, now, rp, scale) {
       c.fillStyle = `rgba(120,230,255,${0.22 + 0.08 * Math.sin(now * 6)})`; circle(c, x, y - 2 - bob / 2, T * 0.56);
       c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y - 2 - bob / 2, T * 0.56, 0, TAU); c.stroke();
       c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(x - T * 0.24, y - T * 0.32, 5, 3, -0.7, 0, TAU); c.fill();
+    }
+    if (p.cu) { // „Ciudățel”: aură mov care pulsează și spirala deasupra capului
+      const left = Math.max(0, p.ce - s.tick), pulse = 0.5 + 0.5 * Math.sin(now * 10);
+      c.fillStyle = `rgba(150,60,220,${0.2 + 0.18 * pulse})`; circle(c, x, y - 2 - bob / 2, T * 0.58);
+      c.save(); c.translate(x + T * 0.42, y - T * 0.6 - bob); drawBonusIcon(c, 8, 9); c.restore();
+      if (left < 90 && (left >> 3) & 1) { c.fillStyle = 'rgba(255,255,255,.35)'; circle(c, x, y - 2 - bob / 2, T * 0.58); }
     }
     c.globalAlpha = 1;
     c.fillStyle = p.color; c.strokeStyle = '#fff'; c.lineWidth = 2; // marcaj sus: numărul jucătorului

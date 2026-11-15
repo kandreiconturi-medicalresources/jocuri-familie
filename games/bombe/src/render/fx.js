@@ -2,8 +2,8 @@
 import { sfx } from '../../../../shared/engine/audio.js';
 import { T } from './arena.js';
 
-const LABEL = ['', '+ Bombă', '+ Rază', '+ Viteză', '+ Șut', '+ Scut'];
-const COLOR = ['', '#ddd', '#ff9f43', '#6fb7ff', '#7be08a', '#7ee9ff'];
+const LABEL = ['', '+ Bombă', '+ Rază', '+ Viteză', '+ Șut', '+ Scut', '+ Mănușă', '+ Telecomandă', 'Ciudățel!'];
+const COLOR = ['', '#ddd', '#ff9f43', '#6fb7ff', '#7be08a', '#7ee9ff', '#ff8cc6', '#b79cff', '#d28cff'];
 
 export function createFx(particles) {
   let shake = 0;
@@ -33,6 +33,8 @@ export function createFx(particles) {
         const p = s.players.find((q) => q.id === e.id);
         particles.burst(e.x * T, e.y * T, p ? p.color : '#fff', 14); particles.text(e.x * T, e.y * T - 20, 'Auu!', '#ff9aa8');
       } else if (e.e === 'out') sfx('out');
+      else if (e.e === 'throw') { sfx('place'); const [x, y] = at(e); particles.dust(x, y, 3); }
+      else if (e.e === 'curse') { sfx('hit'); particles.sparkle(e.x * T, e.y * T, 8); particles.text(e.x * T, e.y * T - 20, 'Ciudățel!', '#d28cff'); }
       else if (e.e === 'tele') { sfx('tele'); const [x, y] = at(e); particles.sparkle(x, y, 8); }
       else if (e.e === 'block') { sfx('block'); shake = Math.max(shake, 3); const [x, y] = at(e); particles.dust(x, y, 3); }
       else if (e.e === 'round') sfx('round');

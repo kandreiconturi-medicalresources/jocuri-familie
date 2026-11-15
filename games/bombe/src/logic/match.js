@@ -1,19 +1,20 @@
 // Simularea meciului: pură, deterministă, 30 de pași/s. Aceeași stare + aceleași input-uri = același rezultat.
 import { rng } from '../../../../shared/engine/rng.js';
 import {
-  W, FUSE, FLAME_T, ROUND_STEPS, SHRINK_AT, SHRINK_EVERY, END_DELAY, INVULN, HIT_R, MAX_SPEED, MAX_BOMBS, MAX_RANGE,
-  MAX_SHIELD, CORNERS, DIRS, DEFAULT_RULES, EMPTY, WALL, CRATE, BUSH, idx, speedOf, bombAt, blastCells, lavaPhase, lavaAt, SPIRAL, HZ,
+  W, FLAME_T, ROUND_STEPS, SHRINK_AT, SHRINK_EVERY, END_DELAY, INVULN,
+  CORNERS, DIRS, makeRules, EMPTY, WALL, CRATE, BUSH, DOUBLE, idx, speedOf, bombAt, blastCells, lavaPhase, lavaAt, SPIRAL, HZ,
 } from './rules.js';
+import { placeBomb, lineBombs, throwBomb, remoteBlow, pickup, curses, dropBonuses } from './powers.js';
 import { arenaById, buildArena } from './arenas.js';
 import { botInput } from './bots.js';
 import { moveAxis, resolvePass, slideStep } from './move.js';
 
 export function createMatch({ arenaId = 0, players, seed = 1, rules = {} }) {
   const s = {
-    arenaId, arena: arenaById(arenaId), seed, rules: { ...DEFAULT_RULES, ...rules }, round: 0, bn: 0, phase: 'play', winner: null, matchWinner: null,
+    arenaId, arena: arenaById(arenaId), seed, rules: makeRules(rules), round: 0, bn: 0, phase: 'play', winner: null, matchWinner: null,
     rng: rng(seed), brng: rng((seed ^ 0x9e3779b9) >>> 0),
     players: players.map((p, i) => ({
-      id: p.id, name: p.name || 'Jucător', avatar: p.avatar || 'bear', color: p.color || '#ff6b6b', bot: !!p.bot, level: p.level || 'easy', corner: i, score: 0,
+      id: p.id, name: p.name || 'Jucător', avatar: p.avatar || 'bear', color: p.color || '#ff6b6b', bot: !!p.bot, level: p.level || 'easy', corner: i, score: 0, bestB: 1, bestR: 2,
     })),
   };
   startRound(s);
@@ -22,27 +23,18 @@ export function createMatch({ arenaId = 0, players, seed = 1, rules = {} }) {
 
 export function startRound(s) {
   s.round++;
-  const built = buildArena(s.arena, s.rng);
+  const built = buildArena(s.arena, s.rng, s.rules);
   Object.assign(s, built, { tick: 0, phase: 'play', endT: 0, winner: null, bombs: [], flames: [], shrinkI: 0, gv: (s.gv || 0) + 1 });
   for (const p of s.players) {
     const [cx, cy] = CORNERS[p.corner % 4];
     Object.assign(p, {
-      x: cx + 0.5, y: cy + 0.5, alive: true, bombs: 0, maxBombs: 1, range: 2, spd: 0, kick: false, shield: s.rules.gentle ? 1 : 0,
+      x: cx + 0.5, y: cy + 0.5, alive: true, bombs: 0, maxBombs: 1, range: 2, spd: 0, kick: !!s.rules.kickAll, glove: false, remote: false, cu: 0, ce: 0, ci: 0, la: -99, bp2: false, shield: s.rules.gentle ? 1 : 0,
       inv: s.rules.gentle ? 60 : 0, bp: false, sdx: 0, sdy: 0, slide: 0, tp: 0, face: 2, mv: false,
     });
   }
 }
 
 const aliveList = (s) => s.players.filter((p) => p.alive);
-
-function placeBomb(s, p, ev) {
-  const x = Math.floor(p.x), y = Math.floor(p.y), g = s.grid[idx(x, y)];
-  if (p.bombs >= p.maxBombs || bombAt(s, x, y) || g === WALL || g === CRATE) return;
-  const pass = s.players.filter((q) => q.alive && Math.abs(q.x - x - 0.5) < 0.5 + HIT_R && Math.abs(q.y - y - 0.5) < 0.5 + HIT_R).map((q) => q.id);
-  s.bombs.push({ x, y, o: p.id, t: FUSE, r: p.range, dx: 0, dy: 0, mt: 0, pass, uid: ++s.bn });
-  p.bombs++;
-  ev.push({ e: 'place', x, y });
-}
 
 function movePlayer(s, p, inp, ev) {
   const sp = speedOf(p) / HZ;
@@ -97,24 +89,18 @@ function explode(s, ev) {
 function damage(s, p, ev) {
   if (p.inv > 0) return;
   if (p.shield > 0) { p.shield--; p.inv = INVULN; ev.push({ e: 'shield', id: p.id, x: p.x, y: p.y }); return; }
-  p.alive = false;
-  ev.push({ e: 'hit', id: p.id, x: p.x, y: p.y }, { e: 'out', id: p.id });
+  kill(s, p, ev);
 }
 
-function pickup(s, p, ev) {
-  const i = idx(Math.floor(p.x), Math.floor(p.y)), k = s.pick[i];
-  if (!k) return;
-  s.pick[i] = 0; s.gv++;
-  if (k === 1) p.maxBombs = Math.min(MAX_BOMBS, p.maxBombs + 1);
-  else if (k === 2) p.range = Math.min(MAX_RANGE, p.range + 1);
-  else if (k === 3) p.spd = Math.min(MAX_SPEED, p.spd + 1);
-  else if (k === 4) p.kick = true;
-  else p.shield = Math.min(MAX_SHIELD, p.shield + 1);
-  ev.push({ e: 'pickup', id: p.id, kind: k, x: p.x, y: p.y });
+function kill(s, p, ev) {
+  p.alive = false;
+  ev.push({ e: 'hit', id: p.id, x: p.x, y: p.y }, { e: 'out', id: p.id });
+  dropBonuses(s, p);
 }
 
 function moveBombs(s) {
   for (const b of s.bombs) {
+    if (b.fl > 0) b.fl--;
     if (!b.dx && !b.dy) continue;
     if (++b.mt < 3) continue;
     b.mt = 0;
@@ -132,7 +118,7 @@ function shrink(s, ev) {
   s.grid[i] = WALL; s.pick[i] = 0; s.gv++;
   s.bombs = s.bombs.filter((b) => !(b.x === x && b.y === y));
   for (const p of s.players) {
-    if (p.alive && Math.floor(p.x) === x && Math.floor(p.y) === y) { p.alive = false; ev.push({ e: 'hit', id: p.id, x: p.x, y: p.y }, { e: 'out', id: p.id }); }
+    if (p.alive && Math.floor(p.x) === x && Math.floor(p.y) === y) kill(s, p, ev);
   }
   ev.push({ e: 'block', x, y });
 }
@@ -156,13 +142,20 @@ export function step(s, inputs = {}) {
   if (live) {
     for (const p of s.players) {
       if (!p.alive) continue;
-      const inp = (p.bot && !inputs[p.id]) ? botInput(s, p.id, s.brng) : (inputs[p.id] || {});
+      let inp = (p.bot && !inputs[p.id]) ? botInput(s, p.id, s.brng) : (inputs[p.id] || {});
+      if (p.cu === 1) inp = { ...inp, dx: -(inp.dx | 0), dy: -(inp.dy | 0) }; // „Ciudățel”: mers invers
       if (p.inv > 0) p.inv--;
       movePlayer(s, p, inp, ev);
-      if (inp.bomb && (p.bot || !p.bp)) placeBomb(s, p, ev);
+      if (inp.bomb && (p.bot || !p.bp)) {
+        if (!p.bot && s.tick - p.la <= DOUBLE && lineBombs(s, p, ev)) p.la = -99;
+        else { placeBomb(s, p, ev); p.la = s.tick; }
+      } else if (p.cu === 2 && s.tick % 8 === 0) placeBomb(s, p, ev); // „Ciudățel”: bombe care se pun singure
       p.bp = !!inp.bomb;
+      if (inp.b && !p.bp2 && !(p.glove && throwBomb(s, p, ev)) && p.remote) remoteBlow(s, p);
+      p.bp2 = !!inp.b;
     }
     resolvePass(s);
+    curses(s, ev);
   }
   moveBombs(s);
   for (const b of s.bombs) b.t--;

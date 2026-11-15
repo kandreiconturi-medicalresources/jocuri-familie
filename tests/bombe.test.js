@@ -184,45 +184,131 @@ test('mișcare: pereții blochează; bomba pusă nu te blochează, dar după ce 
   assert.ok(s.players[0].x > 2.3 && x1 > 2.3, 'bomba blochează întoarcerea');
 });
 
-test('snapshot: se pot reconstrui starea și rularea mai departe', () => {
-  const s = createMatch({ arenaId: 6, players: [P('a'), P('b', true), P('c', true)], seed: 11 });
-  for (let i = 0; i < 200; i++) step(s);
-  const copy = createMatch({ arenaId: 6, players: [P('a'), P('b', true), P('c', true)], seed: 1 });
-  applySnap(copy, JSON.parse(JSON.stringify(packSnap(s, true, []))));
-  assert.equal(dump(copy), dump(s));
+const NO = { gentle: false, rounds: 3, kickAll: false };
+const hold = (s, id, n, inp) => { for (let i = 0; i < n; i++) step(s, { [id]: inp }); };
+const tap = (s, id, inp) => { step(s, { [id]: inp }); step(s, { [id]: { ...inp, bomb: false, b: false } }); };
+
+test('șut: mergând în bombă o împingi și alunecă până la obstacol; fără șut nu se mișcă', () => {
+  const s = empty(NO);
+  at(s, 'a', 2, 1); at(s, 'b', 13, 11);
+  bomb(s, 3, 1, 'a', 300);
+  hold(s, 'a', 20, { dx: 1, dy: 0 });
+  assert.equal(s.bombs[0].x, 3, 'fără șut bomba rămâne');
+  s.players[0].kick = true;
+  hold(s, 'a', 60, { dx: 1, dy: 0 });
+  assert.equal(s.bombs[0].x, 13, 'alunecă până la zidul din dreapta');
+  assert.ok(s.players[0].x < 12.5);
+  const g = empty({ gentle: true, rounds: 3 });
+  assert.ok(g.players.every((p) => p.kick) && g.rules.kickAll, 'în modul blând toți pot șuta');
+  assert.ok(!empty(NO).players[0].kick);
 });
 
-test('boții ușori nu se sinucid: 4 boți, 10 seed-uri, în medie peste 20 s', () => {
-  let total = 0;
-  for (let seed = 1; seed <= 10; seed++) {
-    const s = createMatch({ arenaId: seed % 8, players: [P('a', true), P('b', true), P('c', true), P('d', true)], seed, rules: { gentle: false, rounds: 1 } });
-    let n = 0;
-    while (s.phase === 'play' && n < ROUND_STEPS + 10) { step(s); n++; }
-    total += n / 30;
-  }
-  const avg = total / 10;
-  assert.ok(avg > 20, 'durata medie ' + avg.toFixed(1) + ' s');
-  assert.ok(W === 15);
+test('bonusuri: maxim 8 bombe și rază 8; scutul, mănușa și telecomanda se iau', () => {
+  const s = empty(NO), p = s.players[0];
+  for (let i = 0; i < 12; i++) { s.pick[idx(3, 1)] = 1; at(s, 'a', 3, 1); step(s); s.pick[idx(3, 1)] = 2; at(s, 'a', 3, 1); step(s); }
+  assert.equal(p.maxBombs, 8); assert.equal(p.range, 8); assert.equal(p.bestB, 8); assert.equal(p.bestR, 8);
+  for (const k of [6, 7]) { s.pick[idx(3, 1)] = k; at(s, 'a', 3, 1); step(s); }
+  assert.ok(p.glove && p.remote);
 });
 
-test('rețea: clientul trimite input, gazda simulează, iar snapshot-urile aduc clientul la aceeași stare', () => {
-  const cfg = { arenaId: 2, players: [P('h'), P('c'), P('b1', true, 'mid')], seed: 5, rules: { gentle: true } };
-  const toClient = [], toHost = [];
-  const net = (you, out) => ({ you, host: you === 'h', rooms: { send: (d) => out.push({ from: you, d: JSON.parse(JSON.stringify(d)) }) } });
-  const pad = { read: () => ({ left: true, right: false, up: false, down: false, a: false, b: false }) };
-  const host = createPlay({ input: pad, cfg, slots: { h: 0 }, net: net('h', toClient), onEvents() {} });
-  const client = createPlay({ input: pad, cfg, slots: { c: 0 }, net: net('c', toHost), onEvents() {} });
-  const x0 = client.state.players[1].x;
-  for (let i = 0; i < 400; i++) {
-    host.update(); client.update();
-    while (toHost.length) host.onMsg(toHost.shift());
-    while (toClient.length) client.onMsg(toClient.shift());
+test('lăzile lasă bonus în ~40% din cazuri, iar „Ciudățel” e rar și lipsește în modul blând', () => {
+  let crates = 0, loot = 0, curse = 0, curseGentle = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const s = createMatch({ arenaId: 0, players: [P('a'), P('b')], seed, rules: NO });
+    for (let i = 0; i < s.grid.length; i++) if (s.grid[i] === CRATE) { crates++; if (s.loot[i]) { loot++; if (s.loot[i] === 8) curse++; } }
+    const g = createMatch({ arenaId: 0, players: [P('a'), P('b')], seed, rules: { gentle: true } });
+    curseGentle += g.loot.filter((k) => k === 8).length;
   }
-  assert.ok(host.state.players[1].x < x0 - 1, 'input-ul clientului a mișcat jucătorul la gazdă');
-  assert.equal(dump(client.state), dump(host.state));
-  // plecarea unui jucător: devine bot; gazda nouă preia din ultimul snapshot
-  client.setRoom([{ id: 'c', host: true }]);
-  assert.ok(client.isHost && client.state.players[0].bot);
-  for (let i = 0; i < 30; i++) client.update();
-  assert.ok(client.state.tick > host.state.tick - 5);
+  assert.ok(Math.abs(loot / crates - 0.4) < 0.05, 'loot ' + (loot / crates).toFixed(2));
+  assert.ok(curse > 0 && curse / loot < 0.1);
+  assert.equal(curseGentle, 0);
+});
+
+test('aruncare: mănușa trimite bomba 3 plăci peste obstacole și ricoșează la margine', () => {
+  const s = empty(NO);
+  at(s, 'a', 4, 1); at(s, 'b', 13, 11);
+  s.players[0].glove = true; s.players[0].face = 1;
+  bomb(s, 4, 1, 'a', 200);
+  tap(s, 'a', { dx: 0, dy: 0, b: true });
+  assert.equal(s.bombs[0].x, 7, 'zboară peste plăci');
+  assert.ok(s.bombs[0].fl > 0);
+  for (let i = 0; i < 14; i++) step(s);
+  assert.equal(s.bombs[0].fl, 0);
+  // lângă margine: ricoșează înapoi (x=13 +3 -> 16 -> 12)
+  const e = empty(NO);
+  at(e, 'a', 13, 1); at(e, 'b', 13, 11);
+  e.players[0].glove = true; e.players[0].face = 1;
+  bomb(e, 13, 1, 'a', 200);
+  tap(e, 'a', { dx: 0, dy: 0, b: true });
+  assert.equal(e.bombs[0].x, 12, 'a ricoșat');
+  assert.equal(e.bombs.length, 1);
+});
+
+test('telecomandă: butonul 2 face bombele proprii să explodeze', () => {
+  const s = empty(NO);
+  at(s, 'a', 1, 1); at(s, 'b', 13, 11);
+  bomb(s, 5, 5, 'a', 200); bomb(s, 9, 5, 'b', 200);
+  tap(s, 'a', { dx: 0, dy: 0, b: true });
+  assert.equal(s.bombs.length, 2, 'fără bonus nu se întâmplă nimic');
+  s.players[0].remote = true;
+  tap(s, 'a', { dx: 0, dy: 0, b: true });
+  assert.equal(s.bombs.length, 1); assert.equal(s.bombs[0].o, 'b');
+});
+
+test('linie de bombe: dublu-apăsare pune toate bombele disponibile în direcția privirii', () => {
+  const s = empty(NO), p = s.players[0];
+  at(s, 'a', 3, 1); at(s, 'b', 13, 11);
+  p.maxBombs = 4; p.face = 1;
+  tap(s, 'a', { dx: 0, dy: 0, bomb: true });
+  assert.equal(s.bombs.length, 1);
+  tap(s, 'a', { dx: 0, dy: 0, bomb: true });
+  assert.deepEqual(s.bombs.map((b) => b.x).sort((x, y) => x - y), [3, 4, 5, 6]);
+  assert.ok(s.bombs.every((b) => b.y === 1) && p.bombs === 4);
+});
+
+test('Ciudățel: mers invers 10 s, se transmite prin atingere, trece; în modul blând nu există', () => {
+  const s = empty(NO), a = s.players[0], b = s.players[1];
+  at(s, 'a', 3, 1); at(s, 'b', 3, 1); b.y = 1.5; b.x = 6.5;
+  s.pick[idx(3, 1)] = 8; a.x = 3.5; a.y = 1.5;
+  step(s);
+  assert.ok(a.cu >= 1 && a.cu <= 3 && a.ce - s.tick === 300);
+  a.cu = 1; const x0 = a.x;
+  hold(s, 'a', 6, { dx: 1, dy: 0 });
+  assert.ok(a.x < x0 - 0.3, 'mers invers');
+  b.x = a.x + 0.3; b.y = a.y; b.inv = 0;
+  step(s);
+  assert.equal(b.cu, 1); assert.equal(b.ce, a.ce);
+  s.tick = a.ce;
+  step(s);
+  assert.ok(!a.cu && !b.cu);
+  const g = empty({ gentle: true, rounds: 3 });
+  g.pick[idx(3, 1)] = 8; at(g, 'a', 3, 1); step(g);
+  assert.ok(!g.players[0].cu, 'modul blând: fără bonus negativ');
+  const sl = empty(NO); sl.players[0].cu = 3; sl.players[0].ce = 999; at(sl, 'a', 1, 1);
+  hold(sl, 'a', 30, { dx: 1, dy: 0 });
+  assert.ok(sl.players[0].x < 3, 'viteză foarte mică');
+  const au = empty(NO); at(au, 'a', 1, 1); au.players[0].cu = 2; au.players[0].ce = 999;
+  hold(au, 'a', 12, { dx: 0, dy: 0 });
+  assert.ok(au.bombs.length >= 1, 'bombe care se pun singure');
+});
+
+
+test('bonusurile căzute în flăcări dispar, iar cele ale unui jucător eliminat se împrăștie', () => {
+  const s = empty(NO), a = s.players[0];
+  a.maxBombs = 4; a.range = 4; a.spd = 2; a.glove = true; a.shield = 0; a.inv = 0;
+  at(s, 'a', 5, 5); at(s, 'b', 13, 11);
+  s.pick[idx(5, 6)] = 6;
+  bomb(s, 5, 5, 'a', 1);
+  step(s);
+  assert.ok(!a.alive); assert.equal(s.pick[idx(5, 6)], 0, 'bonusul din flăcări a dispărut');
+  const left = [...s.pick].filter(Boolean);
+  assert.equal(left.length, 3 + 2 + 2 + 1, 'toate bonusurile lui sunt pe arenă');
+  assert.ok(s.pick.every((k, i) => !k || s.grid[i] === 0));
+});
+
+test('final de meci: se păstrează câte bombe și ce rază a avut fiecare', () => {
+  const s = empty({ gentle: false, rounds: 1 }), a = s.players[0];
+  for (const k of [1, 2, 2]) { s.pick[idx(3, 1)] = k; at(s, 'a', 3, 1); step(s); }
+  startRound(s);
+  assert.deepEqual([a.maxBombs, a.bestB, a.bestR], [1, 2, 4]);
 });

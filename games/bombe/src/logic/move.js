@@ -30,7 +30,7 @@ function tryKick(s, p, dx, dy) {
   if (!p.kick) return;
   const ax = Math.floor(p.x + dx * (HIT_R + 0.08)), ay = Math.floor(p.y + dy * (HIT_R + 0.08));
   const b = bombAt(s, ax, ay);
-  if (!b || b.dx || b.dy || b.pass.includes(p.id)) return;
+  if (!b || b.dx || b.dy || b.fl > 0 || b.pass.includes(p.id)) return;
   const nx = ax + dx, ny = ay + dy, g = s.grid[idx(nx, ny)];
   if (g === WALL || g === CRATE || bombAt(s, nx, ny) || lavaAt(s, nx, ny)) return;
   b.dx = dx; b.dy = dy; b.mt = 0;

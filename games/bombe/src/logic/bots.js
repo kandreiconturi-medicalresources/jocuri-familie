@@ -107,7 +107,7 @@ export function botInput(s, id, r) {
   const drop = want && p.bombs < p.maxBombs && !bombAt(s, cx, cy) && canEscape(s, p, from, stepT);
   bfs(s, from, D, stepT); // canEscape a rescris tablourile
   if (drop) return { dx: 0, dy: 0, bomb: true };
-  const pk = nearest((i) => s.pick[i] > 0 && D[i] === INF && !(s.grid[i] === 3 && p.level === 'easy'), L.pick);
+  const pk = nearest((i) => s.pick[i] > 0 && s.pick[i] !== 8 && D[i] === INF && !(s.grid[i] === 3 && p.level === 'easy'), L.pick);
   if (pk >= 0) return go(pk);
   const spot = nearest((i) => D[i] === INF && DIRS.some(([dx, dy]) => s.grid[idx((i % W) + dx, ((i / W) | 0) + dy)] === CRATE), 40);
   if (spot >= 0) return go(spot);

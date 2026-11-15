@@ -3,13 +3,8 @@ import { h } from '../../../../shared/ui/dom.js';
 import { serverInfo } from '../../../../shared/engine/profiles.js';
 import { ARENAS } from '../logic/arenas.js';
 import { makeScreen, btn, optRow } from './ui.js';
+import { makeHelp } from './help.js';
 import { loadSetup, saveSetup, fixCounts, localConfig } from '../setup.js';
-
-const HELP = h('details', null, h('summary', null, '❓ Cum se joacă'),
-  h('div', null, 'Pune bombe 💣, sparge lăzile și fugi din calea flăcărilor! Ultimul rămas câștigă runda.'),
-  h('div', null, 'Jucătorul 1: ', h('kbd', null, 'W A S D'), ' + ', h('kbd', null, 'Spațiu'), ' · Jucătorul 2: ', h('kbd', null, '← ↑ ↓ →'), ' + ', h('kbd', null, 'Enter')),
-  h('div', null, 'Pe ecran tactil: crucea și butonul 💣. Cu 3–4 jucători folosiți manete (gamepad).'),
-  h('div', null, 'Bonusuri: 💣 încă o bombă · 🔥 rază mai mare · ⚡ viteză · 👟 împingi bombe · 🛡 scut.'));
 
 export function createMenu(app) {
   const st = loadSetup();
@@ -19,7 +14,7 @@ export function createMenu(app) {
     h('div', { class: 'btns' },
       btn('▶ Joacă', () => app.go('setup')),
       serverInfo() ? btn('🌐 În rețea', () => app.openLobby(), 'alt') : null),
-    HELP.cloneNode(true),
+    makeHelp(),
   ]);
 
   const body = h('div');
@@ -36,8 +31,9 @@ export function createMenu(app) {
       h('div', { class: 'row' }, h('span', { class: 'lab' }, 'Arena'), btn('◀', () => step(-1), 'alt sm'),
         h('span', { class: 'val' }, a.name, h('small', null, a.desc)), btn('▶', () => step(1), 'alt sm')),
       optRow('Runde', [[1, '1'], [3, '3'], [5, '5']], st.rounds, (v) => { st.rounds = v; paint(); }),
-      optRow('Mod blând', [[true, 'Pornit'], [false, 'Oprit']], st.gentle, (v) => { st.gentle = v; paint(); }),
-      h('p', { class: 'sub', style: { fontSize: '14px', margin: '0 0 8px' } }, st.gentle ? 'Ai un scut la început, iar bombele tale nu te rănesc.' : 'Mod pentru cei mari: o singură atingere și ieși!'),
+      optRow('Mod blând', [[true, 'Pornit'], [false, 'Oprit']], st.gentle, (v) => { st.gentle = v; st.kickAll = v; paint(); }),
+      optRow('Toți pot șuta', [[true, 'Da'], [false, 'Doar cu bonus']], st.kickAll, (v) => { st.kickAll = v; paint(); }),
+      h('p', { class: 'sub', style: { fontSize: '14px', margin: '0 0 8px' } }, st.gentle ? 'Ai un scut la început, bombele tale nu te rănesc, iar bonusul „Ciudățel” lipsește.' : 'Mod pentru cei mari: o singură atingere și ieși!'),
       h('div', { class: 'btns', style: { marginBottom: 0 } }, btn('← Înapoi', () => app.go('title'), 'alt sm'),
         btn('💥 Start!', () => { saveSetup(st); app.startLocal(localConfig(st)); })));
   }

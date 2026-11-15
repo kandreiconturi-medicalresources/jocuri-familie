@@ -6,7 +6,9 @@ Plan complet aprobat: faze făcute pe rând, testate pe telefon după fiecare.
 - [x] **Faza 1 – Bobo refăcut:** grafică nouă, 10 lumi × 15 niveluri, generator + validator, vieți nelimitate, steluțe, hartă.
 - [x] **Faza 2 – Server și NAS:** server Node (camere WebSocket, conturi, progres), Docker, Synology + Tailscale + Watchtower, release automat, Bobo co-op online.
 - [x] **Faza 3 – Bum-Bum Arena:** arenă cu bombe 2–4 jucători, local + rețea, boți.
-- [ ] **Faza 4 – Turbo Curse:** curse 3D low-poly (Three.js), nitro, drift, piste, boți, rețea.
+- [x] **Faza 4 – Turbo Curse:** curse 3D low-poly (Three.js), nitro, drift, 8 piste, boți, ecran împărțit, rețea (de verificat pe dispozitive reale și cu serverul).
+- [x] **Faza 4b – Bum-Bum mai bogat:** șut, multe bombe, aruncare, telecomandă, linie de bombe, bonus negativ, rețea verificată cu serverul.
+- [ ] **Faza 6 – Joc de strategie cu trenuri și orașe** (gen tycoon feroviar, original; înainte de Orășelul): construiești căi ferate, gări și trenuri, transporți pasageri și mărfuri, orașele cresc, economie cu concurenți, multiplayer pe PC/telefon/tabletă. Planul detaliat se face la începutul fazei.
 - [ ] **Faza 5 – Orășelul:** joc de tablă cu proprietăți, 2–6 jucători, pe o tabletă sau în rețea, boți.
 
 ## Cerințe Faza 2 (de la utilizator)

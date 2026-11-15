@@ -67,3 +67,6 @@ export const BOBO_SFX = {
   win: [...arp([523, 587, 659, 784, 880, 1047, 1319], 0.16, 'square', 0.045, 0.1),
     [1568, 1568, 0.5, 'triangle', 0.1, 0.7]],
 };
+
+/** Contextul WebAudio (după `unlockAudio`), pentru jocurile care sintetizează sunet continuu (ex. motorul din Turbo Curse). */
+export const audioCtx = () => actx;
