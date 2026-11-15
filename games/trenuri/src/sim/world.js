@@ -4,21 +4,24 @@ import { SIZES, START_CASH, SANDBOX_CASH } from './consts.js';
 import { generateMap } from './mapgen.js';
 import { deriveLayers } from './roads.js';
 import { growBuildings, levelOf } from './growth.js';
+import { placeIndustries } from './indgen.js';
+import { NG } from './goods.js';
 
-export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
+export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
   const n = typeof seed === 'string' ? hashSeed(seed) : seed >>> 0;
   const w = SIZES[size] || SIZES.S, h = w;
   const m = generateMap(n, size, w, h);
   const s = {
-    version: 1, tick: 0, rng: (n ^ 0xa5a5a5a5) >>> 0, seed: n, size, mode, sandbox: !!sandbox, w, h,
-    height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: [],
+    version: 2, tick: 0, rng: (n ^ 0xa5a5a5a5) >>> 0, seed: n, size, mode, sandbox: !!sandbox, w, h,
+    height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
     track: new Uint16Array(w * h), stations: [], trains: [],
-    companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0 })),
-    date: { y: 1950, m: 1, d: 1 }, news: [], nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true },
+    companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
+    date: { y: year, m: 1, d: 1 }, news: [], nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
   deriveLayers(s);
-  for (const c of s.cities) { c.level = levelOf(c.pop); growBuildings(s, c, 99); }
+  for (const c of s.cities) { c.got = new Array(NG).fill(0); c.prev = new Array(NG).fill(0); c.level = levelOf(c.pop); growBuildings(s, c, 99); }
   s.news.push({ tick: 0, icon: '🚂', text: 'Bun venit! Leagă două orașe cu o cale ferată.' });
+  s.news.push({ tick: 0, icon: '🏭', text: 'Pe hartă sunt ferme, păduri și mine. Ce produc ele poate hrăni orașele!' });
   return s;
 }
 
@@ -39,11 +42,12 @@ export function hashState(s) {
   let h = hashMap(s);
   h = num(num(num(h, s.tick), s.rng), s.nextId);
   for (let i = 0; i < s.track.length; i++) h = fnv(fnv(h, s.track[i]), s.track[i] >> 8);
-  for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); }
-  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(h, t.owner), t.size); }
+  for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); h = arr(h, c.got); }
+  for (const o of s.industries) { h = num(num(num(h, o.type), o.x * 256 + o.y), o.boost); h = arr(arr(h, o.in), o.out); }
+  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(h, t.owner), t.size); h = arr(arr(h, t.cargo), t.up); }
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
-    h = num(num(num(h, t.to), t.at), t.wait);
+    h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
     for (const b of t.load) h = num(num(num(h, b.c), b.n), b.from);
     for (const r of t.route) h = num(h, r);
   }
@@ -64,7 +68,7 @@ function unb64(str, Type) {
   return new Type(u.buffer);
 }
 const BIG = ['height', 'water', 'forest', 'track'];
-const DERIVED = ['roads', 'occ', 'dirty'];
+const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm'];
 
 /** Obiect JSON simplu (poate merge în localStorage). */
 export function serialize(s) {
@@ -80,7 +84,7 @@ export function deserialize(o) {
   const s = JSON.parse(JSON.stringify(o));
   s.height = unb64(o.height, Uint8Array); s.water = unb64(o.water, Uint8Array); s.forest = unb64(o.forest, Uint8Array);
   s.track = unb64(o.track, Uint16Array);
-  s.dirty = { track: true, forest: true, cities: true, stations: true };
+  s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true };
   deriveLayers(s);
   return s;
 }

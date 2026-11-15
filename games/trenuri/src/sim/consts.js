@@ -18,18 +18,31 @@ export const STATION_COST = [1000, 3000, 8000];
 export const STATION_RADIUS = [2, 3, 4];
 export const STATION_NAMES = ['Haltă', 'Gară', 'Terminal'];
 
-// Modele de locomotivă: nume, preț, viteză maximă (1/256 placă/pas), glb
+// Locomotive: apar pe rând după an. vmax în 1/256 placă/pas, power = câte vagoane trage bine, rel = fiabilitate (0–100)
 export const MODELS = [
-  { id: 0, name: 'Abur mic', price: 4000, vmax: 16, glb: 'train-locomotive-a', smoke: true },
-  { id: 1, name: 'Abur pasageri', price: 9000, vmax: 26, glb: 'train-locomotive-passenger-a', smoke: true },
-  { id: 2, name: 'Diesel', price: 15000, vmax: 40, glb: 'train-diesel-a', smoke: false },
+  { id: 0, key: 'mic', name: 'Abur mic', year: 1840, price: 4000, vmax: 16, power: 3, maint: 80, rel: 90, glb: 'train-locomotive-a', smoke: true },
+  { id: 1, key: 'abur', name: 'Abur', year: 1856, price: 7000, vmax: 20, power: 4, maint: 100, rel: 92, glb: 'train-locomotive-b', smoke: true },
+  { id: 2, key: 'rapid', name: 'Abur rapid', year: 1885, price: 10500, vmax: 28, power: 4, maint: 130, rel: 94, glb: 'train-locomotive-passenger-a', smoke: true },
+  { id: 3, key: 'diesel', name: 'Diesel', year: 1930, price: 15000, vmax: 40, power: 5, maint: 180, rel: 96, glb: 'train-diesel-a', smoke: false },
+  { id: 4, key: 'electric', name: 'Electric de oraș', year: 1952, price: 21000, vmax: 48, power: 5, maint: 220, rel: 98, glb: 'train-electric-city-a', smoke: false },
+  { id: 5, key: 'glont', name: 'Electric rapid', year: 1970, price: 32000, vmax: 64, power: 6, maint: 300, rel: 99, glb: 'train-electric-bullet-a', smoke: false },
 ];
+export const availableModels = (year) => MODELS.filter((m) => m.year <= year);
+export const START_YEARS = [1840, 1900, 1950];
 export const CAR_PRICE = 500, MAX_CARS = 6;
-export const CAP_PASS = 30, CAP_MAIL = 20;
-export const carKind = (i) => (i % 3 === 2 ? 1 : 0); // 0 pasageri, 1 poștă
 
-export const RATE = [2, 3]; // lei pe unitate pe placă: pasageri, poștă
-export const DWELL = 24, RETRY = 40, WAIT_CAP = 240;
+export const DWELL = 24, RETRY = 40, WAIT_CAP = 240, STOCK_CAP = 250;
 export const START_CASH = 100000, SANDBOX_CASH = 9999999;
-export const MAINT = { tile: 4, station: 60, train: 80 };
+export const MAINT = { tile: 4, station: 60 };
 export const CITY_LEVELS = [0, 600, 2500];
+export const LOW_PAY = 25; // % din plată când destinația nu cere marfa
+export const PROD = 16; // unități produse lunar de o industrie primară
+export const YIELD_BASE = 80, YIELD_LONG = 600; // pași de așteptare înainte ca un tren să se întoarcă
+
+// Îmbunătățiri de gară (la gară, lângă ea): preț și efect
+export const UPGRADES = [
+  { key: 'water', name: 'Depou de apă', icon: '💧', cost: 1500, text: 'Trenurile cu abur merg mai repede.', glb: 'industrial/water-tower', dx: -0.9, dz: 0.7, s: 0.5 },
+  { key: 'mail', name: 'Oficiu poștal', icon: '✉️', cost: 2000, text: 'Apare mai multă poștă.', glb: 'suburban/building-type-r', dx: 0.9, dz: 0.7, s: 0.45 },
+  { key: 'hotel', name: 'Hotel', icon: '🏨', cost: 3500, text: 'Vin mai mulți pasageri.', glb: 'commercial/building-d', dx: -0.9, dz: -0.8, s: 0.45 },
+  { key: 'depot', name: 'Depozit', icon: '🏚️', cost: 2500, text: 'Marfa se strică mai încet.', glb: 'industrial/building-d', dx: 0.9, dz: -0.8, s: 0.4 },
+];

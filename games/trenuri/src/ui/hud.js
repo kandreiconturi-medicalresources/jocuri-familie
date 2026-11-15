@@ -1,6 +1,7 @@
 // Interfața de joc: bara de sus (bani, dată, viteză), bara de unelte, opțiuni, mesaj scurt.
 import { h } from '../../../../shared/ui/dom.js';
-import { STATION_NAMES, STATION_COST, MODELS } from '../sim/consts.js';
+import { STATION_NAMES, STATION_COST, availableModels, CAR_PRICE } from '../sim/consts.js';
+import { CAR_SETS, CAR_TYPES } from '../sim/goods.js';
 
 export const TOOLS = [
   { id: 'track', e: '🛤️', t: 'Șină', hint: 'Trage cu degetul de la un oraș la altul ca să desenezi șina.' },
@@ -15,7 +16,9 @@ export const lei = (n) => (n < 0 ? '-' : '') + String(Math.abs(n)).replace(/\B(?
 export function createHud(root, ev) {
   const money = h('div', { class: 'chip' }), date = h('div', { class: 'chip' });
   const speeds = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => h('button', { class: 'rb', 'aria-label': 'Viteză ' + t, onclick: () => ev.speed(v) }, t));
+  const layerBtn = h('button', { class: 'rb', title: 'Mărfuri', 'aria-label': 'Mărfuri', onclick: () => ev.layer() }, '📦');
   const bar = h('div', { class: 'tbar' }, money, date, h('div', { class: 'sp' }), speeds,
+    layerBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
     h('button', { class: 'rb', title: 'Acasă', 'aria-label': 'Acasă', onclick: () => ev.home() }, '🏠'));
   const hint = h('div', { class: 'hint hidden' });
@@ -33,6 +36,7 @@ export function createHud(root, ev) {
       money.textContent = '💰 ' + (sandbox ? '∞' : lei(c));
       money.classList.toggle('bad', c < 0);
     },
+    setLayer(on) { layerBtn.classList.toggle('on', on); },
     setDate(d) { date.textContent = `📅 ${MONTHS[d.m - 1]} ${d.y}`; },
     setSpeed(v) { speeds.forEach((b, i) => b.classList.toggle('on', [0, 1, 2, 4][i] === v)); },
     setTool(id) {
@@ -51,8 +55,11 @@ export function createHud(root, ev) {
     stationOpts(size, onPick) {
       api.setSub(STATION_NAMES.map((n, i) => ({ label: n, small: lei(STATION_COST[i]), on: size === i, fn: () => onPick(i) })));
     },
-    trainOpts(model, onPick) {
-      api.setSub(MODELS.map((m, i) => ({ label: m.name, small: lei(m.price + 1500), on: model === i, fn: () => onPick(i) })));
+    trainOpts(model, cars, year, onModel, onCars) {
+      const price = (m, set) => m.price + CAR_SETS[set].length * CAR_PRICE;
+      const ms = availableModels(year).map((m) => ({ label: m.name, small: lei(price(m, cars)), on: model === m.id, fn: () => onModel(m.id) }));
+      const cs = CAR_SETS.map((set, i) => ({ label: i ? CAR_TYPES[set[0]].icon + ' ' + CAR_TYPES[set[0]].name : '👥✉️ Pasageri', cls: 'car', on: cars === i, fn: () => onCars(i) }));
+      api.setSub([...ms, ...cs]);
     },
   };
   return api;

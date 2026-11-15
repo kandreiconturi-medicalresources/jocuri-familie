@@ -15,18 +15,27 @@ defineSfx({
 });
 
 export function createGame({ stage, canvas, uiRoot, save, onHome }) {
-  let s = null, view = null, speed = 1, simAcc = 0, follow = null, orbit = false, saveT = 0, lastCash = 0, clock = 0;
+  let lastNews = null, s = null, view = null, speed = 1, simAcc = 0, follow = null, orbit = false, saveT = 0, lastCash = 0, clock = 0;
   const camera = createCamera(stage, { w: 64, h: 64 });
   const exec = (cmd) => {
     const r = applyCommand(s, { by: 0, ...cmd });
     if (r.ok) sfx('build'); else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
     return r;
   };
-  const panels = createPanels(uiRoot, { sell: (id) => exec({ type: 'sellTrain', trainId: id }) });
+  const panels = createPanels(uiRoot, {
+    sell: (id) => exec({ type: 'sellTrain', trainId: id }),
+    orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
+    upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
+  });
   const hud = createHud(uiRoot, {
     speed: (v) => { speed = v; hud.setSpeed(v); },
     tool: (id) => tools.setTool(id),
     news: () => panels.news(s),
+    layer: () => {
+      const on = !view.links.visible;
+      view.links.show(on); hud.setLayer(on);
+      if (on) panels.layer(s); else panels.close();
+    },
     home: () => { game.save(); onHome(); },
   });
   const tools = createTools({
@@ -45,6 +54,14 @@ export function createGame({ stage, canvas, uiRoot, save, onHome }) {
   });
   canvas.addEventListener('pointerdown', () => { follow = null; unlockAudio(); });
 
+  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️'];
+  function toastNews() {
+    const n = s.news, k = n.indexOf(lastNews);
+    if (k === n.length - 1) return;
+    for (let i = k + 1; i < n.length; i++) if (BIG.includes(n[i].icon) && !orbit) hud.hint(n[i].icon + ' ' + n[i].text, false, 5000);
+    lastNews = n[n.length - 1];
+  }
+
   const game = {
     camera, get state() { return s; }, hud,
     setWorld(state, { demo = false } = {}) {
@@ -55,13 +72,13 @@ export function createGame({ stage, canvas, uiRoot, save, onHome }) {
       orbit = demo; simAcc = 0; lastCash = s.companies[0].cash;
       uiRoot.classList.toggle('demo', demo);
       for (const e of hud.el) e.classList.toggle('hidden', demo);
-      panels.close(); tools.setTool('track');
+      panels.close(); tools.setTool('track'); hud.setLayer(false); lastNews = s.news[s.news.length - 1];
       if (!demo) { speed = 1; hud.setSpeed(1); hud.setDate(s.date); hud.setMoney(s.companies[0].cash, s.sandbox); }
       else speed = 1;
       view.trains.onStep();
     },
-    newWorld(size, demo) { game.setWorld(createWorld({ seed: (Math.random() * 4294967295) >>> 0, size }), { demo }); },
-    load(saved) { game.setWorld(deserialize(saved.state)); speed = saved.speed || 1; hud.setSpeed(speed); },
+    newWorld(size, demo, year = 1950) { game.setWorld(createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year }), { demo }); },
+    load(saved) { if (!saved.state || saved.state.version < 2) return game.newWorld('S', false, 1840); game.setWorld(deserialize(saved.state)); speed = saved.speed || 1; hud.setSpeed(speed); },
     save() { if (s && !orbit) save.set('auto', { v: 1, state: serialize(s), speed }); },
     update(dt) {
       if (!s) return;
@@ -88,6 +105,7 @@ export function createGame({ stage, canvas, uiRoot, save, onHome }) {
       if (c > lastCash + 50) sfx('cash');
       lastCash = c;
       hud.setDate(s.date);
+      toastNews();
       stage.render();
     },
   };

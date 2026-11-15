@@ -9,6 +9,7 @@ import { startPlaySession, showTimeOverlay } from '../../../shared/engine/sessio
 import { loadModels, missing } from './render/models.js';
 import { TRAIN_MODELS } from './render/trains.js';
 import { HOUSES, TREES, ROCK } from './render/props.js';
+import { EXTRA_MODELS } from './render/industries.js';
 import { createStage } from './render/stage.js';
 import { createGame } from './game.js';
 import { createMenu } from './ui/menu.js';
@@ -17,7 +18,7 @@ const $ = (id) => document.getElementById(id);
 const save = gameSave('trenuri');
 needLandscape($('rot'));
 
-const MODEL_LIST = [...TRAIN_MODELS, ...HOUSES, ...TREES, ROCK];
+const MODEL_LIST = [...TRAIN_MODELS, ...HOUSES, ...TREES, ROCK, ...EXTRA_MODELS];
 let game, loop, menu = null;
 
 function showMenu() {
@@ -26,9 +27,9 @@ function showMenu() {
   const saved = save.get('auto', null);
   game.newWorld('S', true);
   menu = createMenu($('ui'), {
-    hasSave: !!saved,
+    hasSave: !!(saved && saved.state && saved.state.version >= 2),
     onContinue: () => { closeMenu(); game.load(saved); },
-    onNew: (size) => { closeMenu(); game.newWorld(size, false); },
+    onNew: (size, year) => { closeMenu(); game.newWorld(size, false, year); },
     onHome: () => { location.href = '../../'; },
   });
 }

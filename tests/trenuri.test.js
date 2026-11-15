@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createWorld, hashState, hashMap, serialize, deserialize, applyCommand, planTrack, stepWorld } from '../games/trenuri/src/sim/index.js';
 
 const flat = (seed = 3) => { // lume plată fără apă, fără păduri, pentru teste de planificare
-  const s = createWorld({ seed, size: 'S' });
+  const s = createWorld({ seed, size: 'S', year: 1950 });
   s.height.fill(8); s.water.fill(0); s.forest.fill(0); s.occ.fill(0); s.roads.fill(0);
   return s;
 };
@@ -30,10 +30,10 @@ test('același seed dă aceeași hartă', () => {
 });
 
 function run(withSave) {
-  let s = createWorld({ seed: 11, size: 'S' });
+  let s = createWorld({ seed: 11, size: 'S', year: 1950 });
   const { p, g1, g2 } = setup(s);
   ok(applyCommand(s, { type: 'buildTrack', by: 0, path: p.path }));
-  const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 2, stationId: g1 }));
+  const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: g1 }));
   ok(applyCommand(s, { type: 'setRoute', by: 0, trainId: t.id, route: [g1, g2] }));
   for (let i = 0; i < 10000; i++) {
     if (withSave && i === 4321) s = deserialize(JSON.parse(JSON.stringify(serialize(s))));
@@ -90,10 +90,10 @@ test('applyCommand refuză fără bani sau pe teren interzis', () => {
 });
 
 test('tren între două gări legate: ajunge, încarcă, livrează, compania câștigă', () => {
-  const s = createWorld({ seed: 21, size: 'S' });
+  const s = createWorld({ seed: 21, size: 'S', year: 1950 });
   const { p, g1, g2 } = setup(s);
   ok(applyCommand(s, { type: 'buildTrack', by: 0, path: p.path }));
-  const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 1, stationId: g1 }));
+  const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 2, stationId: g1 }));
   ok(applyCommand(s, { type: 'setRoute', by: 0, trainId: t.id, route: [g1, g2] }));
   const cash0 = s.companies[0].cash, tr = s.trains[0];
   let visited2 = false, loadedSome = false;
@@ -107,7 +107,7 @@ test('tren între două gări legate: ajunge, încarcă, livrează, compania câ
 });
 
 test('trenul nu pleacă dacă gările nu sunt legate', () => {
-  const s = createWorld({ seed: 21, size: 'S' });
+  const s = createWorld({ seed: 21, size: 'S', year: 1950 });
   const { g1, g2 } = setup(s);
   const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 0, stationId: g1 }));
   ok(applyCommand(s, { type: 'setRoute', by: 0, trainId: t.id, route: [g1, g2] }));

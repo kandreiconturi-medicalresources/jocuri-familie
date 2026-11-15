@@ -1,6 +1,7 @@
 // Straturi derivate (nu intră în hash și nu se salvează): drumuri între orașe și plăcile ocupate de clădiri.
 import { createHeap, KEY } from './heap.js';
 import { DX, DY } from './consts.js';
+import { rebuildBlocks } from './blocks.js';
 
 /** Drum pe uscat între două orașe (A* pe 4 direcții, fără apă). Întoarce lista de indici sau null. */
 function landPath(w, h, water, a, b) {
@@ -47,4 +48,6 @@ export function deriveLayers(s) {
     for (const b of c.buildings) s.occ[b[1] * w + b[0]] = 1;
     s.roads[c.y * w + c.x] = 1;
   }
+  for (const o of s.industries) s.occ[o.y * w + o.x] = 1;
+  rebuildBlocks(s);
 }

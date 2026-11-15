@@ -32,7 +32,7 @@ export function growBuildings(s, c, max = 6) {
       if (((k * 7 + start) & 3) === 0 && c.buildings.length < want - 1 && k > 8) continue;
       const x = c.x + dx, y = c.y + dy;
       if (!free(s, x, y, base)) continue;
-      const pool = c.level >= 2 ? 13 : c.level >= 1 ? 11 : 8;
+      const pool = c.level >= 2 ? 16 : c.level >= 1 ? 11 : 8;
       let type = t % 8;
       if (c.level >= 1 && ((dx * dx + dy * dy) < 9 || (x + y) % 3 === 0)) type = 8 + (t % (pool - 8));
       c.buildings.push([x, y, type, b]);

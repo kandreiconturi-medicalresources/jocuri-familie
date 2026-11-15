@@ -5,8 +5,8 @@ import { getParts } from './models.js';
 export const TREES = ['nature/tree_default', 'nature/tree_pineDefaultA', 'nature/tree_oak', 'nature/tree_fat'];
 export const BUSH = 'nature/plant_bush', ROCK = 'nature/rock_smallA';
 export const HOUSES = ['building-type-a', 'building-type-b', 'building-type-c', 'building-type-d', 'building-type-e', 'building-type-f', 'building-type-g', 'building-type-h'].map((n) => 'suburban/' + n)
-  .concat(['commercial/building-a', 'commercial/building-b', 'commercial/building-c', 'commercial/building-d', 'commercial/building-skyscraper-a']);
-const HOUSE_SCALE = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.55, 0.55, 0.55, 0.55, 0.4];
+  .concat(['commercial/building-a', 'commercial/building-b', 'commercial/building-c', 'commercial/building-d', 'commercial/building-skyscraper-a', 'commercial/building-e', 'commercial/building-skyscraper-b', 'commercial/building-skyscraper-c']);
+const HOUSE_SCALE = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.55, 0.55, 0.55, 0.55, 0.4, 0.55, 0.4, 0.4];
 const CH = 32;
 
 const hash = (x, y, k) => { let h = Math.imul(x + 1, 73856093) ^ Math.imul(y + 1, 19349663) ^ Math.imul(k + 7, 83492791); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };

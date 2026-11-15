@@ -1,12 +1,13 @@
 // Trenuri: modele din trains/, mișcare interpolată între pașii simulării, fum de abur.
 import { Group, InstancedMesh, IcosahedronGeometry, MeshBasicMaterial, Matrix4, Quaternion, Vector3, Mesh } from 'three';
-import { MODELS, carKind } from '../sim/consts.js';
+import { MODELS } from '../sim/consts.js';
+import { CAR_TYPES } from '../sim/goods.js';
 import { getParts } from './models.js';
 import { poseAt, travelled } from './pose.js';
 
-export const TRAIN_MODELS = [...MODELS.map((m) => 'trains/' + m.glb), 'trains/train-carriage-container-blue', 'trains/train-carriage-box'];
+export const TRAIN_MODELS = [...MODELS.map((m) => 'trains/' + m.glb), ...CAR_TYPES.map((c) => 'trains/' + c.glb)];
 const SCALE = 0.3, CAR_GAP = 218, PUFFS = 40;
-const CAR_MODEL = ['trains/train-carriage-container-blue', 'trains/train-carriage-box'];
+const CAR_MODEL = CAR_TYPES.map((c) => 'trains/' + c.glb);
 const m4 = new Matrix4(), qq = new Quaternion(), vv = new Vector3(), ss = new Vector3();
 
 function modelGroup(name) {
@@ -33,7 +34,7 @@ export function createTrains(s, g) {
       if (it && it.cars !== t.cars) { root.remove(it.group); items.delete(t.id); it = null; }
       if (!it) {
         const group = new Group(), parts = [modelGroup('trains/' + MODELS[t.model].glb)];
-        for (let i = 0; i < t.cars; i++) parts.push(modelGroup(CAR_MODEL[carKind(i)]));
+        for (let i = 0; i < t.cars; i++) parts.push(modelGroup(CAR_MODEL[t.kinds[i]]));
         parts.forEach((p) => group.add(p));
         root.add(group);
         const d = travelled(s, t);

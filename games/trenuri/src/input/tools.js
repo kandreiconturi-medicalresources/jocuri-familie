@@ -1,11 +1,11 @@
 // Uneltele jucătorului: șină (tragere + confirmare), gară, tren, demolare, info. Totul trece prin ctx.exec(comandă).
-import { planTrack, STATION_RADIUS } from '../sim/index.js';
+import { planTrack, STATION_RADIUS, CAR_SETS, availableModels } from '../sim/index.js';
 import { lei } from '../ui/hud.js';
 
 const GREEN = '#5bd66f', RED = '#ff5a6a', GOLD = '#ffd23f', BLUE = '#8fd3ff';
 
 export function createTools(ctx) {
-  const o = { tool: 'track', size: 1, model: 1 };
+  const o = { tool: 'track', size: 1, model: 0, cars: 0 };
   let start = null, plan = null, from = null, last = null;
   const S = () => ctx.state(), hud = () => ctx.hud, ov = () => ctx.view().overlay;
   const stationAt = (x, y) => S().stations.find((st) => st.x === x && st.y === y);
@@ -24,7 +24,11 @@ export function createTools(ctx) {
   function subBar() {
     const h = hud();
     if (o.tool === 'station') h.stationOpts(o.size, (i) => { o.size = i; subBar(); });
-    else if (o.tool === 'train') h.trainOpts(o.model, (i) => { o.model = i; subBar(); });
+    else if (o.tool === 'train') {
+      const av = availableModels(S().date.y);
+      if (!av.some((m) => m.id === o.model)) o.model = av[av.length - 1].id;
+      h.trainOpts(o.model, o.cars, S().date.y, (i) => { o.model = i; subBar(); }, (i) => { o.cars = i; subBar(); });
+    }
     else if (o.tool === 'track' && plan) {
       const ok = ctx.canAfford(plan.cost);
       h.setSub([
@@ -60,7 +64,7 @@ export function createTools(ctx) {
       if (!st) { hud().hint('Atinge o gară (🚉).', true); return; }
       if (!from) { from = st.id; paint(); hud().hint('Bine! Acum atinge gara unde ajunge trenul.', false, 5000); return; }
       if (from === st.id) { hud().hint('Alege altă gară pentru destinație.', true); return; }
-      const b = ctx.exec({ type: 'buyTrain', model: o.model, stationId: from });
+      const b = ctx.exec({ type: 'buyTrain', model: o.model, kinds: CAR_SETS[o.cars], stationId: from });
       if (b.ok) {
         ctx.exec({ type: 'setRoute', trainId: b.id, route: [from, st.id] });
         hud().hint(`Trenul tău pleacă! A costat ${lei(b.cost)}.`, false, 4000);
@@ -76,8 +80,10 @@ export function createTools(ctx) {
       if (tr) { ctx.panels.train(s, tr); return; }
       const st = stationAt(t.x, t.y);
       if (st) { ctx.panels.station(s, st); return; }
+      const ind = ctx.panels.industryNear(s, t.x, t.y);
+      if (ind) { ctx.panels.industry(s, ind); return; }
       const c = ctx.panels.cityNear(s, t.x, t.y);
-      if (c) ctx.panels.city(c); else ctx.panels.close();
+      if (c) ctx.panels.city(s, c); else ctx.panels.close();
     }
   }
 

@@ -1,13 +1,15 @@
 // Singura cale prin care jucătorul schimbă starea: applyCommand(state, cmd) → { ok, err?, cost? }.
-import { DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H } from './consts.js';
+import { DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H, UPGRADES } from './consts.js';
 import { pathCost } from './plan.js';
 import { addNews } from './news.js';
+import { mark } from './blocks.js';
+import { CAR_TYPES, NG } from './goods.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
-  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.',
+  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -78,8 +80,9 @@ function buildStation(s, cmd, c) {
   const cityId = nearCity(s, x, y), city = cityId >= 0 ? s.cities[cityId] : null;
   const same = city ? s.stations.filter((st) => st.cityId === cityId).length : 0;
   const name = city ? `${STATION_NAMES[size]} ${city.name}${same ? ' ' + (same + 1) : ''}` : `${STATION_NAMES[size]} ${s.stations.length + 1}`;
-  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 } };
+  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: [0, 0, 0, 0] };
   s.stations.push(st);
+  s.stm[i] = 1;
   s.dirty.track = s.dirty.stations = s.dirty.forest = true;
   addNews(s, '🚉', `S-a deschis ${name}!`);
   return { ok: true, cost, id: st.id };
@@ -93,6 +96,7 @@ function removeStation(s, cmd, c) {
   if (s.trains.some((t) => t.route.includes(st.id) || t.from === st.id || t.to === st.id)) return fail('ruta');
   s.stations.splice(k, 1);
   const i = st.y * s.w + st.x;
+  s.stm[i] = 0;
   if (!(s.track[i] & 0xff)) s.track[i] = 0;
   s.dirty.track = s.dirty.stations = true;
   return { ok: true, cost: 0 };
@@ -102,14 +106,39 @@ function buyTrain(s, cmd, c) {
   const m = MODELS[cmd.model];
   const st = s.stations.find((q) => q.id === cmd.stationId);
   if (!m) return fail('model');
+  if (m.year > s.date.y) return fail('epoca');
   if (!st || st.owner !== c.id) return fail('gara');
-  const cars = Math.max(1, Math.min(MAX_CARS, cmd.cars === undefined ? 3 : cmd.cars | 0));
-  const cost = m.price + cars * CAR_PRICE;
+  let kinds = cmd.kinds;
+  if (kinds === undefined) kinds = Array.from({ length: Math.max(1, Math.min(MAX_CARS, cmd.cars === undefined ? 3 : cmd.cars | 0)) }, (_, i) => (i % 3 === 2 ? 1 : 0));
+  if (!Array.isArray(kinds) || kinds.length < 1 || kinds.length > MAX_CARS || kinds.some((k) => !Number.isInteger(k) || k < 0 || k >= CAR_TYPES.length)) return fail('vagoane');
+  const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars, route: [st.id], at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0 };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: [st.id], orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999 };
   s.trains.push(tr);
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
+}
+
+function buildUpgrade(s, cmd, c) {
+  const st = s.stations.find((q) => q.id === cmd.stationId), u = UPGRADES[cmd.kind];
+  if (!st || !u) return fail('inexistent');
+  if (st.owner !== c.id) return fail('proprietar');
+  if (st.up[cmd.kind]) return fail('exista');
+  if (!spend(s, c, u.cost)) return fail('bani');
+  st.up[cmd.kind] = 1;
+  s.dirty.stations = true;
+  addNews(s, u.icon, `${st.name} are acum: ${u.name.toLowerCase()}!`);
+  return { ok: true, cost: u.cost };
+}
+
+function setOrders(s, cmd, c) {
+  const tr = s.trains.find((q) => q.id === cmd.trainId);
+  if (!tr) return fail('inexistent');
+  if (tr.owner !== c.id) return fail('proprietar');
+  const o = cmd.orders, good = (l) => l == null || (Array.isArray(l) && l.every((g) => Number.isInteger(g) && g >= 0 && g < NG));
+  if (o !== null && !(Array.isArray(o) && o.length <= 8 && o.every((x) => x && good(x.load) && good(x.unload)))) return fail('drum');
+  tr.orders = o ? o.map((x) => ({ load: x.load ? x.load.slice() : null, unload: x.unload ? x.unload.slice() : null })) : null;
+  return { ok: true, cost: 0 };
 }
 
 function setRoute(s, cmd, c) {
@@ -129,6 +158,7 @@ function sellTrain(s, cmd, c) {
   if (k < 0) return fail('inexistent');
   const tr = s.trains[k];
   if (tr.owner !== c.id) return fail('proprietar');
+  mark(s, tr, -1);
   const back = (MODELS[tr.model].price + tr.cars * CAR_PRICE) >> 1;
   c.cash += back;
   s.trains.splice(k, 1);
@@ -136,7 +166,7 @@ function sellTrain(s, cmd, c) {
   return { ok: true, cost: -back };
 }
 
-const TABLE = { buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain };
+const TABLE = { buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');
