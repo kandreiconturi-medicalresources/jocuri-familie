@@ -63,12 +63,13 @@ export function unload(s, t, st) {
     const ratio = ((elapsed * 100) / Math.max(1, ref)) | 0;
     const bonus = ratio <= 100 ? 150 : ratio <= 200 ? 125 : ratio <= 400 ? 100 : 70;
     const ok = deliver(s, st, b.c, b.n);
+    if (ok) s.stats.del[b.c] += b.n;
     const pay = ((b.n * dist * GOODS[b.c].rate * bonus) / 100) | 0;
     earned += ok ? pay : ((pay * LOW_PAY) / 100) | 0;
     if (!ok) dumped = b.c;
   }
   t.load = keep;
-  if (earned > 0) { co.cash += earned; t.money += earned; co.month += earned; }
+  if (earned > 0) { if (t.owner === 0) s.stats.earn += earned; co.cash += earned; t.money += earned; co.month += earned; }
   if (dumped && s.tick - t.noteT > 400) {
     t.noteT = s.tick;
     addNews(s, '🤷', `Nimeni de la ${st.name} nu cere ${GOODS[dumped].name.toLowerCase()}, așa că am primit doar ${earned} lei. Caută o fabrică sau un oraș care o vrea!`);

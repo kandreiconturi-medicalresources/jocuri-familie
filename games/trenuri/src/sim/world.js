@@ -7,6 +7,9 @@ import { growBuildings, levelOf } from './growth.js';
 import { placeIndustries } from './indgen.js';
 import { NG } from './goods.js';
 
+/** Statistici pentru obiectivele scenariilor: marfă predată (cerută), venit total, niveluri câștigate de orașe. */
+export const newStats = () => ({ del: new Array(NG).fill(0), earn: 0, up: 0 });
+
 export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
   const n = typeof seed === 'string' ? hashSeed(seed) : seed >>> 0;
   const w = SIZES[size] || SIZES.S, h = w;
@@ -16,7 +19,7 @@ export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = f
     height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
     track: new Uint16Array(w * h), stations: [], trains: [],
     companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
-    date: { y: year, m: 1, d: 1 }, news: [], nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
+    date: { y: year, m: 1, d: 1 }, news: [], stats: newStats(), nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
   deriveLayers(s);
   for (const c of s.cities) { c.got = new Array(NG).fill(0); c.prev = new Array(NG).fill(0); c.level = levelOf(c.pop); growBuildings(s, c, 99); }
@@ -84,6 +87,7 @@ export function deserialize(o) {
   const s = JSON.parse(JSON.stringify(o));
   s.height = unb64(o.height, Uint8Array); s.water = unb64(o.water, Uint8Array); s.forest = unb64(o.forest, Uint8Array);
   s.track = unb64(o.track, Uint16Array);
+  if (!s.stats) s.stats = newStats();
   s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true };
   deriveLayers(s);
   return s;

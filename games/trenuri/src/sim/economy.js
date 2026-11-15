@@ -29,7 +29,7 @@ export function growCity(s, c) {
   c.pop += Math.min(gain, ((c.pop * 15) / 100 | 0) + 6);
   c.prev = c.got; c.got = new Array(NG).fill(0);
   const lv = levelOf(c.pop);
-  if (lv > c.level) { c.level = lv; addNews(s, '🏙️', `${c.name} a crescut: acum e ${lv === 1 ? 'un oraș' : 'o metropolă'}!`); }
+  if (lv > c.level) { s.stats.up += lv - c.level; c.level = lv; addNews(s, '🏙️', `${c.name} a crescut: acum e ${lv === 1 ? 'un oraș' : 'o metropolă'}!`); }
   growBuildings(s, c, 12);
 }
 

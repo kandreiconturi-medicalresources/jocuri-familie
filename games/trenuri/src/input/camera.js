@@ -27,6 +27,16 @@ export function createCamera(stage, size) {
     },
     rotate(a) { cam.yaw += a; apply(); },
     zoom(f) { cam.dist *= f; apply(); },
+    /** Zoom + rotire + mutare ancorate: punctul de teren de sub (px0,py0) rămâne sub (px1,py1). Fără asta, zoom-ul se face față de centrul ecranului și harta "alunecă" de sub degete. */
+    gesture(at, px0, py0, px1, py1, f, da) {
+      const p = api.pick(px0, py0, at);
+      cam.dist *= f; cam.yaw += da; apply();
+      for (let i = 0; p && i < 3; i++) {
+        const q = api.pick(px1, py1, at);
+        if (!q) break;
+        cam.x += p.fx - q.fx; cam.z += p.fz - q.fz; apply();
+      }
+    },
     update(dt) {
       let mx = 0, my = 0;
       if (keys.has('a') || keys.has('arrowleft')) mx += 1; if (keys.has('d') || keys.has('arrowright')) mx -= 1;

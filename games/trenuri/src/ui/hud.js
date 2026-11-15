@@ -14,13 +14,15 @@ const MONTHS = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', '
 export const lei = (n) => (n < 0 ? '-' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' lei';
 
 export function createHud(root, ev) {
-  const money = h('div', { class: 'chip' }), date = h('div', { class: 'chip' });
+  const money = h('div'), date = h('div'), info = h('div', { class: 'chip two' }, money, date);
+  const goal = h('button', { class: 'chip goal hidden', 'aria-label': 'Obiective', onclick: () => ev.goals() });
   const speeds = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => h('button', { class: 'rb', 'aria-label': 'Viteză ' + t, onclick: () => ev.speed(v) }, t));
   const layerBtn = h('button', { class: 'rb', title: 'Mărfuri', 'aria-label': 'Mărfuri', onclick: () => ev.layer() }, '📦');
-  const bar = h('div', { class: 'tbar' }, money, date, h('div', { class: 'sp' }), speeds,
+  const menuBtn = h('button', { class: 'rb', title: 'Meniu', 'aria-label': 'Meniu', onclick: () => ev.menu() }, '☰');
+  const bar = h('div', { class: 'tbar' }, info, goal, h('div', { class: 'sp' }), speeds,
     layerBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
-    h('button', { class: 'rb', title: 'Acasă', 'aria-label': 'Acasă', onclick: () => ev.home() }, '🏠'));
+    menuBtn);
   const hint = h('div', { class: 'hint hidden' });
   const sub = h('div', { class: 'sub' });
   const tools = TOOLS.map((t) => h('button', { class: 'tool', 'aria-label': t.t, onclick: () => ev.tool(t.id) }, h('span', { class: 'e' }, t.e), t.t));
@@ -30,6 +32,10 @@ export function createHud(root, ev) {
   let hintTimer = 0, lastMoney = null;
   const api = {
     el: [bar, hint, sub, toolbar],
+    /** Elemente pe care tutorialul le evidențiază. */
+    btn: { track: tools[0], station: tools[1], train: tools[2], money: info, menu: menuBtn },
+    /** Chip de obiectiv (doar în scenarii): text sau null. */
+    setGoal(text) { goal.classList.toggle('hidden', !text); if (text) goal.textContent = text; },
     setMoney(c, sandbox) {
       if (c === lastMoney) return;
       lastMoney = c;

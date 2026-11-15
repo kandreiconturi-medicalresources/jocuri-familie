@@ -6,7 +6,7 @@ const GREEN = '#5bd66f', RED = '#ff5a6a', GOLD = '#ffd23f', BLUE = '#8fd3ff';
 
 export function createTools(ctx) {
   const o = { tool: 'track', size: 1, model: 0, cars: 0 };
-  let start = null, plan = null, from = null, last = null;
+  let start = null, plan = null, from = null, last = null, pre = null; // pre = începutul ales cu o atingere, dacă urmează a doua atingere
   const S = () => ctx.state(), hud = () => ctx.hud, ov = () => ctx.view().overlay;
   const stationAt = (x, y) => S().stations.find((st) => st.x === x && st.y === y);
 
@@ -92,10 +92,11 @@ export function createTools(ctx) {
     setTool(id) { o.tool = id; reset(); hud().setTool(id); ctx.panels.close(); subBar(); },
     wantsDrag: () => o.tool === 'track',
     tap,
-    dragStart(t) { plan = null; start = t; last = t; paint(); subBar(); },
+    dragStart(t) { pre = start && !plan ? start : null; plan = null; start = t; last = t; paint(); subBar(); },
     dragMove(t) { if (t && start && (t.x !== last.x || t.y !== last.y)) { last = t; setPlan(start, t); } },
     dragEnd(t, moved) {
-      if (!moved) { start = null; if (t) tap(t); return; }
+      if (!moved) { start = pre; pre = null; if (t) tap(t); return; }
+      pre = null;
       if (t && start) setPlan(start, t);
       if (!plan) { start = null; paint(); }
     },

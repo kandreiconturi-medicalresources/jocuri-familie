@@ -4,6 +4,7 @@ import { stepTrain } from './trains.js';
 import { spawnCargo, monthly } from './economy.js';
 import { processDaily, collectDaily } from './industry.js';
 import { addNews } from './news.js';
+import { checkScenario } from './scenarios/index.js';
 
 export function stepWorld(s) {
   s.tick++;
@@ -19,6 +20,7 @@ export function stepWorld(s) {
         for (const m of MODELS) if (m.year === s.date.y) addNews(s, '🚂', `O nouă locomotivă a fost inventată! ${m.name} (${m.year})`);
       }
       monthly(s);
+      if (s.scn) checkScenario(s);
     }
   }
 }

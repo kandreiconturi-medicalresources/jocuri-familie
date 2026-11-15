@@ -22,7 +22,7 @@ export function bindPointer(canvas, camera, pickTile, h) {
     if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 8) p.moved = true;
     if (ptr.size === 2 && pinch) {
       const n = two();
-      camera.zoom(pinch.d / n.d); camera.rotate(-(n.a - pinch.a)); camera.pan(n.cx - pinch.cx, n.cy - pinch.cy);
+      camera.gesture(h.groundAt, pinch.cx, pinch.cy, n.cx, n.cy, pinch.d / n.d, -(n.a - pinch.a));
       pinch = n;
       return;
     }
@@ -42,6 +42,6 @@ export function bindPointer(canvas, camera, pickTile, h) {
   };
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', (e) => { if (drag) { h.dragCancel(); drag = null; } up(e); });
-  canvas.addEventListener('wheel', (e) => { e.preventDefault(); camera.zoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); camera.gesture(h.groundAt, e.clientX, e.clientY, e.clientX, e.clientY, Math.exp(e.deltaY * 0.0012), 0); }, { passive: false });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 }

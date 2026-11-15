@@ -7,3 +7,4 @@ export * from './goods.js';
 export { accepts, deliver, tileDist, capacity, carried } from './cargo.js';
 export { industryAt } from './industry.js';
 export { growCity } from './economy.js';
+export * from './scenarios/index.js';

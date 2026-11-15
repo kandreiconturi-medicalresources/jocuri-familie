@@ -77,3 +77,13 @@ Numele orașelor și ale gărilor sunt românești, inventate, generate cu seed.
 - **UI:** culori și iconițe pe mărfuri (`ui/card.js`), panou industrie / oraș / gară cu îmbunătățiri, panou tren cu Automat/Manual, alegere de an la pornire, stratul **📦 Mărfuri** cu săgeți industrie → cine o vrea (`sim/links.js`, `render/links.js`).
 - **Salvări:** versiunea stării a devenit 2; salvările din 6.1 sunt ignorate.
 - **Teste:** `tests/trenuri-eco.test.js` (lanț cărbune → oțel, creștere de oraș, locomotive după an, semnalizare în ambele sensuri, hash după serializare).
+
+## Etapa 6.3 (scenarii și ajutor)
+- **Scenarii** (`src/sim/scenarios/`): 8 scenarii deterministe în `defs.js` (seed, mărime, an, bani, termen în ani, poveste, sfat, obiective cu praguri bronz/argint/aur): Primul tren, Poșta rapidă, Cărbune pentru oțelărie, Fă din sat un oraș, Pâine pentru toți, Peste munți (poduri), Marea rețea (8 orașe), Metropola. `goals.js` are măsurătorile (`del`, `ups`, `lvl`, `bridge`, `served`...) și `evaluate`; medalia scenariului e cea mai mică dintre obiective. `s.scn = { id, end, best, done, vals }` se salvează cu starea; `checkScenario` rulează lunar din `stepWorld`, iar scenariul se încheie la aur sau la termen. Statisticile (`s.stats`: marfă predată cerută, venit, niveluri câștigate) apar în `createWorld`, iar salvările vechi primesc `stats` la încărcare. Tunelurile nu există încă în simulare, deci „Peste munți” folosește poduri.
+- **Medalii** (`medals.js`): salvate în `gameSave('trenuri')` cheia `medals`; scenariul i se deblochează cu cel puțin bronz la i-1. Meniul de scenarii (`ui/menu.js`) le arată; ecranul de final (`ui/endScreen.js`) are medalia, confetti și fanfară.
+- **Construcție liberă:** `createFreeWorld` (sandbox, anul 1970, fără termen). **Tutorial** (`ui/tutorial.js`): 5 pași cu butonul evidențiat, avansează singur; pornește la primul joc și se reia din meniu sau din ☰.
+- **Ajutorul** (`ui/helper.js`, `ui/tips.js`): conductor desenat în SVG, sfaturi din reguli pure (oraș care cere marfă, tren fără rută, bani pentru locomotivă); se opresc din ☰ Meniu (`ui/settings.js`).
+- **Sunete** (`src/audio.js`): fluier la plecare, clopoțel la gară, monedă, „ding” la ziar, fanfară; fundal ambiental discret, oprit implicit.
+- **Ecrane mici:** panourile încap la 568×320 (bară de sus cu chip dublu bani/dată, opțiunile se mută la dreapta balonului, cardul și meniurile se închid cu tap în afară), butoane ≥ 44 px.
+- **Cameră:** zoom-ul și pinch-ul sunt ancorate (`camera.gesture`): punctul de teren de sub degete rămâne sub ele. Înainte, zoom-ul se făcea față de centrul ecranului, deci harta „aluneca”.
+- **Teste:** `tests/trenuri-scn.test.js` (bot determinist care ia bronz pe toate cele 8 scenarii, obiective, medalii, sfaturi).

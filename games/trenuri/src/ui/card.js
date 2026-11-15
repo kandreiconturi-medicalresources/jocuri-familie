@@ -15,5 +15,5 @@ export function createCard(root) {
   /** Rând pentru o marfă: pătrat colorat + iconiță + nume. */
   const goodRow = (g, val, extra) => h('div', { class: 'row' }, h('span', null, h('i', { class: 'dot', style: { background: GOODS[g].color } }), GOODS[g].icon + ' ' + GOODS[g].name + (extra || '')), h('b', null, val));
   const chip = (g) => h('span', { class: 'gchip', style: { background: GOODS[g].color }, title: GOODS[g].name }, GOODS[g].icon);
-  return { open, close, row, goodRow, chip };
+  return { open, close, row, goodRow, chip, isOpen: () => !!el };
 }

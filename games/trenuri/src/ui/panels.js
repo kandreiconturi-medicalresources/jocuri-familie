@@ -32,7 +32,7 @@ export function createPanels(root, ev) {
   }
 
   const api = {
-    close, city: eco.city, industry: eco.industry, station: eco.station,
+    card, isOpen: card.isOpen, close, city: eco.city, industry: eco.industry, station: eco.station,
     train(s, t) {
       const m = MODELS[t.model], cap = capacity(t);
       const names = t.route.map((id) => (s.stations.find((q) => q.id === id) || { name: '?' }).name).join(' ⇄ ');
