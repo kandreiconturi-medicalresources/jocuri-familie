@@ -6,6 +6,7 @@ const GAMES = [
   { id: 'bobo', href: 'games/bobo/', icon: '🐻', name: 'Aventura lui Bobo și Mimi', desc: 'Sari, strânge stelele și salvează prietenii!', grad: ['#ffb347', '#e0631c'] },
   { id: 'bombe', href: 'games/bombe/', icon: '💣', name: 'Bum-Bum Arena', desc: 'Bombe, explozii și mult haos în arenă.', grad: ['#ff7eb6', '#b5179e'] },
   { id: 'curse', href: 'games/curse/', icon: '🏎️', name: 'Turbo Curse', desc: 'Pornește motoarele și ajunge primul!', grad: ['#4cc9f0', '#3a6fd8'] },
+  { id: 'trenuri', href: 'games/trenuri/', icon: '🚂', name: 'Orașe pe Șine', desc: 'Leagă orașele cu trenuri și fă-le să crească.', grad: ['#7fd1f5', '#2e86c1'] },
   { id: 'orasel', icon: '🏘️', name: 'Orășelul', desc: 'Construiește, cumpără și fii primar.', grad: ['#6bd66b', '#2e9e6b'] },
 ];
 

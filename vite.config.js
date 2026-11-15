@@ -65,6 +65,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,webp,svg,json,mp3,ogg,glb,woff2}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // modelele mari din public/models/ nu intră în precache: se descarcă la prima deschidere a jocului și rămân în cache
+        globIgnores: ['models/**'],
+        runtimeCaching: [{ urlPattern: /\/models\/.*\.(glb|png)$/, handler: 'CacheFirst', options: { cacheName: 'modele-3d', expiration: { maxEntries: 400 } } }],
         navigateFallbackDenylist: [/^\/api/, /^\/ws/, /^\/login/], // /login vine mereu de la server (sesiune)
       },
     }),

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jocuri">
+<meta name="theme-color" content="#6fb7e6">
+<link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="../../icons/icon-192.png">
+<title>Orașe pe Șine</title>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui"></div>
+<div id="rot" class="hidden">
+  <div class="ph">📱</div>
+  <p>Întoarce telefonul pe orizontală<br>ca să construiești trenuri!</p>
+</div>
+<div id="boot">
+  <div class="train">🚂</div>
+  <div class="t">Se încarcă orașele…</div>
+  <div class="barbox"><div id="bootbar"></div></div>
+  <div id="bootpct">0%</div>
+  <div id="bootnote" class="note"></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
