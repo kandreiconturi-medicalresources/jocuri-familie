@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #2b1d4e;
+  background: linear-gradient(180deg, #6a3fc1 0%, #9b6cf0 45%, #ffb36b 100%);
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+.sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.cloud {
+  position: absolute; width: 140px; height: 44px; background: rgba(255, 255, 255, .85); border-radius: 44px;
+  animation: drift 38s linear infinite;
+}
+.cloud::before, .cloud::after { content: ""; position: absolute; background: inherit; border-radius: 50%; }
+.cloud::before { width: 60px; height: 60px; left: 22px; top: -28px; }
+.cloud::after { width: 46px; height: 46px; left: 70px; top: -18px; }
+.c1 { top: 12%; left: -160px; }
+.c2 { top: 30%; left: -160px; animation-delay: -14s; transform: scale(.7); }
+.c3 { top: 70%; left: -160px; animation-delay: -26s; transform: scale(.85); opacity: .7; }
+@keyframes drift { to { left: 110%; } }
+.star { position: absolute; color: #ffe066; font-size: 22px; animation: twinkle 2.4s ease-in-out infinite; }
+.s1 { top: 8%; left: 15%; } .s2 { top: 16%; right: 12%; animation-delay: .6s; }
+.s3 { top: 52%; left: 6%; animation-delay: 1.2s; } .s4 { top: 44%; right: 8%; animation-delay: 1.8s; }
+@keyframes twinkle { 50% { opacity: .3; transform: scale(.7); } }
+
+.card {
+  position: relative; width: 100%; max-width: 380px; background: #fffaf2; border-radius: 28px;
+  padding: 64px 24px 24px; box-shadow: 0 14px 0 rgba(43, 29, 78, .25), 0 24px 48px rgba(43, 29, 78, .3);
+  text-align: center;
+}
+.mascot {
+  position: absolute; top: -52px; left: 50%; margin-left: -52px; width: 104px; height: 104px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff9db8, #ff5c8a); border: 6px solid #fffaf2;
+  box-shadow: 0 6px 0 rgba(43, 29, 78, .2); animation: bob 2.6s ease-in-out infinite;
+}
+.face { position: absolute; inset: 0; }
+.eye { position: absolute; top: 36px; width: 14px; height: 18px; background: #2b1d4e; border-radius: 50%; }
+.eye.l { left: 30px; } .eye.r { right: 30px; }
+.eye::after { content: ""; position: absolute; top: 3px; left: 3px; width: 5px; height: 5px; background: #fff; border-radius: 50%; }
+.smile {
+  position: absolute; left: 34px; top: 56px; width: 36px; height: 18px; border: 5px solid #2b1d4e;
+  border-top: 0; border-radius: 0 0 36px 36px;
+}
+@keyframes bob { 50% { transform: translateY(-6px); } }
+
+h1 { margin: 0 0 4px; font-size: 30px; color: #5a2ba0; letter-spacing: .5px; }
+.hello { margin: 0 0 18px; font-size: 17px; line-height: 1.35; }
+
+form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.field span:first-child { display: block; font-weight: 700; margin: 0 0 6px 6px; font-size: 16px; }
+input {
+  width: 100%; font: inherit; font-size: 20px; padding: 14px 16px; border-radius: 16px;
+  border: 3px solid #d8c8f5; background: #fff; color: inherit; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus { border-color: #8a5cf0; box-shadow: 0 0 0 4px rgba(138, 92, 240, .2); }
+.pw { position: relative; display: block; }
+.pw input { padding-right: 60px; }
+.peek {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 48px; height: 48px;
+  border: 0; border-radius: 12px; background: transparent; font-size: 22px; cursor: pointer;
+}
+.peek[aria-pressed="true"] { background: #efe6ff; }
+
+.msg { min-height: 1.4em; margin: 0; color: #d6336c; font-weight: 700; text-align: center; font-size: 16px; }
+.msg.ok { color: #2f9e44; }
+.go {
+  font: inherit; font-size: 22px; font-weight: 800; color: #fff; border: 0; border-radius: 20px;
+  padding: 16px; min-height: 60px; cursor: pointer; background: linear-gradient(180deg, #4cd964, #2fb344);
+  box-shadow: 0 6px 0 #1f8a33; transition: transform .08s, box-shadow .08s;
+}
+.go:active { transform: translateY(4px); box-shadow: 0 2px 0 #1f8a33; }
+.go:disabled { opacity: .7; cursor: wait; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.help { margin: 18px 0 0; font-size: 14px; color: #6b5a8e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud, .star, .mascot { animation: none; }
+}

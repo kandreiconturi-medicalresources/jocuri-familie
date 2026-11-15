@@ -5,10 +5,12 @@
   "type": "module",
   "description": "Jocuri arcade pentru familie: Bobo, Bum-Bum Arena, Turbo Curse, Orășelul",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "node tools/dev.mjs",
+    "dev:web": "vite",
+    "dev:server": "node --disable-warning=ExperimentalWarning --env-file=server/dev.env server/src/index.js",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --disable-warning=ExperimentalWarning --test \"tests/**/*.test.js\" \"server/test/*.test.js\"",
     "icons": "node tools/make-icons.mjs"
   },
   "engines": {

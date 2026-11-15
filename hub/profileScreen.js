@@ -3,7 +3,7 @@ import { h as el } from '../shared/ui/dom.js';
 import { avatarCanvas } from './avatar.js';
 import { AVATARS, AVATAR_NAMES, PROFILE_COLORS, listProfiles, createProfile, deleteProfile } from '../shared/engine/profiles.js';
 
-function confirmDialog(text, okLabel) {
+export function confirmDialog(text, okLabel) {
   return new Promise((resolve) => {
     const done = (v) => { back.remove(); resolve(v); };
     const back = el('div', { class: 'modal', onclick: (e) => { if (e.target === back) done(false); } },

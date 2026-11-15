@@ -1,5 +1,7 @@
 // Profiluri locale + avatare desenate în Canvas 2D. Salvările jocurilor sunt legate de profilul curent.
 import { store } from './save.js';
+import { isOnline, me } from '../net/api.js';
+import { createSyncedSave } from '../net/progress.js';
 
 export const AVATARS = ['bear', 'bunny', 'fox', 'cat', 'panda', 'frog', 'owl', 'pig'];
 export const AVATAR_NAMES = {
@@ -11,14 +13,38 @@ export const PROFILE_COLORS = ['#ff6b6b', '#ff9f43', '#ffd23f', '#6bd66b', '#4cc
 const meta = store('hub');
 const GUEST = 'guest';
 
+// ---------- modul NAS: utilizatorul vine de la server, progresul se sincronizează ----------
+let server = null; // { user, time } după ready() în modul NAS
+const synced = {};
+
+function nasProfile() {
+  const u = server.user;
+  return { id: 'u' + u.id, name: u.displayName || u.username, avatar: AVATARS.includes(u.avatar) ? u.avatar : AVATARS[0],
+    color: u.color || PROFILE_COLORS[0], createdAt: 0, role: u.role, username: u.username };
+}
+function syncedFor(gameId) {
+  return synced[gameId] || (synced[gameId] = createSyncedSave(server.user.id, gameId));
+}
+
+/** Promise: în modul NAS aduce utilizatorul și progresul jocurilor date; în modul local se rezolvă imediat. */
+export async function ready(gameIds = []) {
+  if (!(await isOnline())) return;
+  if (!server) { try { server = await me(); } catch (e) { return; } }
+  await Promise.all(gameIds.map((g) => syncedFor(g).load()));
+}
+/** { user, time } de la server sau null în modul local. */
+export const serverInfo = () => server;
+export async function refreshTime() { if (server) server = { ...server, ...(await me()) }; return server; }
+
 function readAll() {
   const l = meta.get('profiles', []);
   return Array.isArray(l) ? l : [];
 }
 
-export function listProfiles() { return readAll(); }
+export function listProfiles() { return server ? [nasProfile()] : readAll(); }
 
 export function createProfile({ name, avatar, color }) {
+  if (server) return nasProfile();
   const p = {
     id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36),
     name: String(name || 'Jucător').trim().slice(0, 14) || 'Jucător',
@@ -31,6 +57,7 @@ export function createProfile({ name, avatar, color }) {
 }
 
 export function updateProfile(id, patch) {
+  if (server) return nasProfile();
   let out = null;
   const list = readAll().map((p) => (p.id === id ? (out = { ...p, ...patch, id: p.id }) : p));
   meta.set('profiles', list);
@@ -38,22 +65,26 @@ export function updateProfile(id, patch) {
 }
 
 export function deleteProfile(id) {
+  if (server) return;
   meta.set('profiles', readAll().filter((p) => p.id !== id));
   if (meta.get('current', null) === id) meta.remove('current');
 }
 
 export function currentProfile() {
+  if (server) return nasProfile();
   const id = meta.get('current', null);
   return readAll().find((p) => p.id === id) || null;
 }
 
 export function setCurrentProfile(id) {
+  if (server) return;
   if (id == null) meta.remove('current');
   else meta.set('current', id);
 }
 
 /** Salvare per joc, pe profilul curent: jf:<profileId>:<gameId>:<cheie>. */
 export function gameSave(gameId) {
+  if (server) return syncedFor(gameId).store;
   const p = currentProfile();
   return store((p ? p.id : GUEST) + ':' + gameId);
 }

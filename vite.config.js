@@ -34,7 +34,12 @@ export default defineConfig({
     target: ['es2020', 'safari15'], // iPhone SE 1 / iPad 5
     rolldownOptions: { input },
   },
-  server: { proxy: { '/api': 'http://localhost:8787', '/ws': { target: 'ws://localhost:8787', ws: true } } },
+  // changeOrigin: false păstrează Host-ul paginii, ca verificarea Origin (CSRF) a serverului să treacă local.
+  server: { proxy: {
+    '/api': { target: 'http://localhost:8787', changeOrigin: false },
+    '/ws': { target: 'ws://localhost:8787', ws: true, changeOrigin: false },
+    '/login': { target: 'http://localhost:8787', changeOrigin: false },
+  } },
   plugins: [
     fixNestedPwaPaths,
     VitePWA({
@@ -60,7 +65,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,webp,svg,json,mp3,ogg,glb,woff2}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/api/, /^\/ws/],
+        navigateFallbackDenylist: [/^\/api/, /^\/ws/, /^\/login/], // /login vine mereu de la server (sesiune)
       },
     }),
   ],

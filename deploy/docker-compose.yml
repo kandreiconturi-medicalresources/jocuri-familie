@@ -1,0 +1,93 @@
+# Jocuri Familie pe Synology (Container Manager → Proiect). Vezi docs/NAS-SETUP.md.
+# Nu publică niciun port pe NAS: singura cale de intrare e Tailscale (HTTPS de la `tailscale serve`).
+#
+# Izolare: aplicația stă singură într-o rețea Docker `internal` (fără ieșire spre internet sau LAN).
+# Doar containerul tailscale e în ambele rețele și trimite cererile HTTPS către http://jocuri:8787.
+name: jocuri
+
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: jocuri
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}   # necesară doar la prima pornire
+      TS_EXTRA_ARGS: --advertise-tags=tag:jocuri
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"     # fără /dev/net/tun și fără NET_ADMIN
+      TS_ACCEPT_DNS: "false"   # păstrează DNS-ul Docker, ca să găsească serviciul `jocuri`
+      TZ: ${TZ:-Europe/Bucharest}
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./serve.json:/config/serve.json:ro
+    networks: [egress, intern]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 200
+
+  # Rulează o dată la pornire: face folderul ./data al utilizatorului 1000 (cel cu care rulează aplicația).
+  init-data:
+    image: busybox:1.37
+    user: "0:0"
+    command: ["sh", "-c", "chown -R 1000:1000 /data && chmod 700 /data"]
+    volumes:
+      - ./data:/data
+    network_mode: none
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+
+  jocuri:
+    image: ghcr.io/kandreiconturi-medicalresources/jocuri-familie:latest
+    restart: unless-stopped
+    depends_on:
+      init-data:
+        condition: service_completed_successfully
+      tailscale:
+        condition: service_started
+    environment:
+      ADMIN_USER: ${ADMIN_USER:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TRUST_PROXY: "1"         # singurul care poate vorbi cu aplicația e proxy-ul tailscale
+      TZ: ${TZ:-Europe/Bucharest}
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 100
+    volumes:
+      - ./data:/data
+    networks: [intern]
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # Actualizări automate: verifică la 10 minute DOAR containerul `jocuri` (după etichetă).
+  watchtower:
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_POLL_INTERVAL: "600"
+      WATCHTOWER_CLEANUP: "true"
+      TZ: ${TZ:-Europe/Bucharest}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [egress]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.25
+
+networks:
+  egress: {}
+  intern:
+    internal: true
+
+volumes:
+  tailscale-state:

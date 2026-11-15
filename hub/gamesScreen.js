@@ -9,13 +9,14 @@ const GAMES = [
   { id: 'orasel', icon: '🏘️', name: 'Orășelul', desc: 'Construiește, cumpără și fii primar.', grad: ['#6bd66b', '#2e9e6b'] },
 ];
 
-export function gamesScreen({ profile, onSwitch }) {
+/** `actions` = butoane lângă salut (implicit „Schimbă”); `extra` = nod sub salut (bara de timp); `blocked` = jocurile se închid. */
+export function gamesScreen({ profile, onSwitch, actions, extra, blocked }) {
   const grid = el('div', { class: 'games' }, GAMES.map((g) => {
-    const live = !!g.href;
+    const live = !!g.href && !blocked;
     const body = [
       el('span', { class: 'gicon' }, g.icon),
       el('span', { class: 'gtext' }, el('span', { class: 'gname' }, g.name), el('span', { class: 'gdesc' }, g.desc)),
-      live ? el('span', { class: 'play' }, '▶') : el('span', { class: 'soon' }, 'În curând'),
+      live ? el('span', { class: 'play' }, '▶') : el('span', { class: 'soon' }, g.href ? 'Pauză' : 'În curând'),
     ];
     const attrs = { class: 'game' + (live ? '' : ' locked'), style: { '--g1': g.grad[0], '--g2': g.grad[1] } };
     return live ? el('a', { ...attrs, href: g.href }, body) : el('div', { ...attrs, 'aria-disabled': 'true' }, body);
@@ -23,7 +24,8 @@ export function gamesScreen({ profile, onSwitch }) {
   return el('main', { class: 'screen' },
     el('div', { class: 'who' },
       el('div', { class: 'chip' }, avatarCanvas(profile.avatar, profile.color, 44), el('span', null, 'Salut, ', el('b', null, profile.name), '!')),
-      el('button', { class: 'btn small alt', onclick: onSwitch }, '🔄 Schimbă')),
+      el('div', { class: 'acts' }, actions || el('button', { class: 'btn small alt', onclick: onSwitch }, '🔄 Schimbă'))),
+    extra || null,
     el('h1', null, 'Alege un joc!'),
     grid);
 }

@@ -7,3 +7,6 @@ dev-dist/
 Thumbs.db
 # original, păstrat doar ca referință locală
 Bob - ca si Mario nintendo/
+.data/
+deploy/.env
+deploy/data/

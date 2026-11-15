@@ -1,0 +1,26 @@
+/* panou părinte + bara de timp (modul NAS) */
+.admin { max-width: 760px; }
+.ulist { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.urow { display: flex; align-items: center; gap: 12px; padding: 12px; flex-wrap: wrap; }
+.urow.off { opacity: .6; }
+.uinfo { display: flex; flex-direction: column; flex: 1; min-width: 160px; font-size: 20px; }
+.usub { font-size: 14px; opacity: .85; }
+.uact { display: flex; gap: 8px; flex-wrap: wrap; }
+.aform { max-width: 560px; }
+.aform h2 { margin: 0; color: #ffd23f; font-size: 26px; text-align: center; }
+.af { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.af .lbl { font-size: 16px; }
+.af2 { display: flex; gap: 10px; width: 100%; }
+.af2 .af { flex: 1; }
+.name.small { font-size: 20px; padding: 8px 10px; text-align: left; min-height: 46px; }
+.chkrow { flex-direction: row; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; }
+.chk { width: 28px; height: 28px; flex: none; }
+.aerr { color: #ffb3b3; font-weight: 800; text-align: center; min-height: 1.2em; }
+
+.timebar { width: 100%; max-width: 520px; padding: 10px 14px; border-radius: 18px; background: rgba(20, 10, 45, .55); border: 2px solid rgba(255, 255, 255, .25); }
+.timebar .tt { display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; gap: 8px; }
+.timebar .track { height: 16px; border-radius: 999px; background: rgba(255, 255, 255, .18); overflow: hidden; margin-top: 6px; }
+.timebar .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #5cf08a, #ffd23f); }
+.timebar.low .fill { background: linear-gradient(90deg, #ff8a8a, #ffb703); }
+.timebar.stop .tt { color: #ffb3b3; }
+.who .acts { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -7,6 +7,7 @@ Citește întâi fișierul relevant de mai jos, nu tot repo-ul.
 |---|---|
 | `docs/ROADMAP.md` | faze + ce e gata (actualizează la final de fază) |
 | `docs/ARCHITECTURE.md` | contractul modulelor comune + reguli tehnice |
+| `docs/SERVER.md` | server NAS: API, securitate, limită de timp, WebSocket, deploy |
 | `index.html`, `hub/` | meniul principal: profil → alegi jocul |
 | `shared/engine/` | buclă, input, audio, ecran, salvări, profiluri, rng, perf, particule |
 | `shared/ui/` | temă CSS, butoane tactile, helperi DOM |

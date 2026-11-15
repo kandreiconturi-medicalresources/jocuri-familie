@@ -1,0 +1,18 @@
+# Doar sursele necesare build-ului intră în imagine.
+.git
+.github
+.claude
+**/node_modules
+dist
+dev-dist
+.data
+deploy
+docs
+Bob - ca si Mario nintendo
+server/test
+server/dev.env
+*.log
+.env
+**/.env
+.DS_Store
+Thumbs.db

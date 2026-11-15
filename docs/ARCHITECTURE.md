@@ -60,5 +60,6 @@ Acumulator cu pas fix (`dt = 1/hz` secunde), maxim 5 pași pe cadru, pauză auto
 - `touchpad.js`: `createTouchpad(input, layout)`; butoane pe ecran cu multi-touch și alunecare între butoane (ca în original). `layout` = listă `{ player, btn, side: 'left'|'right', label }`. Se arată doar pe dispozitive tactile.
 - `dom.js`: `$(sel)`, `h(tag, attrs, ...children)`, `show(el, on)`.
 
-## Rețea (Faza 2)
-Server Node pe NAS (port intern 8787): `GET api/health` → `{ "ok": true, "app": "jocuri-familie" }`, conturi și progres sub `api/`, camere WebSocket pe `ws`. Detaliile protocolului se scriu aici în Faza 2.
+
+## Rețea
+Vezi `docs/SERVER.md` (API, securitate, limită de timp, WebSocket, deploy).

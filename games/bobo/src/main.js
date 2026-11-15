@@ -5,6 +5,8 @@ import { startLoop } from '../../../shared/engine/loop.js';
 import { createInput } from '../../../shared/engine/input.js';
 import { defineSfx, BOBO_SFX, isMuted, setMuted, unlockAudio } from '../../../shared/engine/audio.js';
 import { fitCanvas, needLandscape, toggleFullscreen } from '../../../shared/engine/screen.js';
+import { ready } from '../../../shared/engine/profiles.js';
+import { startPlaySession, showTimeOverlay } from '../../../shared/engine/session.js';
 import { createParticles } from '../../../shared/engine/particles.js';
 import { createTouchpad } from '../../../shared/ui/touchpad.js';
 import { loadAtlas, setAtlasScale } from './atlas.js';
@@ -108,6 +110,7 @@ function boot() {
   game = createGame({ input, view, particles, onFinish });
   app.game = game; app.input = input;
   app.screens = { title: createTitle(app), map: createMap(app), done: createDone(app), pause: createPause(app), settings: createSettings(app) };
+  $('bHome').onclick = () => { location.href = '../../'; };
   $('bPause').onclick = () => app.pause();
   $('bMute').onclick = () => { unlockAudio(); setMuted(!isMuted()); app.syncMute(); };
   const fsOk = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
@@ -117,9 +120,13 @@ function boot() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) app.pause(); });
   addEventListener('pagehide', () => app.pause());
   addEventListener('pointerdown', unlockAudio, { once: true });
+  // modul NAS: limita de timp; la blocare jocul se oprește și apare overlay-ul
+  startPlaySession('bobo', {
+    onBlocked: (reason) => { app.pause(); if (loop) loop.stop(); input.clear(); showTimeOverlay(reason); },
+  });
   $('boot').remove();
   app.go('title');
   loop = startLoop({ update, render, hz: 60 });
 }
 
-loadAtlas().then(boot).catch((e) => { $('boot').textContent = 'Nu s-a putut încărca jocul: ' + e.message; });
+Promise.all([loadAtlas(), ready(['bobo'])]).then(boot).catch((e) => { $('boot').textContent = 'Nu s-a putut încărca jocul: ' + e.message; });

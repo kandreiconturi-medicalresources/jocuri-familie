@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Jocuri">
+<meta name="theme-color" content="#5a2ba0">
+<meta name="robots" content="noindex">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/login.css">
+<title>Intră la joacă · Jocuri Familie</title>
+<script src="/login.js" defer></script>
+</head>
+<body>
+<div class="sky" aria-hidden="true">
+  <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
+  <span class="star s1">★</span><span class="star s2">★</span><span class="star s3">★</span><span class="star s4">★</span>
+</div>
+<main class="card">
+  <div class="mascot" aria-hidden="true">
+    <div class="face"><span class="eye l"></span><span class="eye r"></span><span class="smile"></span></div>
+  </div>
+  <h1>Jocuri Familie</h1>
+  <p class="hello">Salut! Scrie-ți numele și parola ca să intri la joacă.</p>
+  <form id="login" method="post" action="/api/auth/login" novalidate>
+    <label class="field">
+      <span>Numele tău</span>
+      <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none"
+             autocorrect="off" spellcheck="false" maxlength="32" required>
+    </label>
+    <label class="field">
+      <span>Parola</span>
+      <span class="pw">
+        <input id="password" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+        <button type="button" id="peek" class="peek" aria-label="Arată parola" aria-pressed="false">👁</button>
+      </span>
+    </label>
+    <p id="msg" class="msg" role="alert" aria-live="polite"></p>
+    <button id="go" class="go" type="submit">Hai la joacă! <span aria-hidden="true">🚀</span></button>
+  </form>
+  <p class="help">Nu ai cont? Roagă-l pe mama sau pe tata să-ți facă unul.</p>
+</main>
+</body>
+</html>
