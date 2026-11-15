@@ -3,6 +3,7 @@ import { TS, ROWS } from './tiles.js';
 import { stepPlayer, makeBody, tilesTouched, tileAt, overlapsSolid, SMALL, BIG } from './physics.js';
 import { sfx } from '../../../shared/engine/audio.js';
 import { landOnPlatforms } from './platforms.js';
+import { isTouch } from '../../../shared/engine/screen.js';
 
 const WH = ROWS * TS;
 
@@ -55,13 +56,24 @@ function respawn(g, p) {
   g.particles.sparkle(p.x + p.w / 2, p.y + p.h / 2, 10);
 }
 
+/** Mesajul de la ridicarea baghetei: tasta potrivită pe PC, butonul ★ pe touch. În rețea controlul e ca la 1 jucător (F). */
+function wandHint(g, p) {
+  const two = g.players.length > 1 && !g.net;
+  const who = two ? ['Bobo', 'Mimi'][p.i] + ': ' : '';
+  if (isTouch) return who + 'Baghetă! Apasă ★';
+  return who + 'Baghetă! Apasă ' + (two && p.i === 1 ? '↓' : 'F') + ' ca să tragi';
+}
+
 function applyItem(g, p, it) {
   const { x, y } = it, P = g.particles;
   if (it.kind === 'bubble') { p.shield = true; sfx('bubble'); P.burst(x, y, '#9be7ff', 14); P.text(x, y - 10, 'Bulă!', '#9be7ff'); }
   else if (it.kind === 'grow') {
     if (p.big) { g.fruits += 5; sfx('fruit'); P.text(x, y - 10, '+5', '#ffe066'); }
     else { if (!grow(g, p)) return false; sfx('grow'); P.sparkle(p.x + p.w / 2, p.y + p.h / 2, 14); P.text(x, y - 24, 'Mare!', '#ffc2e0'); }
-  } else { p.wand = true; sfx('grow'); P.sparkle(x, y, 12); P.text(x, y - 14, 'Baghetă!', '#ffe066'); }
+  } else {
+    p.wand = true; sfx('grow'); P.sparkle(x, y, 12); P.text(x, y - 14, 'Baghetă!', '#ffe066');
+    if (!g.net || p === g.local) g.say(wandHint(g, p), 240);
+  }
   return true;
 }
 

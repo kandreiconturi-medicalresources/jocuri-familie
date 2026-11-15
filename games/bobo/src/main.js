@@ -4,7 +4,7 @@ import './style.css';
 import { startLoop } from '../../../shared/engine/loop.js';
 import { createInput } from '../../../shared/engine/input.js';
 import { defineSfx, BOBO_SFX, isMuted, setMuted, unlockAudio } from '../../../shared/engine/audio.js';
-import { fitCanvas, needLandscape, toggleFullscreen } from '../../../shared/engine/screen.js';
+import { fitCanvas, needLandscape, toggleFullscreen, isTouch } from '../../../shared/engine/screen.js';
 import { ready } from '../../../shared/engine/profiles.js';
 import { startPlaySession, showTimeOverlay } from '../../../shared/engine/session.js';
 import { createParticles } from '../../../shared/engine/particles.js';
@@ -13,6 +13,7 @@ import { loadAtlas, setAtlasScale } from './atlas.js';
 import { createGame } from './game.js';
 import { renderScene } from './render/scene.js';
 import { createBackdrop } from './render/backdrop.js';
+import { snapshot } from './render/interp.js';
 import { saveResult } from './progress.js';
 import { createTitle } from './screens/title.js';
 import { createMap } from './screens/map.js';
@@ -52,14 +53,18 @@ app.syncMute = () => { $('bMute').textContent = isMuted() ? '🔇' : '🔊'; };
 function buildTouchpad(n) {
   if (touchpad) touchpad.destroy();
   const L = (player, btn, side, label) => ({ player, btn, side, label });
-  const layout = n === 1
+  // pe PC nu există butoane tactile: apare doar ★ (mouse), și doar cât jucătorul are baghetă
+  const layout = !isTouch
+    ? (n === 1 ? [L(0, 'b', 'right', '★')] : [L(0, 'b', 'left', '★'), L(1, 'b', 'right', '★')])
+    : n === 1
     ? [L(0, 'left', 'left', '◀'), L(0, 'right', 'left', '▶'), L(0, 'b', 'right', '★'), L(0, 'a', 'right', '⬆')]
     : [L(0, 'left', 'left', '◀'), L(0, 'right', 'left', '▶'), L(0, 'b', 'left', '★'), L(0, 'a', 'left', '⬆'),
       L(1, 'left', 'right', '◀'), L(1, 'right', 'right', '▶'), L(1, 'b', 'right', '★'), L(1, 'a', 'right', '⬆')];
-  touchpad = createTouchpad(input, layout);
+  touchpad = createTouchpad(input, layout, { force: !isTouch });
   const root = document.querySelector('.tp');
   if (root && n > 1) root.classList.add('two');
   touchpad.show(false);
+  document.querySelectorAll('.tp-btn.b').forEach((el) => { el.style.visibility = 'hidden'; });
 }
 
 app.startLevel = (i) => {
@@ -99,8 +104,9 @@ function update() {
   if (st && !prevStart) { if (app.state === 'play') app.pause(); else if (app.state === 'pause') app.resume(); }
   prevStart = st;
   if (app.state !== 'play' && !(app.net && app.state === 'pause')) return; // în rețea, jocul merge și în pauză
+  snapshot(game);
   game.update();
-  if (touchpad && (game.tick & 15) === 0) {
+  if (touchpad && (game.tick & 3) === 0) {
     document.querySelectorAll('.tp-btn.b').forEach((el) => {
       const i = el.classList.contains('p1') ? 1 : 0;
       const p = game.local || game.players[i];
@@ -113,8 +119,10 @@ function update() {
   }
 }
 
-function render() {
-  if (SCENE_STATES.includes(app.state) || (app.state === 'settings' && app.prev === 'pause')) renderScene(ctx, game);
+function render(alpha = 1) {
+  // simularea merge doar în „play” (și în pauză, în rețea); altfel desenăm starea curentă, fără interpolare
+  const live = app.state === 'play' || (app.net && app.state === 'pause');
+  if (SCENE_STATES.includes(app.state) || (app.state === 'settings' && app.prev === 'pause')) renderScene(ctx, game, live ? alpha : 1);
   else backdrop.draw(ctx, view, app.tick);
 }
 
@@ -124,6 +132,7 @@ function boot() {
   const particles = createParticles(300);
   game = createGame({ input, view, particles, onFinish });
   app.game = game; app.input = input;
+  if (import.meta.env && import.meta.env.DEV) window.__bobo = app; // doar în dev, pentru verificări în browser
   app.screens = { title: createTitle(app), map: createMap(app), done: createDone(app), pause: createPause(app), settings: createSettings(app), lobby: createLobby(app) };
   $('bHome').onclick = () => { location.href = '../../'; };
   $('bPause').onclick = () => app.pause();

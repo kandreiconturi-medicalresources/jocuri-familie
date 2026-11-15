@@ -8,9 +8,8 @@ import { spawnEnemies, updateEnemies, killEnemy } from './enemies.js';
 import { createBoss, updateBoss, hitBoss } from './boss.js';
 import { createPlatforms, updatePlatforms } from './platforms.js';
 import { createCamera, updateCamera } from './camera.js';
-import { createBackground } from './render/background.js';
 import { themeFor } from './render/themes.js';
-import { resetTerrain } from './render/terrain.js';
+import { resetRender } from './render/scene.js';
 
 const IMMUNE = new Set(['saw', 'block', 'fireball']);
 
@@ -18,7 +17,7 @@ export function createGame({ input, view, particles, onFinish }) {
   const g = {
     view, input, particles, players: [], enemies: [], items: [], bullets: [], platforms: [], crumbs: [], boss: null,
     level: null, index: 0, tick: 0, shake: 0, cam: createCamera(), fruits: 0, starSet: new Set(), cp: { x: 0, y: 0 },
-    cpActive: new Set(), bossDown: false, bossIntro: 0, hint: 0, hintText: '', done: false, theme: null, bg: null,
+    cpActive: new Set(), bossDown: false, bossIntro: 0, hint: 0, hintText: '', done: false, theme: null, bgs: null,
     net: null, local: null, sim: [], // în rețea: net = sesiunea, local = jucătorul meu, sim = jucătorii simulați pe acest dispozitiv
   };
 
@@ -27,11 +26,11 @@ export function createGame({ input, view, particles, onFinish }) {
     lv.grid = lv.grid.map((r) => (typeof r === 'string' ? r.split('') : r.slice()));
     lv.fx = { bump: {}, crumb: {}, spring: {} };
     Object.assign(g, {
-      level: lv, index, theme: themeFor(lv.theme), bg: createBackground(lv.theme, index), tick: 0, shake: 0, fruits: 0,
+      level: lv, index, theme: themeFor(lv.theme), bgs: null, tick: 0, shake: 0, fruits: 0,
       starSet: new Set(), items: [], bullets: [], crumbs: [], done: false, bossDown: false, bossIntro: 0, hint: 0,
       cpActive: new Set(), cp: { x: lv.spawn.tx * TS, y: lv.spawn.ty * TS },
     });
-    resetTerrain();
+    resetRender();
     g.enemies = spawnEnemies(lv); g.platforms = createPlatforms(lv); g.boss = createBoss(lv);
     g.players = Array.from({ length: n }, (_, i) => {
       const p = createPlayer(i); placePlayer(p, g.cp.x + i * 30, g.cp.y); p.face = 1; return p;

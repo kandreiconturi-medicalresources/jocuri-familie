@@ -1,0 +1,71 @@
+/* Bum-Bum Arena: ecrane DOM peste canvas. Culorile și butoanele de bază vin din shared/ui/theme.css */
+html, body { background: #1b1530; touch-action: none; margin: 0; overflow: hidden; }
+#wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+canvas { display: block; }
+#boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #ffd23f; z-index: 30; background: #1b1530; }
+.ov { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 6; overflow: auto; background: rgba(20,8,50,.45); }
+.card { background: linear-gradient(180deg, rgba(60,25,110,.92), rgba(35,15,70,.95)); border: 3px solid rgba(255,210,63,.6); border-radius: 26px; margin: auto;
+  padding: 16px 22px; color: #fff; text-align: center; max-width: 720px; width: 100%; box-shadow: 0 16px 50px rgba(0,0,0,.45); }
+h1 { font-size: clamp(34px, 6vw, 62px); line-height: 1; margin: 0 0 4px; color: #ffd23f; text-shadow: 0 4px 0 #b5179e, 0 8px 22px rgba(0,0,0,.45); }
+h2 { font-size: clamp(24px, 4vw, 40px); line-height: 1.1; margin: 0 0 6px; color: #ffd23f; text-shadow: 0 3px 0 #b5179e; }
+p.sub { margin: 0 0 12px; font-size: clamp(15px, 2.1vw, 20px); opacity: .92; }
+.btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+button.big { font: inherit; font-size: clamp(18px, 2.5vw, 25px); font-weight: 800; padding: 8px 22px; border: none; border-radius: 18px; cursor: pointer; color: #3a1d00;
+  background: linear-gradient(#ffe680, #ffb703); box-shadow: 0 6px 0 #c77d00, 0 10px 20px rgba(0,0,0,.3); touch-action: manipulation; }
+button.big:active { transform: translateY(4px); box-shadow: 0 2px 0 #c77d00; }
+button.big.alt { background: linear-gradient(#b5f0ff, #4cc9f0); color: #06283d; box-shadow: 0 6px 0 #1b8ab0, 0 10px 20px rgba(0,0,0,.3); }
+button.big.sm { font-size: 17px; padding: 6px 16px; }
+button.big.opt { background: rgba(255,255,255,.16); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.3); min-width: 54px; }
+button.big.opt.on { background: linear-gradient(#ffe680, #ffb703); color: #3a1d00; box-shadow: 0 4px 0 #c77d00; }
+button.big:disabled, button.big.off { opacity: .5; }
+.row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+.row .lab { font-size: clamp(16px, 2.2vw, 22px); font-weight: 800; min-width: 150px; text-align: right; color: #ffe066; }
+.row .val { min-width: 170px; font-size: clamp(18px, 2.6vw, 26px); font-weight: 800; }
+.row small { display: block; font-size: 14px; font-weight: 400; opacity: .85; }
+details { background: rgba(255,255,255,.1); border-radius: 16px; padding: 8px 16px; text-align: left; font-size: clamp(14px, 1.8vw, 17px); line-height: 1.5; margin-bottom: 10px; }
+summary { cursor: pointer; font-weight: 800; color: #ffd23f; text-align: center; }
+kbd { background: #fff; color: #222; border-radius: 5px; padding: 0 6px; font-family: inherit; font-weight: 800; box-shadow: 0 2px 0 #999; }
+#topbtns { position: fixed; top: 8px; right: max(8px, env(safe-area-inset-right)); display: flex; gap: 6px; z-index: 7; }
+#topbtns button { font-size: 18px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: rgba(60,25,110,.6); color: #fff; cursor: pointer; touch-action: manipulation; padding: 0; }
+#rot { position: fixed; inset: 0; z-index: 40; background: #2a1450; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 24px; padding: 30px; }
+#rot .ph { font-size: 80px; animation: spin 2s ease-in-out infinite; }
+@keyframes spin { 0%, 20% { transform: rotate(0); } 50%, 80% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+/* butoane tactile: cruce + bombă */
+.tp { --tp-size: clamp(36px, 10vh, 58px); }
+.tp-side { display: grid; grid-template-columns: repeat(4, var(--tp-size)); grid-template-rows: repeat(3, var(--tp-size)); gap: 3px; align-items: stretch;
+  grid-template-areas: ". up . ." "left . right a" ". down . ."; }
+.tp-btn { font-size: 20px; width: auto; height: auto; border-width: 3px; opacity: .85; }
+.tp-btn.up { grid-area: up; } .tp-btn.down { grid-area: down; } .tp-btn.left { grid-area: left; } .tp-btn.right { grid-area: right; }
+.tp-btn.a { grid-area: a; background: rgba(255,120,60,.45); margin-left: 8px; font-size: 30px; }
+.tp.one .tp-side:last-child { display: flex; }
+.tp.one .tp-side:last-child .tp-btn { width: calc(var(--tp-size) * 1.5); height: calc(var(--tp-size) * 1.5); margin: 0; }
+/* camera de rețea: cod și tastatură */
+.code { display: flex; gap: 10px; justify-content: center; margin: 6px 0 10px; }
+.code .slot, .code .ch { width: clamp(52px, 10vw, 86px); height: clamp(60px, 12vw, 98px); display: flex; align-items: center; justify-content: center;
+  font-size: clamp(40px, 8vw, 70px); font-weight: 800; color: #3a1d00; background: linear-gradient(#ffe680, #ffb703); border-radius: 18px; box-shadow: 0 6px 0 #c77d00; }
+.code.small .slot { width: 52px; height: 58px; font-size: 38px; background: rgba(255,255,255,.14); color: #fff; box-shadow: none; border: 3px solid rgba(255,255,255,.5); }
+.code.small .slot.on { border-color: #ffd23f; }
+.keys { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 4px; }
+button.key { padding: 6px 0; font-size: clamp(20px, 3vw, 30px); border-radius: 14px; min-height: 52px; }
+button.key.wide { grid-column: span 3; }
+.plist { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 8px 0 12px; }
+.pl { width: 120px; padding: 10px 6px 8px; border-radius: 18px; background: rgba(255,255,255,.14); border: 3px solid rgba(255,255,255,.4); }
+.pl canvas { display: block; margin: 0 auto 4px; }
+.pl b { display: block; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl.me { border-color: #ffd23f; background: rgba(255,210,63,.22); }
+.err { min-height: 22px; margin: 0 0 6px; color: #ff9aa8; font-weight: 800; font-size: 18px; }
+.score { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.score .pl.win { border-color: #ffd23f; transform: scale(1.08); }
+.score .pl .st { color: #ffd23f; font-size: 22px; }
+@media (max-height: 520px) {
+  .card { padding: 8px 14px; border-radius: 18px; }
+  h1 { font-size: 30px; } h2 { font-size: 24px; }
+  p.sub { margin-bottom: 6px; font-size: 14px; }
+  button.big { font-size: 17px; padding: 5px 14px; }
+  .row { margin: 3px 0; } .row .lab { min-width: 110px; font-size: 15px; } .row .val { font-size: 17px; min-width: 130px; }
+  details { font-size: 12px; padding: 4px 10px; }
+  .keys { grid-template-columns: repeat(12, 1fr); gap: 5px; } button.key { min-height: 36px; font-size: 17px; }
+  button.key.wide { grid-column: span 4; }
+  .code .slot, .code .ch { height: 50px; width: 46px; font-size: 32px; }
+  .pl { width: 100px; padding: 6px 4px; } .pl b { font-size: 15px; }
+}

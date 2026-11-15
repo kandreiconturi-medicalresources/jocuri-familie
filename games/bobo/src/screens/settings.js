@@ -5,6 +5,7 @@ import { perf } from '../../../../shared/engine/perf.js';
 import { toggleFullscreen } from '../../../../shared/engine/screen.js';
 import { makeScreen, btn } from './ui.js';
 import { resetProgress } from '../progress.js';
+import { gfxStyle, setGfxStyle } from '../render/style.js';
 
 export function createSettings(app) {
   const body = h('div');
@@ -17,6 +18,8 @@ export function createSettings(app) {
       row('Sunet', btn(isMuted() ? '🔇 Oprit' : '🔊 Pornit', () => { setMuted(!isMuted()); app.syncMute(); render(); }, 'sm')),
       row('Grafică', btn('Auto', () => { perf.auto(); q = 'auto'; render(); }, 'sm alt' + (q === 'auto' ? ' on' : '')),
         ...names.map((n, i) => btn(n, () => { perf.set(i); q = i; render(); }, 'sm alt' + (q === i ? ' on' : '')))),
+      row('Stil grafic', btn('Clasic', () => { setGfxStyle('classic'); render(); }, 'sm alt' + (gfxStyle() === 'classic' ? ' on' : '')),
+        btn('Modern', () => { setGfxStyle('modern'); render(); }, 'sm alt' + (gfxStyle() === 'modern' ? ' on' : ''))),
       row('Ecran', btn('⛶ Ecran complet', () => toggleFullscreen(), 'sm alt')),
       row('Progres', confirm
         ? btn('Sigur? Se șterge tot!', () => { resetProgress(); confirm = false; render(); }, 'sm')

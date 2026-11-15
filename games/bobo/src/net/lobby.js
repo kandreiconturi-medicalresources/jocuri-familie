@@ -8,7 +8,7 @@ import { loadProgress } from '../progress.js';
 import { getLevel, levelMeta, WORLDS, LEVELS_PER_WORLD } from '../levels/index.js';
 import { WORLD_ICON } from '../render/themes.js';
 import { HERO } from '../render/hero.js';
-import { createKeypad } from './keypad.js';
+import { createKeypad } from '../../../../shared/ui/keypad.js';
 import { createNet } from './sync.js';
 import { amHost, startIds, levelHash } from './logic.js';
 

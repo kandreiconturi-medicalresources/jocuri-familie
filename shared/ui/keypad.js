@@ -1,5 +1,5 @@
 // Tastatură mare cu litere pentru codul camerei (cele 23 de litere pe care le folosește serverul) + afișajul celor 4 locuri.
-import { h } from '../../../../shared/ui/dom.js';
+import { h } from './dom.js';
 
 export const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ';
 

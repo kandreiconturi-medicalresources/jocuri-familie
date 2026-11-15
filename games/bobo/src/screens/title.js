@@ -8,9 +8,10 @@ import { playerName, loadProgress, setTwoPlayers, totalStars } from '../progress
 export function createTitle(app) {
   const who = h('p', { class: 'who' });
   const keys = h('div', null,
-    h('b', null, 'Bobo: '), h('kbd', null, 'A'), ' ', h('kbd', null, 'D'), ' merge, ', h('kbd', null, 'W'), ' sau ', h('kbd', null, 'Spațiu'), ' sare, ', h('kbd', null, 'F'), ' trage', h('br'),
-    h('b', null, 'Mimi: '), h('kbd', null, '←'), ' ', h('kbd', null, '→'), ' merge, ', h('kbd', null, '↑'), ' sare, ', h('kbd', null, '↓'), ' trage', h('br'),
-    '🎮 Merge și cu controllere (gamepad).');
+    h('b', null, 'Bobo: '), h('kbd', null, 'A'), ' ', h('kbd', null, 'D'), ' merge, ', h('kbd', null, 'W'), ' sau ', h('kbd', null, 'Spațiu'), ' sare, ', h('kbd', null, 'F'), ' trage cu bagheta', h('br'),
+    h('b', null, 'Mimi: '), h('kbd', null, '←'), ' ', h('kbd', null, '→'), ' merge, ', h('kbd', null, '↑'), ' sau ', h('kbd', null, 'Enter'), ' sare, ', h('kbd', null, '↓'), ' sau ', h('kbd', null, 'Shift dreapta'), ' trage cu bagheta', h('br'),
+    h('kbd', null, 'Esc'), ' sau ', h('kbd', null, 'P'), ' = pauză · Cu mouse-ul poți apăsa butonul ★ de pe ecran (apare când ai baghetă)', h('br'),
+    '🎮 Merge și cu controllere (gamepad): stick sau cruce = merge, A/B = sare, X/Y = trage, Start = pauză.');
   const touch = h('div', null,
     h('b', null, '1 jucător: '), 'butoanele ◀ ▶ din stânga merg, ⬆ din dreapta sare, ★ trage cu bagheta.', h('br'),
     h('b', null, '2 jucători: '), 'Bobo are butoanele din stânga, Mimi pe cele din dreapta.');
