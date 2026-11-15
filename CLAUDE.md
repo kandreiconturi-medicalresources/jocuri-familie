@@ -11,7 +11,7 @@ Citește întâi fișierul relevant de mai jos, nu tot repo-ul.
 | `shared/engine/` | buclă, input, audio, ecran, salvări, profiluri, rng, perf, particule |
 | `shared/ui/` | temă CSS, butoane tactile, helperi DOM |
 | `shared/net/` | client rețea (Faza 2) |
-| `games/<joc>/` | câte un folder per joc, cu propriul `index.html` (detectat automat de Vite) |
+| `games/<joc>/` | câte un folder per joc: `index.html` (detectat automat de Vite) + `README.md` (contractul jocului, citește-l primul) |
 | `server/` | server Node pentru NAS (Faza 2) |
 | `deploy/` | Docker + compose Synology/Tailscale |
 | `tools/` | scripturi (iconițe, import asset-uri) |

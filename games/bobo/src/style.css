@@ -1,0 +1,60 @@
+/* Stiluri Bobo: ecrane DOM peste canvas. Culorile și butoanele de bază vin din shared/ui/theme.css */
+html, body { background: #1b1530; touch-action: none; }
+#wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+canvas { display: block; }
+#boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #ffd23f; z-index: 30; background: #1b1530; }
+.ov { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 6; overflow: auto; }
+.card { background: linear-gradient(180deg, rgba(60,25,110,.88), rgba(35,15,70,.92)); border: 3px solid rgba(255,210,63,.6); border-radius: 26px;
+  padding: 18px 24px; color: #fff; text-align: center; max-width: 760px; width: 100%; box-shadow: 0 16px 50px rgba(0,0,0,.45); }
+h1 { font-size: clamp(28px, 5vw, 54px); line-height: 1.05; margin: 0 0 4px; color: #ffd23f; text-shadow: 0 4px 0 #b5179e, 0 8px 22px rgba(0,0,0,.45); }
+h2 { font-size: clamp(26px, 4.2vw, 44px); line-height: 1.1; margin: 0 0 6px; color: #ffd23f; text-shadow: 0 3px 0 #b5179e; }
+p.sub { margin: 0 0 14px; font-size: clamp(15px, 2.1vw, 20px); opacity: .92; }
+.btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+button.big { font: inherit; font-size: clamp(18px, 2.5vw, 25px); font-weight: 800; padding: 9px 24px; border: none; border-radius: 18px; cursor: pointer; color: #3a1d00;
+  background: linear-gradient(#ffe680, #ffb703); box-shadow: 0 6px 0 #c77d00, 0 10px 20px rgba(0,0,0,.3); touch-action: manipulation; }
+button.big:active { transform: translateY(4px); box-shadow: 0 2px 0 #c77d00; }
+button.big.alt { background: linear-gradient(#b5f0ff, #4cc9f0); color: #06283d; box-shadow: 0 6px 0 #1b8ab0, 0 10px 20px rgba(0,0,0,.3); }
+button.big.sm { font-size: 16px; padding: 6px 16px; }
+button.big.on { outline: 4px solid #fff; }
+details { background: rgba(255,255,255,.1); border-radius: 16px; padding: 8px 16px; text-align: left; font-size: clamp(14px, 1.8vw, 17px); line-height: 1.5; }
+summary { cursor: pointer; font-weight: 800; color: #ffd23f; text-align: center; }
+kbd { background: #fff; color: #222; border-radius: 5px; padding: 0 6px; font-family: inherit; font-weight: 800; box-shadow: 0 2px 0 #999; }
+.who { margin: 0 0 10px; font-size: 17px; opacity: .9; }
+.stat { font-size: clamp(18px, 2.6vw, 26px); margin: 6px 0; }
+.bigstars { font-size: clamp(40px, 8vw, 70px); letter-spacing: 6px; color: #ffd23f; text-shadow: 0 4px 0 #b5179e; }
+.bigstars .off { color: rgba(255,255,255,.25); text-shadow: none; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 20px; text-align: left; }
+/* harta */
+.mapHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.mapHead h2 { margin: 0; font-size: clamp(22px, 3.6vw, 36px); }
+.chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.chip { font-size: 22px; width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12); cursor: pointer; padding: 0; touch-action: manipulation; position: relative; }
+.chip.cur { border-color: #ffd23f; background: rgba(255,210,63,.35); }
+.chip.lock { opacity: .45; }
+.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.lv { font: inherit; font-weight: 800; font-size: clamp(18px, 2.6vw, 26px); border: 3px solid rgba(255,255,255,.6); border-radius: 16px; padding: 6px 0 4px; color: #fff;
+  background: rgba(255,255,255,.16); cursor: pointer; touch-action: manipulation; line-height: 1.1; }
+.lv small { display: block; font-size: 14px; color: #ffd23f; letter-spacing: 1px; min-height: 16px; }
+.lv.next { border-color: #ffd23f; background: rgba(255,210,63,.35); }
+.lv.boss { border-color: #ff8fa3; }
+.lv.lock { opacity: .45; cursor: default; }
+#topbtns { position: fixed; top: 8px; right: max(8px, env(safe-area-inset-right)); display: flex; gap: 6px; z-index: 7; }
+#topbtns button { font-size: 18px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: rgba(60,25,110,.6); color: #fff; cursor: pointer; touch-action: manipulation; padding: 0; }
+#rot { position: fixed; inset: 0; z-index: 40; background: #2a1450; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 24px; padding: 30px; }
+#rot .ph { font-size: 80px; animation: spin 2s ease-in-out infinite; }
+@keyframes spin { 0%, 20% { transform: rotate(0); } 50%, 80% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+.tp.two .tp-btn { width: 54px; height: 54px; font-size: 22px; }
+.tp.two .tp-side { gap: 8px; }
+.tp-btn.b { width: 56px; height: 56px; }
+.tp.two .tp-btn.b { width: 44px; height: 44px; font-size: 18px; }
+@media (max-height: 520px) {
+  .card { padding: 10px 16px; border-radius: 18px; }
+  h1 { font-size: 28px; } h2 { font-size: 26px; }
+  p.sub { margin-bottom: 8px; font-size: 14px; }
+  .btns { margin-bottom: 8px; gap: 8px; }
+  button.big { font-size: 18px; padding: 6px 16px; }
+  .chip { width: 34px; height: 34px; font-size: 17px; }
+  .grid { gap: 5px; } .lv { padding: 3px 0; font-size: 18px; border-radius: 12px; }
+  .lv small { font-size: 11px; min-height: 12px; }
+  details { font-size: 12px; padding: 4px 10px; }
+}
