@@ -19,6 +19,7 @@ import { createMap } from './screens/map.js';
 import { createDone } from './screens/done.js';
 import { createPause } from './screens/pause.js';
 import { createSettings } from './screens/settings.js';
+import { createLobby } from './net/lobby.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
@@ -26,7 +27,7 @@ const ctx = canvas.getContext('2d', { alpha: false });
 const view = fitCanvas(canvas, { height: 544, minWidth: 800, maxWidth: 1280, onResize: (v) => setAtlasScale(v.scale) });
 needLandscape($('rot'));
 
-const app = { state: 'boot', prev: 'title', n: 1, view, screens: {}, finishT: 0, tick: 0, result: null, info: null };
+const app = { state: 'boot', prev: 'title', n: 1, net: null, view, screens: {}, finishT: 0, tick: 0, result: null, info: null };
 let input, game, loop, touchpad = null, prevStart = false;
 const backdrop = createBackdrop();
 app.setBackdrop = (k) => backdrop.set(k);
@@ -62,12 +63,26 @@ function buildTouchpad(n) {
 }
 
 app.startLevel = (i) => {
+  app.net = null;
   input.clear(); unlockAudio();
   buildTouchpad(app.n);
   game.start(i, app.n);
   app.finishT = 0; app.result = null;
   app.go('play');
 };
+// joc în rețea: un singur jucător pe acest dispozitiv (controale ca la 1 jucător), ceilalți vin din cameră
+app.startNetLevel = (i, count, net) => {
+  app.net = net;
+  input.clear(); unlockAudio();
+  buildTouchpad(1);
+  game.start(i, count, net);
+  app.finishT = 0; app.result = null;
+  app.go('play');
+};
+app.openLobby = () => app.screens.lobby.open();
+app.netBack = () => { app.net = null; app.screens.lobby.back(); };
+app.netLeave = () => { app.net = null; app.screens.lobby.leave(); };
+app.block = (reason) => { app.pause(); if (loop) loop.stop(); input.clear(); showTimeOverlay(reason); };
 app.pause = () => { if (app.state !== 'play') return; input.clear(); app.go('pause'); };
 app.resume = () => { if (app.state === 'pause') { input.clear(); app.go('play'); } };
 app.quit = () => { if (touchpad) { touchpad.destroy(); touchpad = null; } };
@@ -83,12 +98,12 @@ function update() {
   const st = input.any('start');
   if (st && !prevStart) { if (app.state === 'play') app.pause(); else if (app.state === 'pause') app.resume(); }
   prevStart = st;
-  if (app.state !== 'play') return;
+  if (app.state !== 'play' && !(app.net && app.state === 'pause')) return; // în rețea, jocul merge și în pauză
   game.update();
   if (touchpad && (game.tick & 15) === 0) {
     document.querySelectorAll('.tp-btn.b').forEach((el) => {
       const i = el.classList.contains('p1') ? 1 : 0;
-      const p = game.players[i];
+      const p = game.local || game.players[i];
       el.style.visibility = p && p.wand ? 'visible' : 'hidden';
     });
   }
@@ -109,7 +124,7 @@ function boot() {
   const particles = createParticles(300);
   game = createGame({ input, view, particles, onFinish });
   app.game = game; app.input = input;
-  app.screens = { title: createTitle(app), map: createMap(app), done: createDone(app), pause: createPause(app), settings: createSettings(app) };
+  app.screens = { title: createTitle(app), map: createMap(app), done: createDone(app), pause: createPause(app), settings: createSettings(app), lobby: createLobby(app) };
   $('bHome').onclick = () => { location.href = '../../'; };
   $('bPause').onclick = () => app.pause();
   $('bMute').onclick = () => { unlockAudio(); setMuted(!isMuted()); app.syncMute(); };
@@ -122,7 +137,7 @@ function boot() {
   addEventListener('pointerdown', unlockAudio, { once: true });
   // modul NAS: limita de timp; la blocare jocul se oprește și apare overlay-ul
   startPlaySession('bobo', {
-    onBlocked: (reason) => { app.pause(); if (loop) loop.stop(); input.clear(); showTimeOverlay(reason); },
+    onBlocked: (reason) => app.block(reason),
   });
   $('boot').remove();
   app.go('title');

@@ -3,7 +3,6 @@ import { TS, ROWS } from './tiles.js';
 import { stepPlayer, makeBody, tilesTouched, tileAt, overlapsSolid, SMALL, BIG } from './physics.js';
 import { sfx } from '../../../shared/engine/audio.js';
 import { landOnPlatforms } from './platforms.js';
-import { killEnemy } from './enemies.js';
 
 const WH = ROWS * TS;
 
@@ -69,32 +68,35 @@ function applyItem(g, p, it) {
 function bump(g, p, hit) {
   const lv = g.level, { tx, ty } = hit, c = lv.grid[ty][tx], k = ty * lv.width + tx;
   const cx = tx * TS + TS / 2;
-  let used = false;
+  let used = false, brk = false;
   if (c === 'G') { lv.grid[ty][tx] = 'g'; g.fruits++; sfx('fruit'); g.particles.text(cx, ty * TS - 4, '+1', '#ff7a8a'); g.particles.sparkle(cx, ty * TS - 8, 5); used = true; }
   else if (c === 'Q' || c === 'C' || c === 'S') {
     lv.grid[ty][tx] = 'g'; sfx('bump');
-    g.items.push({ kind: c === 'Q' ? 'bubble' : c === 'C' ? 'grow' : 'wand', x: cx, y: ty * TS + 16, ty0: ty * TS - 16, t: 0, rise: 22 });
+    g.items.push({ kind: c === 'Q' ? 'bubble' : c === 'C' ? 'grow' : 'wand', x: cx, y: ty * TS + 16, ty0: ty * TS - 16, t: 0, rise: 22, id: k });
     used = true;
   } else if (c === 'B') {
     if (p.big) {
-      lv.grid[ty][tx] = '.'; sfx('break'); g.shake = Math.max(g.shake, 3);
+      lv.grid[ty][tx] = '.'; brk = true; sfx('break'); g.shake = Math.max(g.shake, 3);
       g.particles.burst(cx, ty * TS + 16, '#b0703a', 10); g.particles.dust(cx, ty * TS + 20, 3);
     } else { sfx('bump'); used = true; }
   }
   if (used) lv.fx.bump[k] = 8;
+  if (used || brk) g.emit({ e: 'b', id: k, c, n: lv.grid[ty][tx] });
   for (const e of g.enemies) {
-    if (!e.dead && !e.knock && e.x + e.w > tx * TS && e.x < (tx + 1) * TS && Math.abs(e.y + e.h - ty * TS) < 8) killEnemy(g, e, 'knock');
+    if (!e.dead && !e.knock && e.x + e.w > tx * TS && e.x < (tx + 1) * TS && Math.abs(e.y + e.h - ty * TS) < 8) g.hitEnemy(e, 'knock');
   }
 }
 
 export function shoot(g, p) {
   if (g.bullets.filter((b) => b.owner === p.i).length >= 3) return;
   p.shootCd = 12; sfx('shoot');
-  g.bullets.push({ x: p.x + p.w / 2 + p.face * 14, y: p.y + p.h * 0.45, vx: p.face * 6.5, t: 0, owner: p.i });
+  const b = { x: p.x + p.w / 2 + p.face * 14, y: p.y + p.h * 0.45, vx: p.face * 6.5, t: 0, owner: p.i };
+  g.bullets.push(b); g.emit({ e: 's', x: b.x, y: b.y, vx: b.vx });
 }
 
 function touch(g, p, c, tx, ty) {
   const lv = g.level;
+  if (c === 'o' || c === 'h' || c === '*') g.emit({ e: 'p', id: ty * lv.width + tx, c });
   if (c === 'o') { lv.grid[ty][tx] = '.'; g.fruits++; sfx('fruit'); g.particles.sparkle(tx * TS + 16, ty * TS + 16, 3); }
   else if (c === 'h') {
     lv.grid[ty][tx] = '.'; sfx('heart');
@@ -149,7 +151,7 @@ export function updatePlayer(g, p, inp) {
   for (const it of g.items) {
     if (it.rise > 0) continue;
     if (Math.abs(it.x - cx) < 20 + p.w / 2 - 6 && Math.abs(it.y - (p.y + p.h / 2)) < 22 + p.h / 2 - 6) {
-      if (applyItem(g, p, it)) it.gone = true;
+      if (applyItem(g, p, it)) { it.gone = true; g.emit({ e: 'i', id: it.id }); }
     }
   }
   if (p.x < g.cam.x) { p.x = g.cam.x; if (p.vx < 0) p.vx = 0; }

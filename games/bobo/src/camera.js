@@ -5,7 +5,7 @@ export const createCamera = () => ({ x: 0, look: 0 });
 
 export function updateCamera(g, snap) {
   const cam = g.cam, vw = g.view.vw, alive = g.players.filter((p) => !p.dead);
-  const list = alive.length ? alive : g.players;
+  const list = g.net ? [g.local] : alive.length ? alive : g.players; // în rețea, fiecare ecran îl urmărește pe jucătorul lui
   let focus;
   if (list.length === 1) {
     const p = list[0];

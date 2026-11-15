@@ -41,7 +41,8 @@ export function makeEnemy(s) {
   return e;
 }
 
-export const spawnEnemies = (lv) => lv.enemies.map(makeEnemy).filter(Boolean);
+/** `id` = poziția în lv.enemies: la fel pe toate dispozitivele, ca să se potrivească în rețea. */
+export const spawnEnemies = (lv) => lv.enemies.map((s, i) => { const e = makeEnemy(s); if (e) e.id = i; return e; }).filter(Boolean);
 
 export function killEnemy(g, e, how) {
   if (e.dead || e.knock) return;
@@ -55,7 +56,7 @@ export function killEnemy(g, e, how) {
   }
 }
 
-const near = (g, e) => e.x > g.cam.x - 200 && e.x < g.cam.x + g.view.vw + 200;
+const near = (g, e) => (g.net ? g.players.some((p) => Math.abs(p.x - e.x) < 900) : e.x > g.cam.x - 200 && e.x < g.cam.x + g.view.vw + 200);
 
 function stepWalker(g, e) {
   const lv = g.level, d = e.d;
@@ -141,20 +142,20 @@ function step(g, e) {
 const hit = (p, e) => p.x + p.w - 3 > e.x && p.x + 3 < e.x + e.w && p.y + p.h > e.y + 2 && p.y + 3 < e.y + e.h;
 
 export function updateEnemies(g) {
-  const list = g.enemies;
+  const list = g.enemies, sim = !g.net || g.net.host; // clientul în rețea doar afișează; gazda simulează
   for (let i = list.length - 1; i >= 0; i--) {
     const e = list[i];
-    step(g, e);
+    if (sim) step(g, e); else g.net.stepEnemy(e);
     if (e.y > WH + 90 || (e.squashed && e.dead <= 0)) { list.splice(i, 1); continue; }
     if (e.dead || e.knock) continue;
     const d = e.d;
     if (d.k === 'fire' && e.y > e.y0 - 6) continue;
-    for (const p of g.players) {
+    for (const p of g.sim) {
       if (p.dead || !hit(p, e)) continue;
       if (d.k === 'block' && e.state === 'rest') continue;
       const stomp = d.stomp !== false && p.vy > 0.3 && p.y + p.h - e.y < Math.max(10, e.h * 0.75);
       if (stomp) {
-        killEnemy(g, e, 'stomp');
+        g.hitEnemy(e, 'stomp');
         p.vy = p.jumpHeld ? -10.5 : -7.5; p.onGround = false;
         break;
       }

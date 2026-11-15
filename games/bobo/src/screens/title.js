@@ -2,6 +2,7 @@
 import { h } from '../../../../shared/ui/dom.js';
 import { isTouch } from '../../../../shared/engine/screen.js';
 import { makeScreen, btn } from './ui.js';
+import { onlineNow } from '../../../../shared/net/api.js';
 import { playerName, loadProgress, setTwoPlayers, totalStars } from '../progress.js';
 
 export function createTitle(app) {
@@ -19,11 +20,13 @@ export function createTitle(app) {
     h('div', null, '🍓 Adună căpșuni · 🎁 lovește cutiile cu capul · 🐌🐝 sari pe inamici', h('br'),
       '🧁 Brioșa te face mare și spargi cărămizi · 🪄 Bagheta trage cu steluțe · 🫧 Bula te apără', h('br'),
       '🏮 Steagul salvează locul · 🌈 Curcubeul termină nivelul · În 2 jucători vă puteți urca unul pe altul!'));
+  const netBtn = h('div', { class: 'btns hidden' }, btn('🌐 Joacă în rețea', () => app.openLobby(), 'alt'));
   const s = makeScreen([
     h('h1', null, 'Aventura lui Bobo și Mimi'),
     h('p', { class: 'sub' }, 'Un joc de sărituri pentru toată familia 🐻🐰🌈'),
     who,
     h('div', { class: 'btns' }, btn('🐻 1 Jucător', () => pick(1)), btn('🐻🐰 2 Jucători', () => pick(2), 'alt')),
+    netBtn,
     h('div', { class: 'btns' }, btn('⚙️ Setări', () => app.openSettings('title'), 'alt sm')),
     help,
   ]);
@@ -32,6 +35,7 @@ export function createTitle(app) {
     const pr = loadProgress();
     who.textContent = `Salut, ${playerName()}! ⭐ ${totalStars(pr)} steluțe`;
     app.n = pr.twoPlayers ? 2 : 1;
+    netBtn.classList.toggle('hidden', !onlineNow()); // doar în modul NAS
   };
   return s;
 }

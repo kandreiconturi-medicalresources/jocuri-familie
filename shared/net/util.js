@@ -19,7 +19,7 @@ export function mergeData(a, b) {
 export const sameData = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Debounce cu ceas injectabil (pentru teste). `d.flush()` execută imediat dacă e ceva în așteptare. */
-export function debounce(fn, ms, timers = { set: setTimeout, clear: clearTimeout }) {
+export function debounce(fn, ms, timers = { set: (f, t) => setTimeout(f, t), clear: (i) => clearTimeout(i) }) { // fără apel „detașat” al lui setTimeout (Illegal invocation în browser)
   let id = null;
   const run = () => { id = null; fn(); };
   const d = () => { if (id !== null) timers.clear(id); id = timers.set(run, ms); };

@@ -3,10 +3,12 @@
 import { makeCanvas, getScale } from '../atlas.js';
 import { perf } from '../../../../shared/engine/perf.js';
 import { starPath, circ } from './sprites.js';
+import { EXTRA, drawExtraPose } from './hero_extra.js';
 
 export const HERO = [
   { body: '#b9773f', belly: '#f2d3ac', inner: '#ec9f78', feet: '#7a4a28', out: '#3b2314', name: 'Bobo', color: '#ff9f43' },
   { body: '#ffbcd9', belly: '#fff5fa', inner: '#ff86b6', feet: '#ec84b0', out: '#7a2e55', name: 'Mimi', color: '#ff7fb0' },
+  ...EXTRA, // 3 și 4: vulpiță și pinguin (doar în rețea)
 ];
 const BW = 80, BH = 96, OX = 40, OY = 90;
 const cache = new Map();
@@ -18,6 +20,7 @@ const part = (c, x, y, rx, ry, rot) => { E(c, x, y, rx, ry, rot); c.fill(); c.st
 
 /** Un cadru la origine = tălpile. f = { step, bob, arm, air, hurt, blink, wig, ear }. */
 function drawPose(c, i, f, wand, wandUp) {
+  if (i >= 2) return drawExtraPose(c, i, f, wand, wandUp);
   const C = HERO[i], { step = 0, bob = 0, arm = 0.1, air = 0, hurt = false, blink = false, wig = 0, ear = 0 } = f;
   c.lineWidth = 2.2; c.strokeStyle = C.out; c.lineJoin = 'round';
   c.fillStyle = C.feet; part(c, -8, -12 - bob, 3.6, 6.5, -arm + 0.3);
@@ -121,9 +124,13 @@ export function drawHero(ctx, p, camX, tick, multi) {
     ctx.fillStyle = 'rgba(255,255,255,.8)'; circ(ctx, cx - r * 0.4, y - r * 0.45, 3);
   }
   if (multi) {
-    const ty = by - (p.i ? 62 : 50) * K + Math.sin(tick * 0.1) * 2;
+    const ty = by - (p.i === 1 || p.i === 2 ? 62 : 50) * K + Math.sin(tick * 0.1) * 2;
     ctx.fillStyle = HERO[p.i].color; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(cx - 7, ty); ctx.lineTo(cx + 7, ty); ctx.lineTo(cx, ty + 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (p.name) { // numele deasupra capului (în rețea)
+      ctx.font = '800 14px "Baloo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(40,10,60,.8)'; ctx.strokeText(p.name, cx, ty - 5); ctx.fillStyle = '#fff'; ctx.fillText(p.name, cx, ty - 5);
+    }
   }
 }
 

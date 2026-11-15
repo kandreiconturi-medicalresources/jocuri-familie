@@ -31,6 +31,8 @@ function damage(g, b, p) {
   if (b.state === 'rest') b.timer = Math.min(b.timer, 10);
 }
 export function hitBoss(g, p) { const b = g.boss; if (b && b.state !== 'sleep' && !b.dead) damage(g, b, p); }
+/** În rețea, clientul nu scade viața boss-ului: raportează gazdei lovitura. */
+const strike = (g, b, p) => { if (g.net && !g.net.host) g.net.hit(-1, 'boss'); else damage(g, b, p); };
 
 const nearest = (g, b) => {
   let best = null, bd = 1e9;
@@ -83,6 +85,22 @@ const behaviours = {
 
 const hit = (p, b) => p.x + p.w - 4 > b.x + 6 && p.x + 4 < b.x + b.w - 6 && p.y + p.h > b.y + 4 && p.y + 4 < b.y + b.h;
 
+/** Undele de șoc rănesc jucătorii simulați local (în rețea, fiecare client își verifică propriul jucător). */
+export function waveHits(g, b) {
+  for (const w of b.waves) {
+    for (const p of g.sim) {
+      if (!p.dead && p.x + p.w > w.x - 10 && p.x < w.x + 10 && p.y + p.h > w.y - 22 && p.y < w.y) hurtPlayer(g, p, w.x);
+    }
+  }
+}
+
+export function bodyHits(g, b) {
+  for (const p of g.sim) {
+    if (p.dead || !hit(p, b)) continue;
+    if (p.vy > 0.3 && p.y + p.h - b.y < 30) { strike(g, b, p); p.vy = -10.5; p.onGround = false; if (b.hp <= 0) break; } else if (b.inv < 30) hurtPlayer(g, p, b.x + b.w / 2);
+  }
+}
+
 export function updateBoss(g) {
   const b = g.boss;
   if (!b) return;
@@ -91,10 +109,8 @@ export function updateBoss(g) {
   for (let i = b.waves.length - 1; i >= 0; i--) {
     const w = b.waves[i]; w.x += w.vx; w.t++;
     if (w.t > 100 || w.x < b.L - 100 || w.x > b.R + 100) { b.waves.splice(i, 1); continue; }
-    for (const p of g.players) {
-      if (!p.dead && p.x + p.w > w.x - 10 && p.x < w.x + 10 && p.y + p.h > w.y - 22 && p.y < w.y) hurtPlayer(g, p, w.x);
-    }
   }
+  waveHits(g, b);
   if (b.dead) {
     b.dead--;
     if (b.dead % 6 === 0) { g.particles.burst(b.x + Math.random() * b.w, b.y + Math.random() * b.h, '#ffd23f', 8); g.particles.sparkle(b.x + b.w / 2, b.y + b.h / 2, 4); }
@@ -111,8 +127,5 @@ export function updateBoss(g) {
   }
   behaviours[b.behav](g, b, nearest(g, b));
   b.face = b.dir;
-  for (const p of g.players) {
-    if (p.dead || !hit(p, b)) continue;
-    if (p.vy > 0.3 && p.y + p.h - b.y < 30) { damage(g, b, p); p.vy = -10.5; p.onGround = false; if (b.hp <= 0) break; } else if (b.inv < 30) hurtPlayer(g, p, b.x + b.w / 2);
-  }
+  bodyHits(g, b);
 }

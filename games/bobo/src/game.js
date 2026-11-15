@@ -19,9 +19,10 @@ export function createGame({ input, view, particles, onFinish }) {
     view, input, particles, players: [], enemies: [], items: [], bullets: [], platforms: [], crumbs: [], boss: null,
     level: null, index: 0, tick: 0, shake: 0, cam: createCamera(), fruits: 0, starSet: new Set(), cp: { x: 0, y: 0 },
     cpActive: new Set(), bossDown: false, bossIntro: 0, hint: 0, hintText: '', done: false, theme: null, bg: null,
+    net: null, local: null, sim: [], // în rețea: net = sesiunea, local = jucătorul meu, sim = jucătorii simulați pe acest dispozitiv
   };
 
-  g.start = (index, n) => {
+  g.start = (index, n, net) => {
     const lv = getLevel(index);
     lv.grid = lv.grid.map((r) => (typeof r === 'string' ? r.split('') : r.slice()));
     lv.fx = { bump: {}, crumb: {}, spring: {} };
@@ -35,15 +36,37 @@ export function createGame({ input, view, particles, onFinish }) {
     g.players = Array.from({ length: n }, (_, i) => {
       const p = createPlayer(i); placePlayer(p, g.cp.x + i * 30, g.cp.y); p.face = 1; return p;
     });
+    g.net = net || null; g.local = null; g.sim = g.players;
+    if (net) net.bind(g);
     g.cam.x = 0; g.cam.look = 0; updateCamera(g, true);
     g.particles.update();
     g.say(n > 1 ? 'Împreună ajungeți mai departe!' : 'Hai la aventură!', 120);
   };
 
   g.say = (s, frames = 120) => { g.hintText = s; g.hint = frames; };
+  g.emit = (ev) => { if (g.net) g.net.emit(ev); };
+  /** Lovitură asupra unui inamic/boss: gazda (sau jocul local) decide; clientul prezice efectul și raportează gazdei. */
+  g.hitEnemy = (e, how) => {
+    killEnemy(g, e, how);
+    if (g.net && !g.net.host) { e.pred = 14; g.net.hit(e.id, how); }
+  };
+  g.hitBoss = () => { if (g.net && !g.net.host) g.net.hit(-1, 'boss'); else hitBoss(g); };
+  g.activateCp = (i, quiet) => {
+    const c = g.level.checkpoints[i];
+    if (!c || g.cpActive.has(i)) return;
+    g.cpActive.add(i); g.cp = { x: c.tx * TS, y: c.ty * TS };
+    if (quiet) return;
+    sfx('check'); g.particles.sparkle(c.tx * TS + 16, c.ty * TS - 30, 10); g.particles.text(c.tx * TS + 16, c.ty * TS - 50, 'Punct salvat!', '#a8ffb0');
+  };
+  g.finishLevel = () => {
+    if (g.done) return;
+    const px = g.level.portal.tx * TS + TS / 2, py = g.level.portal.ty * TS;
+    g.done = true; sfx('win'); g.particles.sparkle(px, py - 40, 24);
+    onFinish({ index: g.index, stars: Math.min(3, g.starSet.size), fruits: g.fruits, players: g.players.length });
+  };
 
   function readInputs() {
-    if (g.players.length > 1) return [input.read(0), input.read(1)];
+    if (g.players.length > 1 && !g.net) return [input.read(0), input.read(1)];
     const a = input.read(0), b = input.read(1), o = {};
     for (const k in a) o[k] = a[k] || b[k];
     return [o];
@@ -76,13 +99,13 @@ export function createGame({ input, view, particles, onFinish }) {
       const b = g.bullets[i];
       b.x += b.vx; b.t++;
       let dead = b.t > 80 || isSolid(tileAt(g.level, Math.floor(b.x / TS), Math.floor(b.y / TS)));
-      if (!dead) {
+      if (!dead && !b.vis) {
         for (const e of g.enemies) {
           if (e.dead || e.knock || IMMUNE.has(e.type)) continue;
-          if (Math.abs(b.x - (e.x + e.w / 2)) < e.w / 2 + 6 && Math.abs(b.y - (e.y + e.h / 2)) < e.h / 2 + 6) { killEnemy(g, e, 'knock'); dead = true; break; }
+          if (Math.abs(b.x - (e.x + e.w / 2)) < e.w / 2 + 6 && Math.abs(b.y - (e.y + e.h / 2)) < e.h / 2 + 6) { g.hitEnemy(e, 'knock'); dead = true; break; }
         }
         const bo = g.boss;
-        if (!dead && bo && !bo.dead && bo.state !== 'sleep' && b.x > bo.x && b.x < bo.x + bo.w && b.y > bo.y && b.y < bo.y + bo.h) { hitBoss(g); dead = true; }
+        if (!dead && bo && !bo.dead && bo.state !== 'sleep' && b.x > bo.x && b.x < bo.x + bo.w && b.y > bo.y && b.y < bo.y + bo.h) { g.hitBoss(); dead = true; }
       }
       if (dead) { g.particles.sparkle(b.x, b.y, 3); g.bullets.splice(i, 1); }
     }
@@ -97,19 +120,14 @@ export function createGame({ input, view, particles, onFinish }) {
     }
     lv.checkpoints.forEach((c, i) => {
       if (g.cpActive.has(i)) return;
-      const hit = g.players.find((p) => !p.dead && p.x + p.w / 2 > c.tx * TS);
-      if (hit && Math.abs(hit.y + hit.h - c.ty * TS) < 200) {
-        g.cpActive.add(i); g.cp = { x: c.tx * TS, y: c.ty * TS }; sfx('check');
-        g.particles.sparkle(c.tx * TS + 16, c.ty * TS - 30, 10); g.particles.text(c.tx * TS + 16, c.ty * TS - 50, 'Punct salvat!', '#a8ffb0');
-      }
+      const hit = g.sim.find((p) => !p.dead && p.x + p.w / 2 > c.tx * TS);
+      if (hit && Math.abs(hit.y + hit.h - c.ty * TS) < 200) { g.activateCp(i); g.emit({ e: 'c', i }); }
     });
     if (g.boss || g.done) return;
     const px = lv.portal.tx * TS + TS / 2, py = lv.portal.ty * TS;
-    for (const p of g.players) {
+    for (const p of g.sim) {
       if (p.dead || Math.abs(p.x + p.w / 2 - px) > 36 || p.y + p.h < py - 80 || p.y > py + 6) continue;
-      g.done = true; sfx('win');
-      g.particles.sparkle(px, py - 40, 24);
-      onFinish({ index: g.index, stars: Math.min(3, g.starSet.size), fruits: g.fruits, players: g.players.length });
+      if (g.net) g.net.arrive(); else g.finishLevel(); // în rețea nivelul se termină când sosesc toți
       break;
     }
   }
@@ -120,11 +138,14 @@ export function createGame({ input, view, particles, onFinish }) {
     if (!g.done) {
       const inps = readInputs();
       updatePlatforms(g); updateFx();
-      g.players.forEach((p, i) => updatePlayer(g, p, inps[i]));
-      updateEnemies(g); updateBoss(g); updateBullets(); updateMisc();
+      g.sim.forEach((p, i) => updatePlayer(g, p, inps[i]));
+      updateEnemies(g);
+      if (!g.net || g.net.host) updateBoss(g); else g.net.stepBoss();
+      updateBullets(); updateMisc();
     } else {
       for (const p of g.players) { p.vx *= 0.9; }
     }
+    if (g.net) g.net.tick();
     g.particles.update();
     updateCamera(g, false);
   };
