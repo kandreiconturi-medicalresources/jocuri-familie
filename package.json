@@ -1,0 +1,21 @@
+{
+  "name": "jocuri-familie",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Jocuri arcade pentru familie: Bobo, Bum-Bum Arena, Turbo Curse, Orășelul",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "icons": "node tools/make-icons.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

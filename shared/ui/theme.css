@@ -1,0 +1,71 @@
+/* Temă comună: culori, font, butoane, panouri, butoane tactile, safe-area iOS. */
+:root {
+  --bg: #2a1458;
+  --bg-2: #4a2a8a;
+  --ink: #ffffff;
+  --ink-dark: #3a1a6a;
+  --accent: #ffd23f;
+  --pink: #ff8fc8;
+  --orange: #ffb066;
+  --good: #5bd66f;
+  --bad: #ff5a6a;
+  --panel: rgba(255, 255, 255, 0.92);
+  --line: #5a2ba0;
+  --font: "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; overscroll-behavior: none;
+}
+.hidden { display: none !important; }
+
+/* Butoane mari */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 56px; padding: 10px 28px; border: 4px solid var(--line); border-radius: 999px;
+  background: var(--accent); color: var(--ink-dark); font: 800 22px/1 var(--font);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3); cursor: pointer; touch-action: manipulation;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+.btn-round { width: 64px; min-height: 64px; height: 64px; padding: 0; border-radius: 50%; font-size: 28px; }
+
+/* Panou */
+.panel {
+  background: var(--panel); color: var(--ink-dark); border: 4px solid var(--line);
+  border-radius: 24px; padding: 20px 24px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* Mesaj „rotește ecranul” (vezi needLandscape) */
+.rotate-hint {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; text-align: center; padding: 24px; background: var(--bg);
+  font-size: 26px; font-weight: 800;
+}
+
+/* Butoane tactile (touchpad.js) */
+.tp {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; pointer-events: none;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 max(16px, var(--sar)) max(16px, var(--sab)) max(16px, var(--sal));
+  --tp-size: clamp(64px, 19vh, 100px);
+}
+.tp-side { display: flex; gap: 14px; align-items: flex-end; pointer-events: auto; touch-action: none; }
+.tp-btn {
+  width: var(--tp-size); height: var(--tp-size); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  color: #fff; font: 800 30px/1 var(--font); pointer-events: none;
+  background: rgba(255, 255, 255, 0.18); border: 4px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25); transition: transform 0.05s, background 0.05s;
+}
+.tp-btn.p0 { border-color: var(--orange); }
+.tp-btn.p1 { border-color: var(--pink); }
+.tp-btn.b { background: rgba(255, 210, 63, 0.4); color: #fff8c0; }
+.tp-btn.on { background: rgba(255, 255, 255, 0.5); transform: scale(0.92); }

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dev-dist/
+.env
+*.log
+.DS_Store
+Thumbs.db
+# original, păstrat doar ca referință locală
+Bob - ca si Mario nintendo/
