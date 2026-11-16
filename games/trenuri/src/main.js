@@ -2,6 +2,7 @@
 import '../../../shared/ui/theme.css';
 import './ui/style.css';
 import './ui/menus.css';
+import './ui/expert.css';
 import { startLoop } from '../../../shared/engine/loop.js';
 import { perf } from '../../../shared/engine/perf.js';
 import { needLandscape } from '../../../shared/engine/screen.js';
@@ -37,7 +38,7 @@ function showMenu() {
     hasSave: !!(saved && saved.state && saved.state.version >= 2), medals: loadMedals(save), firstTime: !game.prefs.get('tutorialDone'),
     online, onNet: go(() => lobby.open()),
     onContinue: go(() => game.load(saved)),
-    onNew: (size, year) => { closeMenu(); game.newWorld(size, false, year); },
+    onNew: (size, year, opt) => { closeMenu(); game.newWorld(size, false, year, opt); },
     onScenario: (id) => go(() => game.startScenario(id))(),
     onFree: go(() => game.startFree()),
     onTutorial: go(() => game.startTutorial()),

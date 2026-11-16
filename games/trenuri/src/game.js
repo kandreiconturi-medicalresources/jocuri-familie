@@ -15,12 +15,14 @@ import { showEnd } from './ui/endScreen.js';
 import { createPrefs, openSettings } from './ui/settings.js';
 import { openSaves } from './ui/saves.js';
 import { createNetPlay } from './net/play.js';
+import { createExpertUi } from './ui/exHub.js';
+import { showOver } from './ui/exOver.js';
 
 const TUTORIAL_SEED = 11;
 
 export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'local', onHome, onMenu, onNetEnd = () => {} }) {
   let lastNews = null, s = null, view = null, speed = 1, simAcc = 0, follow = null, orbit = false, saveT = 0, lastCash = 0, clock = 0;
-  let mode = 'normal', shown = new Set(), tipT = 0, lastBest = 0, endShown = true, lastMonth = -1, endUi = null;
+  let mode = 'normal', shown = new Set(), tipT = 0, lastBest = 0, endShown = true, lastMonth = -1, endUi = null, overUi = null, exMonth = -1;
   const prefs = createPrefs(save);
   const camera = createCamera(stage, { w: 64, h: 64 });
   const myCo = () => s.companies[viewer.co] || s.companies[0];
@@ -35,6 +37,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
     upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
   });
+  const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
   const helper = createHelper(uiRoot, { enabled: () => prefs.get('tips') });
   const scn = () => (s && s.scn ? scenarioById(s.scn.id) : null);
@@ -49,6 +52,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (on) panels.layer(s); else panels.close();
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
+    expert: () => ex.show(),
     menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({
@@ -108,9 +112,21 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     }
     if (sn.done && !endShown) {
       endShown = true; setSpeed(0); panels.close(); helper.hide();
-      const i = SCENARIOS.indexOf(sc), nx = SCENARIOS[i + 1];
+      const i = SCENARIOS.indexOf(sc), nx = i >= 0 ? SCENARIOS[i + 1] : null;
       endUi = showEnd(uiRoot, { sc, s, best: sn.best, act: { again: () => game.startScenario(sc.id), menu: onMenu, keep: () => setSpeed(1), next: nx ? () => game.startScenario(nx.id) : null } });
     }
+  }
+
+  /** Expert: panoul deschis se reîmprospătează lunar; la faliment apare ecranul blând (singur: jocul se oprește). */
+  function watchExpert() {
+    if (s.mode !== 'expert') { if (overUi) { overUi.close(); overUi = null; } hud.setExpert(false); return; }
+    const key = s.date.y * 12 + s.date.m;
+    if (key !== exMonth) { exMonth = key; ex.refresh(); }
+    if (s.over && s.over.co === viewer.co && !overUi && !orbit) {
+      if (!np.active) setSpeed(0);
+      panels.close();
+      overUi = showOver(uiRoot, s.companies[viewer.co], { simple: () => { exec({ type: 'continueSimple' }); overUi = null; if (!np.active) setSpeed(1); hud.setExpert(false); }, menu: () => { overUi = null; onMenu(); } });
+    } else if (!s.over && overUi) { overUi.close(); overUi = null; }
   }
 
   function tips(dt) {
@@ -133,6 +149,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (!resync) camera.focus(s.w / 2, s.h / 2, Math.max(s.w, s.h) * (demo ? 0.7 : 0.5));
       orbit = demo; simAcc = 0; lastCash = myCo().cash; shown = new Set(); tipT = -3; resetSounds();
       lastBest = s.scn ? s.scn.best : 0; endShown = !s.scn || s.scn.done; lastMonth = -1;
+      if (overUi) { overUi.close(); overUi = null; }
+      exMonth = -1; hud.setExpert(s.mode === 'expert' && !demo);
       uiRoot.classList.toggle('demo', demo);
       helper.show(!demo); hud.setGoal(null);
       if (!resync) { panels.close(); tools.setTool('track'); }
@@ -143,7 +161,11 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       view.trains.onStep();
       if (s.scn) { const sc = scn(); if (sc) hud.setGoal(goalChip(s, sc)); }
     },
-    newWorld(size, demo, year = 1950) { game.setWorld(createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year }), { demo }); },
+    newWorld(size, demo, year = 1950, opt = null) {
+      const w = createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year, mode: opt && opt.expert ? 'expert' : 'simple', ai: opt && opt.ai ? opt.ai : [] });
+      game.setWorld(w, { demo });
+      if (opt && opt.expert) helper.say('Mod expert! Deschide 💼 sus: împrumuturi, bursă, raport anual. Atinge ⓘ ca să afli ce înseamnă.', { force: true });
+    },
     startScenario(id) {
       const sc = scenarioById(id);
       if (!sc) return;
@@ -181,7 +203,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
         while (simAcc >= 1 && n++ < 8) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
         if (simAcc > 1) simAcc = 0;
       }
-      if (!orbit) { trainSounds(s, clock); watchScenario(); tutorial.update(dt); tips(dt); }
+      if (!orbit) { trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
     },
     render(dt) {
       if (!s) return;

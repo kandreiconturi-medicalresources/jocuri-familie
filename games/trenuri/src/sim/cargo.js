@@ -3,6 +3,7 @@ import { STATION_RADIUS, LOW_PAY, STOCK_CAP } from './consts.js';
 import { GOODS, CAR_TYPES, CAR_OF, INDUSTRIES, wantOf } from './goods.js';
 import { near } from './industry.js';
 import { addNews } from './news.js';
+import { recordIncome } from './expert/report.js';
 
 /** Distanță în linie dreaptă în plăci (aproximare întreagă a diagonalei). */
 export function tileDist(a, b) {
@@ -65,7 +66,9 @@ export function unload(s, t, st) {
     const ok = deliver(s, st, b.c, b.n);
     if (ok) s.stats.del[b.c] += b.n;
     const pay = ((b.n * dist * GOODS[b.c].rate * bonus) / 100) | 0;
-    earned += ok ? pay : ((pay * LOW_PAY) / 100) | 0;
+    const v = ok ? pay : ((pay * LOW_PAY) / 100) | 0;
+    earned += v;
+    if (co.rep) recordIncome(co, t, b.c, v);
     if (!ok) dumped = b.c;
   }
   t.load = keep;

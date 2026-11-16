@@ -4,12 +4,14 @@ import { pathCost } from './plan.js';
 import { addNews } from './news.js';
 import { mark } from './blocks.js';
 import { CAR_TYPES, NG } from './goods.js';
+import { EXPERT_COMMANDS, initCompany } from './expert/index.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.',
+  expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -115,7 +117,7 @@ function buyTrain(s, cmd, c) {
   if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route[0] !== st.id || route.some((id) => !s.stations.some((q) => q.id === id && q.owner === c.id))) return fail('gara');
   const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999 };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999, born: s.date.y * 12 + s.date.m };
   s.trains.push(tr);
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
@@ -174,6 +176,7 @@ function joinCompany(s, cmd) {
   if (!n || n.mode !== 'comp' || s.companies.length >= 8 || n.pl[cmd.pl] !== undefined) return fail('drum');
   const id = s.companies.length;
   s.companies.push({ id, name: String(cmd.name || 'Jucător').slice(0, 20), color: String(cmd.color || '#8fd3ff').slice(0, 9), cash: START_CASH, loan: 0, history: [], month: 0, record: 0 });
+  if (s.mode === 'expert') initCompany(s.companies[id]);
   n.pl[cmd.pl] = id;
   addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
   return { ok: true, cost: 0 };
@@ -184,7 +187,7 @@ const TABLE = { joinCompany, buildTrack, removeTrack, buildStation, removeStatio
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');
   if (cmd.type === 'setSpeed') return { ok: true }; // viteza o ține gazda, în afara simulării
-  const fn = TABLE[cmd.type], c = s.companies[cmd.by | 0];
+  const fn = TABLE[cmd.type] || EXPERT_COMMANDS[cmd.type], c = s.companies[cmd.by | 0];
   if (!fn || !c) return fail('drum');
   return fn(s, cmd, c);
 }

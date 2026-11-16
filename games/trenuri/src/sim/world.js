@@ -6,11 +6,13 @@ import { deriveLayers } from './roads.js';
 import { growBuildings, levelOf } from './growth.js';
 import { placeIndustries } from './indgen.js';
 import { NG } from './goods.js';
+import { initExpert } from './expert/init.js';
+import { hashExpert } from './expert/hash.js';
 
 /** Statistici pentru obiectivele scenariilor: marfă predată (cerută), venit total, niveluri câștigate de orașe. */
 export const newStats = () => ({ del: new Array(NG).fill(0), earn: 0, up: 0 });
 
-export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
+export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, ai = [], players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
   const n = typeof seed === 'string' ? hashSeed(seed) : seed >>> 0;
   const w = SIZES[size] || SIZES.S, h = w;
   const m = generateMap(n, size, w, h);
@@ -21,6 +23,7 @@ export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = f
     companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
     date: { y: year, m: 1, d: 1 }, news: [], stats: newStats(), nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
+  if (mode === 'expert') { initExpert(s, ai); s.over = null; }
   deriveLayers(s);
   for (const c of s.cities) { c.got = new Array(NG).fill(0); c.prev = new Array(NG).fill(0); c.level = levelOf(c.pop); growBuildings(s, c, 99); }
   s.news.push({ tick: 0, icon: '🚂', text: 'Bun venit! Leagă două orașe cu o cale ferată.' });
@@ -56,6 +59,7 @@ export function hashState(s) {
   }
   for (const c of s.companies) h = num(num(num(h, c.cash), c.loan), c.history.length);
   h = num(num(num(h, s.date.y), s.date.m), s.date.d);
+  if (s.mode === 'expert') h = hashExpert(s, h);
   return h >>> 0;
 }
 

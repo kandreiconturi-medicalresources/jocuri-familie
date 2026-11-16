@@ -14,3 +14,6 @@ export function recordMedal(save, id, tier) {
 
 /** Scenariul i e deblocat dacă e primul sau cel dinainte are cel puțin bronz. */
 export const isUnlocked = (medals, i) => i === 0 || (medals[SCENARIOS[i - 1].id] | 0) >= 1;
+
+/** Varianta expert se deblochează cu cel puțin bronz la scenariul de bază. */
+export const isXUnlocked = (medals, sc) => (medals[sc.base] | 0) >= 1;

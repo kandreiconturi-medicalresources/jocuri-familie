@@ -8,7 +8,7 @@ Plan complet aprobat: faze făcute pe rând, testate pe telefon după fiecare.
 - [x] **Faza 3 – Bum-Bum Arena:** arenă cu bombe 2–4 jucători, local + rețea, boți.
 - [x] **Faza 4 – Turbo Curse:** curse 3D low-poly (Three.js), nitro, drift, 8 piste, boți, ecran împărțit, rețea (de verificat pe dispozitive reale și cu serverul).
 - [x] **Faza 4b – Bum-Bum mai bogat:** șut, multe bombe, aruncare, telecomandă, linie de bombe, bonus negativ, rețea verificată cu serverul.
-- [ ] **Faza 6 – Joc de strategie cu trenuri și orașe** (gen tycoon feroviar, original; înainte de Orășelul): construiești căi ferate, gări și trenuri, transporți pasageri și mărfuri, orașele cresc, economie cu concurenți, multiplayer pe PC/telefon/tabletă. Contract: `games/trenuri/README.md`. Etape: [x] 6.1 fundația jucabilă · [x] 6.2 economie și creștere · [x] 6.3 scenarii și ajutor · [x] 6.4 multiplayer + salvări pe NAS · [ ] 6.5 mod expert.
+- [x] **Faza 6 – Joc de strategie cu trenuri și orașe** (gen tycoon feroviar, original; înainte de Orășelul): construiești căi ferate, gări și trenuri, transporți pasageri și mărfuri, orașele cresc, economie cu concurenți, multiplayer pe PC/telefon/tabletă. Contract: `games/trenuri/README.md`. Etape: [x] 6.1 fundația jucabilă · [x] 6.2 economie și creștere · [x] 6.3 scenarii și ajutor · [x] 6.4 multiplayer + salvări pe NAS · [x] 6.5 mod expert.
 - [ ] **Faza 5 – Orășelul:** joc de tablă cu proprietăți, 2–6 jucători, pe o tabletă sau în rețea, boți.
 
 ## Cerințe Faza 2 (de la utilizator)

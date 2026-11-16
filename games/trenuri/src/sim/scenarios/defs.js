@@ -50,4 +50,12 @@ export const SCENARIOS = [
     goals: [{ k: 'lvl', a: 2, t: [1, 2, 4], text: 'Fă orașe să devină metropole' }],
   },
 ];
-export const scenarioById = (id) => SCENARIOS.find((q) => q.id === id) || null;
+
+/** Variante expert (etapa 6.5): aceeași hartă, mod expert cu 2 AI-uri, un an în plus; medalia contează și avere netă (bani personali + acțiuni). */
+const NW = { k: 'nw', a: 0, text: 'Avere netă (bani personali + acțiuni)' };
+const variant = (id, goals) => { const b = SCENARIOS.find((q) => q.id === id); return { ...b, id: id + '-x', base: id, name: b.name + ' (expert)', expert: true, ai: [1, 1], years: b.years + 1, tip: 'Expert: ia un împrumut cu cap, cumpără acțiuni la compania ta și vezi ce fac concurenții.', goals: [...b.goals, ...goals] }; };
+export const EXPERT_SCENARIOS = [
+  variant('carbune', [{ ...NW, t: [80000, 120000, 200000] }]),
+  variant('retea', [{ ...NW, t: [100000, 180000, 350000] }]),
+];
+export const scenarioById = (id) => SCENARIOS.find((q) => q.id === id) || EXPERT_SCENARIOS.find((q) => q.id === id) || null;

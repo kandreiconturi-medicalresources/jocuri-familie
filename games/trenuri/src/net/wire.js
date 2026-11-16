@@ -1,8 +1,9 @@
 // Forma comenzilor pe fir: traseul unei șine devine „x,y + șir de direcții” (o cifră pe pas), ca mesajele să rămână mici.
 import { DX, DY } from '../sim/consts.js';
+import { EXPERT_ALLOWED } from '../sim/expert/index.js';
 
 /** Ce poate trimite un jucător. setSpeed e doar al gazdei; joinCompany e generat doar de gazdă. */
-export const ALLOWED = new Set(['buildTrack', 'removeTrack', 'buildStation', 'removeStation', 'buyTrain', 'setRoute', 'sellTrain', 'buildUpgrade', 'setOrders']);
+export const ALLOWED = new Set(['buildTrack', 'removeTrack', 'buildStation', 'removeStation', 'buyTrain', 'setRoute', 'sellTrain', 'buildUpgrade', 'setOrders', ...EXPERT_ALLOWED]);
 
 export function wire(cmd) {
   if (cmd.type !== 'buildTrack' || !Array.isArray(cmd.path) || !cmd.path.length) return cmd;

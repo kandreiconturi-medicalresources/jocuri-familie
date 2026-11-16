@@ -3,7 +3,7 @@
 import { h } from '../../../../shared/ui/dom.js';
 import { connectRooms } from '../../../../shared/net/rooms.js';
 import { createKeypad } from '../../../../shared/ui/keypad.js';
-import { SCENARIOS } from '../sim/index.js';
+import { SCENARIOS, AI_LEVELS } from '../sim/index.js';
 
 const ERRORS = { not_found: 'Nu există nicio cameră cu codul ăsta.', full: 'Camera e plină (maxim 4 jucători).', bad: 'Codul nu e bun.', busy: 'Serverul e ocupat acum. Încearcă iar.' };
 const BLOCKED = { time: 'limit', disabled: 'disabled' };
@@ -24,7 +24,7 @@ export function distinctColors(players) {
 /** hooks = { begin(cfg, { rooms, you, hostId, late, players }), setRoom(players), msgInGame(): bool, ended(), blocked(reason) }. */
 export function createLobby(root, hooks) {
   let rooms = null, room = null, view = 'menu', el = null, inGame = false;
-  const opt = { mode: 'coop', size: 'S', year: 1950, scn: -1 };
+  const opt = { mode: 'coop', size: 'S', year: 1950, scn: -1, expert: false, nAi: 2, lvl: 1 };
   const err = h('p', { class: 'err' });
   const keypad = createKeypad({ onChange: () => { err.textContent = ''; }, onSubmit: (c) => rooms.join(c) });
   addEventListener('keydown', (e) => { if (view === 'join' && el) keypad.onKey(e); });
@@ -68,6 +68,7 @@ export function createLobby(root, hooks) {
 
   function startAsHost() {
     const cfg = { mode: opt.mode, seed: (Math.random() * 4294967295) >>> 0, size: opt.size, year: opt.year, scn: opt.mode === 'coop' && opt.scn >= 0 ? SCENARIOS[opt.scn].id : null, players: distinctColors(list()) };
+    if (opt.expert && !cfg.scn) { cfg.expert = true; cfg.ai = new Array(opt.nAi).fill(opt.lvl); } // etapa 6.5: mod expert cu 0–3 concurenți AI
     rooms.send({ k: 'start', cfg });
     begin(cfg, false);
   }
@@ -93,7 +94,10 @@ export function createLobby(root, hooks) {
       choice('Cum jucăm', [['coop', '🤝 Împreună'], ['comp', '🏆 Întrecere']], opt.mode, (v) => { opt.mode = v; if (v === 'comp') opt.scn = -1; }),
       opt.mode === 'coop' ? choice('Harta', [[-1, '🌍 Nouă'], [0, '🎯 Scenariu']], opt.scn >= 0 ? 0 : -1, (v) => { opt.scn = v < 0 ? -1 : Math.max(0, opt.scn); }) : null,
       sc ? h('div', { class: 'rowb' }, btn('◀', () => step(-1)), h('span', { class: 'val' }, `${sc.icon} ${sc.name}`), btn('▶', () => step(1))) : [
-        choice('Mărime', SIZES, opt.size, (v) => { opt.size = v; }), choice('Anul', YEARS, opt.year, (v) => { opt.year = v; })])
+        choice('Mărime', SIZES, opt.size, (v) => { opt.size = v; }), choice('Anul', YEARS, opt.year, (v) => { opt.year = v; })],
+      sc ? null : choice('Mod', [[false, 'Simplu'], [true, '🎓 Expert']], opt.expert, (v) => { opt.expert = v; }),
+      !sc && opt.expert ? choice('Concurenți AI', [0, 1, 2, 3].map((n) => [n, String(n)]), opt.nAi, (v) => { opt.nAi = v; }) : null,
+      !sc && opt.expert && opt.nAi ? choice('Cât de iscusiți', AI_LEVELS.map((l, i) => [i, l.name]), opt.lvl, (v) => { opt.lvl = v; }) : null)
       : h('p', null, 'Așteptăm gazda să aleagă și să pornească jocul…');
     const can = pl.length >= 1;
     return h('div', { class: 'lob' }, h('p', null, 'Codul camerei'),

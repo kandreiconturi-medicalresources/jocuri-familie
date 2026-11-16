@@ -1,5 +1,6 @@
 // Măsurători pentru obiectivele scenariilor și medalii (0 = fără, 1 = bronz, 2 = argint, 3 = aur). Numai numere întregi.
 import { T_BRIDGE, T_PRESENT, STATION_RADIUS } from '../consts.js';
+import { netWorth } from '../expert/stocks.js';
 
 export const MEDAL_NAMES = ['Fără medalie', 'Bronz', 'Argint', 'Aur'];
 export const MEDAL_ICONS = ['', '🥉', '🥈', '🥇'];
@@ -18,6 +19,7 @@ export const METRICS = {
   bridge: (s) => { let n = 0; for (let i = 0; i < s.track.length; i++) if ((s.track[i] & T_PRESENT) && (s.track[i] & T_BRIDGE)) n++; return n; },
   served,
   cash: (s) => s.companies[0].cash,
+  nw: (s) => netWorth(s, 0),
 };
 
 export const tierOf = (v, t) => (v >= t[2] ? 3 : v >= t[1] ? 2 : v >= t[0] ? 1 : 0);

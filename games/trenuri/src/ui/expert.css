@@ -1,0 +1,20 @@
+/* Etapa 6.5: modul expert (finanțe, bursă, raport, clasament) */
+.card.ex { width: min(440px, 94vw); }
+.card.ex .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+.card.ex .tabs .opt { min-height: 44px; padding: 2px 8px; font-size: 13px; margin-top: 0; }
+.card.ex .row.big { font-size: 20px; }
+.card.ex .row.sub { font-size: 13px; opacity: .85; }
+.card.ex .row.mine { background: #fff3c4; border-radius: 8px; }
+.card.ex .bad { color: #c62838; }
+.card.ex .warnbox { margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: #ffe0e4; font-weight: 700; }
+.card.ex .stock { margin-top: 8px; padding: 6px 8px; border-radius: 12px; background: #f6f0ff; }
+.card.ex .stock.me { background: #fff3c4; }
+.card.ex .stock .btns .opt { flex: 1; min-width: 96px; }
+.card.ex .opt[disabled] { opacity: .45; }
+.card.ex .chart { display: block; margin: 4px 0 8px; border-radius: 10px; }
+.card.ex .chips { gap: 4px; }
+.card.ex .chips .opt { min-height: 36px; font-size: 12px; margin-top: 0; }
+.tip { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid #5a2ba0; background: #e8f6ff; color: #3a1a6a; font: 800 14px/1 var(--font); cursor: help; vertical-align: middle; touch-action: manipulation; }
+.exnote { position: sticky; bottom: -12px; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: #e8f6ff; font-size: 13px; font-weight: 600; }
+.menu .mp .opt.sm { min-height: 44px; padding: 4px 12px; font-size: 15px; }
+.menu .mp .exopt { width: 100%; }
