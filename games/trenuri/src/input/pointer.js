@@ -2,6 +2,7 @@
 // În timpul trasării: eșantioanele (inclusiv `getCoalescedEvents`) se adună și se procesează o singură dată pe cadru (rAF);
 // lângă marginea ecranului camera se mișcă singură; două degete sau rotița mută camera fără să strice traseul.
 import { startDecision, HOLD_MS } from './touchGate.js';
+const CTX_MS = 450; // apăsare lungă pentru meniul de la placă
 const EDGE = 44, EDGE_SPEED = 950; // zona de margine (px) și viteza maximă a camerei (px/s)
 
 export function bindPointer(canvas, camera, pickTile, h) {
@@ -51,6 +52,14 @@ export function bindPointer(canvas, camera, pickTile, h) {
     const t = pickAt(p.x, p.y, false);
     if (t) { if (navigator.vibrate) navigator.vibrate(30); beginDrag(p.x, p.y, t, null); }
   }
+  function ctxFire() { // apăsare lungă fără mișcare, fără unealtă de desen: meniul de la placă (7.6)
+    const hd = hold; hold = null;
+    if (h.holdRing) h.holdRing(null);
+    const p = hd && ptr.get(hd.id);
+    if (!p || p.moved || ptr.size !== 1 || drag) return;
+    const t = pickAt(p.x, p.y, false);
+    if (t) { if (navigator.vibrate) navigator.vibrate(30); p.moved = true; h.context(t, p.x, p.y); }
+  }
   function glide(now) { // inerția mutării cu un deget
     inertia = 0;
     vel.x *= 0.93; vel.y *= 0.93;
@@ -73,6 +82,9 @@ export function bindPointer(canvas, camera, pickTile, h) {
       const dec = startDecision({ touch, fingers: ptr.size, mode: h.touchMode ? h.touchMode() : 'draw', anchor: touch && h.isAnchor ? h.isAnchor(t) : false });
       if (dec === 'draw') beginDrag(e.clientX, e.clientY, t, e);
       else if (dec === 'wait') { clearHold(); hold = { id: e.pointerId, timer: setTimeout(holdFire, HOLD_MS) }; if (h.holdRing) h.holdRing(t); }
+    } else if (e.pointerType === 'touch' && h.context) {
+      const t = tileOf(e);
+      if (t) { clearHold(); hold = { id: e.pointerId, timer: setTimeout(ctxFire, CTX_MS) }; if (h.holdRing) h.holdRing(t); }
     }
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -110,7 +122,11 @@ export function bindPointer(canvas, camera, pickTile, h) {
     if (hold && hold.id === e.pointerId) clearHold();
     if (ptr.size === 0) { const wasPinch = pinched; pinched = false; if (!drag && !wasPinch && p.moved && e.pointerType === 'touch' && !rotMouse && Math.hypot(vel.x, vel.y) > 2 && e.type === 'pointerup') inertia = requestAnimationFrame(glide); }
     if (drag) { mods = { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey }; drain(); drag = null; lastPx = null; h.dragEnd(tileOf(e, true) || lastT, p.moved); return; }
-    if (rotMouse && ptr.size === 0) { rotMouse = false; return; }
+    if (rotMouse && ptr.size === 0) {
+      rotMouse = false;
+      if (!p.moved && p.btn === 2 && h.context && e.type === 'pointerup') { const t = tileOf(e); if (t) h.context(t, e.clientX, e.clientY); } // clic dreapta fără tragere = meniul
+      return;
+    }
     if (!p.moved && e.type === 'pointerup' && p.btn === 0) {
       const t = tileOf(e), now = performance.now();
       if (t && e.pointerType === 'touch' && lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) { camera.gesture(h.groundAt, e.clientX, e.clientY, e.clientX, e.clientY, 0.6, 0); lastTap = null; return; } // dublu-tap: zoom in pe punct

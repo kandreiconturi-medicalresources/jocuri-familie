@@ -21,6 +21,7 @@ import { createExtras } from './ui/extras.js';
 import { mountExtraTools } from './ui/tools-extra.js';
 import { mountMobileControls } from './ui/mobileControls.js';
 import { createIslandUi } from './ui/islandUi.js';
+import { createContextRun } from './input/contextRun.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -88,6 +89,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const isl = createIslandUi({ card: panels.card, state: () => s, me: () => viewer.co, exec, hud, tools, show: (x, y) => extras.show(x, y) });
   Object.assign(panels, { port: isl.port, ship: isl.ship, shipNear: isl.shipNear }); // Info pe port / vapor
   mountMobileControls(uiRoot, camera);
+  const ctxRun = createContextRun({ root: uiRoot, state: () => s, view: () => view, tools, panels, exec, extras, isl, hud });
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -112,7 +114,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   addEventListener('keydown', (e) => { if (e.target.tagName !== 'INPUT' && s && !orbit && tools.key(e)) e.preventDefault(); });
   bindPointer(canvas, camera, pickTile, {
     groundAt: (x, z) => (view ? view.ground.at(x, z) : 0),
-    wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit) tools.tap(t); }, hover: (t) => { if (!orbit) tools.hover(t); },
+    wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit && !ctxRun.swallow()) tools.tap(t); }, context: (t, x, y) => { if (!orbit) ctxRun.open(t, x, y); }, hover: (t) => { if (!orbit) tools.hover(t); },
     dragStart: (t) => tools.dragStart(t), dragMove: (t, m) => tools.dragMove(t, m), dragFlush: () => tools.dragFlush(), dragAbort: () => tools.dragAbort(), touchMode: () => tools.touchMode(), isAnchor: (t) => tools.isAnchor(t), holdRing: (t) => tools.holdRing(t), rightClick: () => !orbit && tools.rightClick(), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
   });
   // tap în afara panoului (pe hartă) închide cardul deschis

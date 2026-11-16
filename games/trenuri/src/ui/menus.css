@@ -109,3 +109,14 @@
 /* 7.5: pastilele echipelor din lobby */
 .lobby .pl .team { margin-left: auto; padding: 4px 10px; border-radius: 14px; font-size: 13px; min-height: 32px; }
 .lobby .team.t0 { background: #ffd8a8; } .lobby .team.t1 { background: #a5d8ff; } .lobby .team.t2 { background: #e5dbff; } .lobby .team.t3 { background: #d3f9d8; }
+
+/* meniul de la clic dreapta / apăsare lungă (7.6) */
+.cm { position: fixed; z-index: 60; width: min(300px, calc(100vw - 12px)); padding: 8px; border-radius: 18px; background: #fffaf0; border: 4px solid #5a2ba0; box-shadow: 0 6px 0 rgba(0,0,0,.25); pointer-events: auto; }
+.cm-h { font: 800 13px var(--font); color: #3a1a6a; margin: 0 4px 6px; opacity: .8; }
+.cm-g { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cm-b { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 4px 6px; border-radius: 14px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; font: 800 14px/1.1 var(--font); cursor: pointer; touch-action: manipulation; }
+.cm-b:active { background: #ffd23f; }
+.cm-b.no { background: #ffe0e4; }
+.cm-b.arm { background: #ff7a8a; }
+.cm-i { font-size: 22px; line-height: 1.1; }
+.cm-b small { font-weight: 600; font-size: 10px; opacity: .8; }

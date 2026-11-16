@@ -46,6 +46,23 @@ export function createTools(ctx) {
   function turn() { o.tdir = TURNS[(TURNS.indexOf(o.tdir) + 1) % TURNS.length]; hud().hint(o.tdir < 0 ? 'Curtea se așază singură.' : 'Curtea s-a rotit.', false, 2000); if (lastHover) api.hover(lastHover); }
   function reset() { from = null; track.reset(); par.reset(); extra.reset(); paint(); subBar(); }
 
+  /** Info despre ce e la placă: tren, vapor, depou, gară/port, industrie, oraș (și din meniul de clic dreapta). */
+  function info(t) {
+    const s = S();
+    const tr = ctx.view().trains.pickAt(t.fx, t.fz);
+    if (tr) { ctx.panels.train(s, tr); return; }
+    const sh = s.ships && ctx.panels.shipNear ? ctx.panels.shipNear(s, t.fx, t.fz) : null; // insule: vapor sau port
+    if (sh) { ctx.panels.ship(sh); return; }
+    const dp = s.depots.find((d) => d.x === t.x && d.y === t.y);
+    if (dp) { ctx.panels.depot(s, dp); return; }
+    const st = stationAt(t.x, t.y);
+    if (st) { if (st.port && ctx.panels.port) ctx.panels.port(st); else ctx.panels.station(s, st); return; }
+    const ind = ctx.panels.industryNear(s, t.x, t.y);
+    if (ind) { ctx.panels.industry(s, ind); return; }
+    const c = ctx.panels.cityNear(s, t.x, t.y);
+    if (c) ctx.panels.city(s, c); else ctx.panels.close();
+  }
+
   function tap(t) {
     const s = S();
     if (o.tool === 'track') track.tap(t);
@@ -78,20 +95,7 @@ export function createTools(ctx) {
       const st = stationAt(t.x, t.y);
       const r = st ? ctx.exec({ type: 'removeStation', id: st.id }) : ctx.exec({ type: 'removeTrack', x: t.x, y: t.y });
       if (r.ok) hud().hint('Gata, am șters.', false, 2000);
-    } else if (o.tool === 'info') {
-      const tr = ctx.view().trains.pickAt(t.fx, t.fz);
-      if (tr) { ctx.panels.train(s, tr); return; }
-      const sh = s.ships && ctx.panels.shipNear ? ctx.panels.shipNear(s, t.fx, t.fz) : null; // insule: vapor sau port
-      if (sh) { ctx.panels.ship(sh); return; }
-      const dp = s.depots.find((d) => d.x === t.x && d.y === t.y);
-      if (dp) { ctx.panels.depot(s, dp); return; }
-      const st = stationAt(t.x, t.y);
-      if (st) { if (st.port && ctx.panels.port) ctx.panels.port(st); else ctx.panels.station(s, st); return; }
-      const ind = ctx.panels.industryNear(s, t.x, t.y);
-      if (ind) { ctx.panels.industry(s, ind); return; }
-      const c = ctx.panels.cityNear(s, t.x, t.y);
-      if (c) ctx.panels.city(s, c); else ctx.panels.close();
-    }
+    } else if (o.tool === 'info') info(t);
   }
 
   const api = {
@@ -104,6 +108,9 @@ export function createTools(ctx) {
     /** Alegeri din catalog: { tool, size?, model?, up? }. */
     choose(c) { Object.assign(o, c); api.setTool(c.tool); },
     wantsDrag: () => o.tool === 'track' && track.wantsDrag(),
+    infoAt: info,
+    /** Din meniul de clic dreapta: unealta Șină, cu începutul traseului pus pe placa t. */
+    startTrack(t) { api.setTool('track'); track.startAt(t); },
     tap,
     dragStart(t) { if (o.tool === 'track') track.dragStart(t); },
     dragMove(t, m) { if (o.tool === 'track') track.dragMove(t, m); },
