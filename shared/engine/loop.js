@@ -11,9 +11,10 @@ export function stepAccumulator(acc, frameDt, step, maxSteps = 5) {
   return { acc, steps, alpha: acc / step };
 }
 
-export function startLoop({ update, render, hz = 60 }) {
+/** `render(alpha, now)` poate întoarce `false` (cadru sărit de plafon) sau `'idle'` (nimic de desenat); altfel cadrul contează pentru calitatea adaptivă. */
+export function startLoop({ update, render, hz = 60, maxSteps = 5 }) {
   const step = 1 / hz;
-  let acc = 0, last = 0, raf = 0;
+  let acc = 0, last = 0, raf = 0, lastDraw = 0;
   let manual = false, auto = false, stopped = false;
 
   const running = () => !manual && !auto && !stopped;
@@ -23,14 +24,15 @@ export function startLoop({ update, render, hz = 60 }) {
     raf = requestAnimationFrame(frame);
     const ms = last ? now - last : 1000 * step;
     last = now;
-    perf.tick(ms);
-    const r = stepAccumulator(acc, Math.min(ms / 1000, 0.25), step, 5);
+    const r = stepAccumulator(acc, Math.min(ms / 1000, 0.25), step, maxSteps);
     acc = r.acc;
     for (let i = 0; i < r.steps; i++) update(step);
-    if (render) render(r.alpha);
+    const res = render ? render(r.alpha, now) : true;
+    if (res === 'idle') lastDraw = 0;
+    else if (res !== false) { perf.tick(lastDraw ? now - lastDraw : 0); lastDraw = now; }
   };
   const go = () => {
-    if (!raf && running()) { last = 0; raf = requestAnimationFrame(frame); }
+    if (!raf && running()) { last = 0; lastDraw = 0; raf = requestAnimationFrame(frame); }
   };
   const halt = () => {
     if (raf) cancelAnimationFrame(raf);

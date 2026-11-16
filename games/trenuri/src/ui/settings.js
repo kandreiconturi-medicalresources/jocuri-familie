@@ -3,7 +3,7 @@ import { h } from '../../../../shared/ui/dom.js';
 import { isMuted, setMuted } from '../../../../shared/engine/audio.js';
 import { setAmbient } from '../audio.js';
 
-const DEFAULTS = { tips: true, ambient: false, tutorialDone: false };
+const DEFAULTS = { tips: true, ambient: false, tutorialDone: false, view: '3d', cool: null }; // cool: null = pornit pe telefon/tabletă
 
 export function createPrefs(save) {
   const p = { ...DEFAULTS, ...(save.get('prefs', {}) || {}) };
@@ -22,6 +22,7 @@ export function openSettings(card, prefs, act) {
   card.open(h('h3', null, '☰ Meniu'),
     toggle('💡 Sfaturile Ajutorului', () => prefs.get('tips'), (v) => prefs.set('tips', v)),
     toggle('🔊 Sunete', () => !isMuted(), (v) => setMuted(!v)),
+    act.cool ? toggle('🔋 Mod răcoros', () => act.cool.get(), (v) => act.cool.set(v)) : null,
     toggle('🎵 Muzică liniștită', () => prefs.get('ambient'), (v) => { prefs.set('ambient', v); setAmbient(v); }),
     h('div', { class: 'btns' },
       h('button', { class: 'opt', onclick: () => { card.close(); act.tutorial(); } }, '🎓 Repetă tutorialul'),
