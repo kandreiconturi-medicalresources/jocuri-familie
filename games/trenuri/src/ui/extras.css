@@ -1,5 +1,8 @@
 /* Marcaje pe hartă, „De făcut”, catalog, lista de trenuri, explicații */
-.mk-layer { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+/* #ui > .mk-layer: trebuie să bată regula `#ui > * { pointer-events: auto }`, altfel stratul de marcaje acoperă tot ecranul și blochează clicurile */
+/* orice strat de suprapunere peste hartă (*-layer: marcaje, etichete de tren…) lasă clicurile să treacă; copiii lui își pun singuri pointer-events: auto */
+#ui > [class*="-layer"] { pointer-events: none; }
+#ui > .mk-layer, .mk-layer { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
 .mk { position: absolute; left: 0; top: 0; width: 46px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto; touch-action: manipulation; will-change: transform; }
 .mk-i { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 3px; border-radius: 50%; background: #fff; border: 3px solid #5a2ba0; font-size: 22px; line-height: 1; box-shadow: 0 3px 0 rgba(0,0,0,.28); animation: mk-bob 1.1s ease-in-out infinite alternate; position: relative; }
 .mk-i::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid currentColor; opacity: 0; animation: mk-ring 1.8s ease-out infinite; }
