@@ -1,6 +1,7 @@
 // Uneltele jucătorului: șină (tragere + confirmare), gară, tren, demolare, info. Totul trece prin ctx.exec(comandă).
 import { planTrack, STATION_RADIUS, CAR_SETS, availableModels } from '../sim/index.js';
 import { lei } from '../ui/hud.js';
+import { viewer } from '../sim/viewer.js';
 
 const GREEN = '#5bd66f', RED = '#ff5a6a', GOLD = '#ffd23f', BLUE = '#8fd3ff';
 
@@ -45,7 +46,7 @@ export function createTools(ctx) {
     reset();
   }
   function setPlan(a, b) {
-    const p = a && b && (a.x !== b.x || a.y !== b.y) ? planTrack(S(), [a.x, a.y], [b.x, b.y], 0) : null;
+    const p = a && b && (a.x !== b.x || a.y !== b.y) ? planTrack(S(), [a.x, a.y], [b.x, b.y], viewer.co) : null;
     plan = p;
     if (!p && a && b && (a.x !== b.x || a.y !== b.y)) hud().hint('Acolo nu se poate trage șină. Încearcă altfel.', true);
     paint(); subBar();
@@ -64,11 +65,10 @@ export function createTools(ctx) {
       if (!st) { hud().hint('Atinge o gară (🚉).', true); return; }
       if (!from) { from = st.id; paint(); hud().hint('Bine! Acum atinge gara unde ajunge trenul.', false, 5000); return; }
       if (from === st.id) { hud().hint('Alege altă gară pentru destinație.', true); return; }
-      const b = ctx.exec({ type: 'buyTrain', model: o.model, kinds: CAR_SETS[o.cars], stationId: from });
+      const b = ctx.exec({ type: 'buyTrain', model: o.model, kinds: CAR_SETS[o.cars], stationId: from, route: [from, st.id] });
       if (b.ok) {
-        ctx.exec({ type: 'setRoute', trainId: b.id, route: [from, st.id] });
-        hud().hint(`Trenul tău pleacă! A costat ${lei(b.cost)}.`, false, 4000);
-        ctx.follow(b.id);
+        hud().hint(b.cost ? `Trenul tău pleacă! A costat ${lei(b.cost)}.` : 'Trenul tău pleacă!', false, 4000);
+        if (b.id) ctx.follow(b.id);
       }
       reset();
     } else if (o.tool === 'demolish') {

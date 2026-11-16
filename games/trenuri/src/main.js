@@ -15,13 +15,17 @@ import { createStage } from './render/stage.js';
 import { createGame } from './game.js';
 import { createMenu } from './ui/menu.js';
 import { loadMedals } from './sim/index.js';
+import { isOnline } from '../../../shared/net/api.js';
+import * as api from '../../../shared/net/api.js';
+import { createSaves } from './net/saves.js';
+import { createLobby } from './ui/lobby.js';
 
 const $ = (id) => document.getElementById(id);
 const save = gameSave('trenuri');
 needLandscape($('rot'));
 
 const MODEL_LIST = [...TRAIN_MODELS, ...HOUSES, ...TREES, ROCK, ...EXTRA_MODELS];
-let game, loop, menu = null;
+let game, loop, menu = null, lobby = null, online = false;
 
 function showMenu() {
   if (menu) menu.close();
@@ -31,6 +35,7 @@ function showMenu() {
   const go = (fn) => () => { closeMenu(); fn(); };
   menu = createMenu($('ui'), {
     hasSave: !!(saved && saved.state && saved.state.version >= 2), medals: loadMedals(save), firstTime: !game.prefs.get('tutorialDone'),
+    online, onNet: go(() => lobby.open()),
     onContinue: go(() => game.load(saved)),
     onNew: (size, year) => { closeMenu(); game.newWorld(size, false, year); },
     onScenario: (id) => go(() => game.startScenario(id))(),
@@ -53,7 +58,15 @@ async function boot() {
   const stage = createStage($('c'));
   await loadModels(MODEL_LIST, (p) => { bar.style.width = Math.round(p * 100) + '%'; pct.textContent = Math.round(p * 100) + '%'; });
   if (missing.length) $('bootnote').textContent = `Unele modele lipsesc (${missing.length}); folosesc forme simple.`;
-  game = createGame({ stage, canvas: $('c'), uiRoot: $('ui'), save, onHome: () => { location.href = '../../'; }, onMenu: showMenu });
+  online = await isOnline();
+  const saves = createSaves({ store: save, api: online ? api : null });
+  game = createGame({ stage, canvas: $('c'), uiRoot: $('ui'), save, saves, savesWhere: online ? 'NAS' : 'local', onHome: () => { location.href = '../../'; }, onMenu: showMenu, onNetEnd: () => lobby.leave() });
+  lobby = createLobby($('ui'), {
+    begin: (cfg, o) => { closeMenu(); game.startNet({ cfg, ...o }); },
+    setRoom: (players) => game.setRoom(players),
+    ended: () => showMenu(),
+    blocked: (reason) => { game.save(); showTimeOverlay(reason); },
+  });
   if (game.prefs.get('tutorialDone')) showMenu(); else game.startTutorial(); // primul joc: tutorialul pornește singur
   const tick = fpsMeter();
   loop = startLoop({ update: (dt) => game.update(dt), render: () => { game.render(1 / 60); tick(); } });

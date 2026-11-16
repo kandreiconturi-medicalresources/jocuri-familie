@@ -5,6 +5,7 @@ import { GOODS, CAR_TYPES, CAR_OF, NG } from '../sim/goods.js';
 import { tileDist, capacity, carried } from '../sim/cargo.js';
 import { goodsLinks } from '../sim/links.js';
 import { createCard } from './card.js';
+import { viewer } from '../sim/viewer.js';
 import { createEcoPanels } from './ecoPanels.js';
 import { lei } from './hud.js';
 
@@ -51,7 +52,7 @@ export function createPanels(root, ev) {
         h('div', { class: 'btns' }, h('button', { class: 'opt no', onclick: () => { ev.sell(t.id); close(); } }, 'Vinde trenul')));
     },
     news(s) {
-      const co = s.companies[0], last = co.history.slice(-6).reverse();
+      const co = s.companies[viewer.co] || s.companies[0], last = co.history.slice(-6).reverse();
       open(h('h3', null, '📰 Ziarul orașelor'), row('Bani', lei(co.cash)), row('Trenuri', s.trains.length), row('Gări', s.stations.length),
         h('div', null, h('b', null, 'Ultimele luni')), last.length ? last.map((v, i) => row(`Luna -${i + 1}`, (v >= 0 ? '+' : '') + lei(v))) : h('div', null, 'Prima lună nu s-a încheiat încă.'),
         h('div', null, h('b', null, 'Știri')), s.news.slice(-8).reverse().map((n) => h('div', { class: 'news' }, n.icon + ' ' + n.text)));

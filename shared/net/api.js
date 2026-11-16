@@ -61,3 +61,13 @@ export const adminCreateUser = (u) => api('POST', 'admin/users', u);
 export const adminUpdateUser = (id, patch) => api('PATCH', uid(id), patch);
 export const adminDeleteUser = (id) => api('DELETE', uid(id));
 export const adminBonus = (id, minutes) => api('POST', uid(id) + '/bonus', { minutes });
+
+// ---- salvări (sloturi 1–3 per joc; `data` = string base64 ≤ 1 MB) ----
+const sid = (game, slot) => 'saves/' + encodeURIComponent(game) + (slot === undefined ? '' : '/' + encodeURIComponent(slot));
+/** [{ slot, name, size, updatedAt }] */
+export const listSaves = (game) => api('GET', sid(game));
+/** { slot, name, data, updatedAt }; ApiError 404 dacă slotul e gol. */
+export const loadSave = (game, slot) => api('GET', sid(game, slot));
+/** { slot, name, size, updatedAt }; 413 prea mare, 507 fără spațiu. */
+export const putSave = (game, slot, name, data) => api('PUT', sid(game, slot), { name, data });
+export const deleteSave = (game, slot) => api('DELETE', sid(game, slot));

@@ -17,6 +17,7 @@ import meRoutes from './routes/me.js';
 import adminRoutes from './routes/admin.js';
 import timeRoutes from './routes/time.js';
 import progressRoutes from './routes/progress.js';
+import savesRoutes from './routes/saves.js';
 
 // Fișiere publice: pagina de login și ce trebuie ca aplicația să poată fi „adăugată pe ecranul principal”
 // (manifestul și iconițele sunt cerute de browser fără cookie-uri).
@@ -33,7 +34,7 @@ export async function createApp(overrides = {}) {
   const time = createTime(db, cfg);
   const ctx = { cfg, db, sessions, limiter, time };
   ctx.rooms = createRooms(ctx);
-  const routes = [authRoutes, meRoutes, adminRoutes, timeRoutes, progressRoutes].flatMap((r) => r(ctx));
+  const routes = [authRoutes, meRoutes, adminRoutes, timeRoutes, progressRoutes, savesRoutes].flatMap((r) => r(ctx));
   const dist = createStatic(cfg.distDir);
   const pub = createStatic(cfg.publicDir);
 

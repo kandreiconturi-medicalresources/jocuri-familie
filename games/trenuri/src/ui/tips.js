@@ -2,6 +2,7 @@
 import { MODELS, availableModels } from '../sim/consts.js';
 import { INDUSTRIES, GOODS, wantOf } from '../sim/goods.js';
 import { cityNear } from './nearby.js';
+import { viewer } from '../sim/viewer.js';
 
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 const low = (t) => t.toLowerCase();
@@ -21,7 +22,7 @@ function hungryCity(s, shown) {
 }
 
 export function findTip(s, shown, clock = 0) {
-  const co = s.companies[0];
+  const co = s.companies[viewer.co] || s.companies[0];
   if (!s.stations.length && clock > 40 && !shown.has('nostation')) return { key: 'nostation', text: 'Pune o gară 🚉 lângă un oraș, ca să poată urca oamenii!' };
   const idle = s.trains.find((t) => t.route.length < 2 && !shown.has('idle:' + t.id));
   if (idle) return { key: 'idle:' + idle.id, text: `Trenul ${idle.id} stă degeaba, dă-i o rută! Alege 🚂 și atinge două gări.` };

@@ -25,6 +25,7 @@ export function openSettings(card, prefs, act) {
     toggle('🎵 Muzică liniștită', () => prefs.get('ambient'), (v) => { prefs.set('ambient', v); setAmbient(v); }),
     h('div', { class: 'btns' },
       h('button', { class: 'opt', onclick: () => { card.close(); act.tutorial(); } }, '🎓 Repetă tutorialul'),
+      act.saves ? h('button', { class: 'opt', onclick: () => { card.close(); act.saves(); } }, '💾 Salvează / Încarcă') : null,
       act.restart ? h('button', { class: 'opt', onclick: () => { card.close(); act.restart(); } }, '🔁 De la capăt') : null,
       h('button', { class: 'opt', onclick: () => { card.close(); act.home(); } }, '🏠 Meniul jocului')));
 }

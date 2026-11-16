@@ -71,3 +71,34 @@
 @media (max-width: 640px) { .chip.goal { max-width: 96px; font-size: 12px; padding: 0 6px; } }
 .card h3 { min-height: 40px; padding-right: 46px; box-sizing: border-box; display: flex; align-items: center; }
 .card .x { top: 3px; right: 5px; }
+
+/* Etapa 6.4: lobby în rețea, cutiuța cu jucători, sloturi de salvare */
+.lob { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.lob .err { color: #c62838; min-height: 1.2em; margin: 0; }
+.mp .err { color: #c62838; font-weight: 700; margin: 0; min-height: 1em; }
+.code { display: flex; gap: 8px; justify-content: center; }
+.code .ch, .code .slot { width: 48px; height: 56px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; border-radius: 12px; background: #f1e9ff; border: 3px solid #5a2ba0; color: #3a1a6a; }
+.code.small .slot { width: 40px; height: 46px; font-size: 26px; }
+.code .slot.on { border-color: #ffb703; }
+.lob .keys { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: 100%; }
+.lob .key, .lob .big.key { min-height: 44px; min-width: 0; padding: 0; font: inherit; font-size: 18px; font-weight: 800; border-radius: 10px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; cursor: pointer; touch-action: manipulation; }
+.lob .key.wide { grid-column: span 3; background: #ffd23f; }
+.lob .key.alt { background: #f1e9ff; }
+.lob .key:disabled { opacity: .5; }
+.plist { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.pl { padding: 4px 12px; border-radius: 14px; background: #f1e9ff; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.pl.me { outline: 3px solid #ffb703; }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,.35); vertical-align: middle; flex: none; }
+.optrow { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; font-weight: 700; }
+.lob .val { font-weight: 800; min-width: 120px; text-align: center; }
+.nethud { position: absolute; left: max(6px, var(--sal)); top: 58px; max-width: 240px; padding: 4px 8px; border-radius: 12px; background: rgba(255,255,255,.88); color: #3a1a6a; font-size: 12px; font-weight: 700; pointer-events: none; z-index: 3; }
+.nethud .nt { font-size: 11px; opacity: .8; }
+.nethud .nr { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.nethud .nr b { margin-left: auto; padding-left: 8px; }
+.nethud .nr.me { color: #c2410c; }
+.svrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 4px 0; }
+.sl-info { display: flex; flex-direction: column; text-align: left; min-width: 0; }
+.sl-info small { overflow: hidden; text-overflow: ellipsis; }
+.sl-btns { display: flex; gap: 4px; }
+.sl-btns .opt { min-width: 44px; min-height: 44px; padding: 0 8px; }
+.warnrow { font-weight: 700; color: #c62838; }

@@ -8,3 +8,5 @@ export { accepts, deliver, tileDist, capacity, carried } from './cargo.js';
 export { industryAt } from './industry.js';
 export { growCity } from './economy.js';
 export * from './scenarios/index.js';
+export { viewer } from './viewer.js';
+export { companyValue, standings, createNetWorld } from './value.js';

@@ -1,5 +1,5 @@
 // Singura cale prin care jucătorul schimbă starea: applyCommand(state, cmd) → { ok, err?, cost? }.
-import { DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H, UPGRADES } from './consts.js';
+import { START_CASH, DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H, UPGRADES } from './consts.js';
 import { pathCost } from './plan.js';
 import { addNews } from './news.js';
 import { mark } from './blocks.js';
@@ -111,9 +111,11 @@ function buyTrain(s, cmd, c) {
   let kinds = cmd.kinds;
   if (kinds === undefined) kinds = Array.from({ length: Math.max(1, Math.min(MAX_CARS, cmd.cars === undefined ? 3 : cmd.cars | 0)) }, (_, i) => (i % 3 === 2 ? 1 : 0));
   if (!Array.isArray(kinds) || kinds.length < 1 || kinds.length > MAX_CARS || kinds.some((k) => !Number.isInteger(k) || k < 0 || k >= CAR_TYPES.length)) return fail('vagoane');
+  const route = cmd.route === undefined ? [st.id] : cmd.route; // opțional: ruta se dă odată cu cumpărarea (în rețea nu aștepți id-ul)
+  if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route[0] !== st.id || route.some((id) => !s.stations.some((q) => q.id === id && q.owner === c.id))) return fail('gara');
   const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: [st.id], orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999 };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999 };
   s.trains.push(tr);
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
@@ -166,7 +168,18 @@ function sellTrain(s, cmd, c) {
   return { ok: true, cost: -back };
 }
 
-const TABLE = { buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders };
+/** Doar gazda o generează: un jucător nou în competitiv primește o companie (cel mult 8 încap în biții de proprietar). */
+function joinCompany(s, cmd) {
+  const n = s.net;
+  if (!n || n.mode !== 'comp' || s.companies.length >= 8 || n.pl[cmd.pl] !== undefined) return fail('drum');
+  const id = s.companies.length;
+  s.companies.push({ id, name: String(cmd.name || 'Jucător').slice(0, 20), color: String(cmd.color || '#8fd3ff').slice(0, 9), cash: START_CASH, loan: 0, history: [], month: 0, record: 0 });
+  n.pl[cmd.pl] = id;
+  addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
+  return { ok: true, cost: 0 };
+}
+
+const TABLE = { joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

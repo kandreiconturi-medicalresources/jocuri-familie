@@ -27,6 +27,12 @@ export function loadConfig(overrides = {}, env = process.env) {
     sessionDays: 30,
     maxBodyBytes: 16 * 1024,
     maxProgressBytes: 64 * 1024,
+    // Salvări: `data` (base64) ≤ 1 MB, corp ≤ 1,5 MB doar pe PUT saves; 3 sloturi × numărul de jocuri per
+    // utilizator (SAVE_GAMES, implicit 5) și o limită globală de siguranță pe toată baza (SAVES_TOTAL_MB).
+    maxSaveBytes: 1024 * 1024,
+    maxSaveBody: 1536 * 1024,
+    maxSavesPerUser: 3 * int(env.SAVE_GAMES, 5, 1, 100),
+    maxSavesTotalBytes: int(env.SAVES_TOTAL_MB, 200, 1, 100_000) * 1024 * 1024,
     now: () => Date.now(),
     log: (...a) => console.log(new Date().toISOString(), ...a),
   };

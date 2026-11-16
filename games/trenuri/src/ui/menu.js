@@ -5,7 +5,7 @@ import { SCENARIOS, isUnlocked, MEDAL_ICONS } from '../sim/index.js';
 
 const num = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-export function createMenu(root, { hasSave, medals, firstTime, onContinue, onNew, onScenario, onFree, onTutorial, onHome }) {
+export function createMenu(root, { hasSave, medals, firstTime, online, onNet, onContinue, onNew, onScenario, onFree, onTutorial, onHome }) {
   let el = null, year = 1840;
   const mount = (node) => { if (el) el.remove(); el = node; root.append(el); };
   const back = (fn) => (e) => { if (e.target === e.currentTarget) fn(); }; // tap pe fundal
@@ -21,6 +21,7 @@ export function createMenu(root, { hasSave, medals, firstTime, onContinue, onNew
         h('button', { class: 'opt' + (firstTime ? ' glow' : ''), onclick: onTutorial }, '🎓 Tutorial')),
       h('div', { class: 'rowb' },
         h('button', { class: 'opt', onclick: newGame }, '🌍 Joc nou'),
+        online ? h('button', { class: 'opt', onclick: onNet }, '🌐 Joacă în rețea') : null,
         h('button', { class: 'opt', onclick: onHome }, '🏠 La meniu'))));
   }
 

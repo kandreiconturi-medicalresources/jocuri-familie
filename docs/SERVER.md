@@ -28,6 +28,10 @@ Node 24, `server/` separat de build-ul web (propriul `package.json`, singura dep
 | `POST admin/users/:id/bonus` `{minutes}` | admin | minute în plus doar azi |
 | `POST time/heartbeat` `{game}` | logat | numără timpul de joc; `{ time }` |
 | `GET progress/:game` / `PUT progress/:game` `{data}` | logat | progresul propriu (JSON ≤ 64 KB); la PUT serverul face îmbinare pentru `bobo` (max pe nivel/steluțe) |
+| `GET saves/:game` | logat | lista salvărilor proprii: `[{ slot, name, size, updatedAt }]` |
+| `GET saves/:game/:slot` | logat | `{ slot, name, data, updatedAt }` (doar ale tale) |
+| `PUT saves/:game/:slot` `{name, data}` | logat | `slot` 1–3, `game` `^[a-z]{2,16}$`, `name` ≤ 40 caractere, `data` = string base64 ≤ 1 MB (corp ≤ 1,5 MB doar pe această rută) |
+| `DELETE saves/:game/:slot` | logat | șterge salvarea proprie |
 
 `limits = { minutesPerDay: 0–600 | null (fără limită), from: 'HH:MM' | null, to: 'HH:MM' | null }`. Adminul nu are limite.
 

@@ -41,6 +41,17 @@ const MIGRATIONS = [
      updated_at INTEGER NOT NULL,
      PRIMARY KEY (user_id, game)
    );`,
+  // v2: salvări pe sloturi (1–3) per utilizator și joc; `data` = base64, `size` = lungimea lui în octeți
+  `CREATE TABLE saves (
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     game TEXT NOT NULL,
+     slot INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 3),
+     name TEXT NOT NULL,
+     data TEXT NOT NULL,
+     size INTEGER NOT NULL,
+     updated_at INTEGER NOT NULL,
+     PRIMARY KEY (user_id, game, slot)
+   );`,
 ];
 
 /** Deschide (sau creează) `<dataDir>/jocuri.db` și aplică migrațiile lipsă. */
@@ -90,6 +101,15 @@ function wrap(db) {
     progress: q('SELECT data, updated_at FROM progress WHERE user_id = ? AND game = ?'),
     putProgress: q(`INSERT INTO progress (user_id, game, data, updated_at) VALUES (?, ?, ?, ?)
                     ON CONFLICT (user_id, game) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`),
+    saves: q('SELECT slot, name, size, updated_at FROM saves WHERE user_id = ? AND game = ? ORDER BY slot'),
+    save: q('SELECT slot, name, data, updated_at FROM saves WHERE user_id = ? AND game = ? AND slot = ?'),
+    saveSize: q('SELECT size FROM saves WHERE user_id = ? AND game = ? AND slot = ?'),
+    countUserSaves: q('SELECT COUNT(*) AS n FROM saves WHERE user_id = ?'),
+    totalSavesSize: q('SELECT COALESCE(SUM(size), 0) AS n FROM saves'),
+    putSave: q(`INSERT INTO saves (user_id, game, slot, name, data, size, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (user_id, game, slot) DO UPDATE SET name = excluded.name, data = excluded.data,
+                  size = excluded.size, updated_at = excluded.updated_at`),
+    deleteSave: q('DELETE FROM saves WHERE user_id = ? AND game = ? AND slot = ?'),
   };
 
   /** UPDATE users SET <câmpuri din lista albă> WHERE id = ? */
