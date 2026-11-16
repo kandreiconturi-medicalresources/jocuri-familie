@@ -30,11 +30,12 @@ export function createHud(root, ev) {
   const bankBtn = h('button', { class: 'rb hidden', title: 'Banca: împrumut și rambursare automată', 'aria-label': 'Banca', onclick: () => ev.bank() }, '🏦');
   const exBtn = h('button', { class: 'rb hidden', title: 'Mod expert: finanțe, bursă, raport', 'aria-label': 'Mod expert', onclick: () => ev.expert() }, '💼');
   const todoBtn = h('button', { class: 'rb todo', title: 'De făcut', 'aria-label': 'De făcut', onclick: () => ev.todo() }, '📌');
+  const viewBtn = h('button', { class: 'rb', title: 'Vederea: 2D, 3D sau clasică', 'aria-label': 'Vederea', onclick: () => ev.view() }, '🧊');
   const menuBtn = h('button', { class: 'rb', title: 'Meniu', 'aria-label': 'Meniu', onclick: () => ev.menu() }, '☰');
   const bar = h('div', { class: 'tbar' }, info, goal, h('div', { class: 'sp' }), speeds,
     layerBtn, islBtn, bankBtn, exBtn, todoBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
-    menuBtn);
+    viewBtn, menuBtn);
   const hint = h('div', { class: 'hint hidden' });
   const sub = h('div', { class: 'sub' });
   const tools = TOOLS.map((t) => h('button', { class: 'tool', 'aria-label': t.t, onclick: () => ev.tool(t.id) }, h('span', { class: 'e' }, t.e), t.t));
@@ -59,6 +60,8 @@ export function createHud(root, ev) {
     },
     setExpert(on) { exBtn.classList.toggle('hidden', !on); },
     setIslands(on) { islBtn.classList.toggle('hidden', !on); bankBtn.classList.toggle('hidden', !on); },
+    /** Butonul de vedere arată vederea curentă (🧊 3D · 🗺️ 2D · 🏛️ clasic). */
+    setView(icon, name) { viewBtn.textContent = icon; viewBtn.title = 'Vederea: ' + name + ' (atinge ca să schimbi)'; },
     setLayer(on) { layerBtn.classList.toggle('on', on); },
     setDate(d) { date.textContent = `📅 ${MONTHS[d.m - 1]} ${d.y}`; },
     setSpeed(v) { speeds.forEach((b, i) => b.classList.toggle('on', [0, 1, 2, 4][i] === v)); },

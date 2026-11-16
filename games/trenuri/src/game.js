@@ -22,6 +22,9 @@ import { mountExtraTools } from './ui/tools-extra.js';
 import { mountMobileControls } from './ui/mobileControls.js';
 import { createIslandUi } from './ui/islandUi.js';
 import { createContextRun } from './input/contextRun.js';
+import { createFlatIcons } from './ui/flatIcons.js';
+import { look, setLook, onLook, MODES } from './render/look.js';
+import { simStepCap, renderNeeded } from '../../../shared/engine/pace.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -30,6 +33,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   let mode = 'normal', shown = new Set(), tipT = 0, lastBest = 0, endShown = true, lastMonth = -1, endUi = null, overUi = null, exMonth = -1;
   const prefs = createPrefs(save);
   const camera = createCamera(stage, { w: 64, h: 64 });
+  stage.classic.bind(camera.cam);
+  let wokeAt = -1e9, drawnAt = 0, lastCam = [0, 0, 0, 0, 0];
   const myCo = () => s.companies[viewer.co] || s.companies[0];
   const exec = (cmd) => {
     if (np.active) { const r = np.submit(cmd); if (!r.ok) { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } return r; } // în rețea: răspunsul vine când gazda aplică comanda
@@ -76,7 +81,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
     expert: () => ex.show(), islands: () => isl.open(), bank: () => isl.bank(),
     todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
-    menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
+    view: () => setView(MODES[(MODES.indexOf(look.mode) + 1) % MODES.length], true),
+    menu: () => openSettings(panels.card, prefs, { cool: { get: () => look.cool, set: (v) => { prefs.set('cool', v); setLook({ cool: v }); hud.hint(v ? '🔋 Mod răcoros: mai puține cadre, fără umbre și iarbă.' : 'Mod răcoros oprit.', false, 3000); } }, tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({
     state: () => s, view: () => view, hud, panels, exec, errText: (k) => ERR_TEXT[k],
@@ -89,6 +95,17 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const isl = createIslandUi({ card: panels.card, state: () => s, me: () => viewer.co, exec, hud, tools, show: (x, y) => extras.show(x, y) });
   Object.assign(panels, { port: isl.port, ship: isl.ship, shipNear: isl.shipNear }); // Info pe port / vapor
   mountMobileControls(uiRoot, camera);
+  const flat = createFlatIcons(uiRoot, { camera: stage.camera, state: () => s, view: () => view, zoom: () => camera.cam.dist });
+  const VIEWS = { '3d': ['3D', 'Vedere 3D'], '2d': ['2D', '🗺️ Vedere 2D: de sus, cu iconițe mari'], classic: ['🏛️', '🏛️ Vedere clasică: izometrică, se rotește cu ↶ ↷'] };
+  /** 3D · 2D · clasic: pornește vederea, o ține minte și arată butonul potrivit. */
+  function setView(m, say) {
+    setLook({ mode: m });
+    stage.classic.setMode(m === 'classic' ? 'classic' : m === '2d' ? 'flat' : 'off');
+    camera.apply(); flat.show(m === '2d');
+    prefs.set('view', m); hud.setView(VIEWS[m][0], VIEWS[m][1]);
+    if (say) hud.hint(VIEWS[m][1], false, 3500);
+  }
+  onLook(() => { wokeAt = performance.now(); });
   const ctxRun = createContextRun({ root: uiRoot, state: () => s, view: () => view, tools, panels, exec, extras, isl, hud });
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
@@ -120,6 +137,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   // tap în afara panoului (pe hartă) închide cardul deschis
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
   setAmbient(prefs.get('ambient'));
+  setView(look.mode, false);
 
   const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭', '🧱', '⚓'];
   function toastNews() {
@@ -234,20 +252,30 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (!np.update(dt, () => view.trains.onStep())) {
         simAcc += dt * speed * SIM_HZ;
         let n = 0;
-        while (simAcc >= 1 && n++ < 8) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
+        const cap = simStepCap(look);
+        while (simAcc >= 1 && n++ < cap) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
         if (simAcc > 1) simAcc = 0;
       }
       if (!orbit) { extras.update(dt); trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
     },
+    /** Atingere sau schimbare din afară: următoarele cadre se desenează. */
+    wake() { wokeAt = performance.now(); },
+    /** Cadrul acesta trebuie desenat? Nu dacă jocul e pe pauză și camera stă (cu o bătaie rară). */
+    needsRender(now) {
+      if (!s) return false;
+      const c = camera.cam, moved = c.x !== lastCam[0] || c.z !== lastCam[1] || c.dist !== lastCam[2] || c.yaw !== lastCam[3] || c.pitch !== lastCam[4];
+      return renderNeeded({ now, drawnAt, running: orbit || np.active || speed > 0 || !!follow, camMoved: moved, wokeAt });
+    },
     render(dt) {
       if (!s) return;
+      drawnAt = performance.now(); { const c = camera.cam; lastCam = [c.x, c.z, c.dist, c.yaw, c.pitch]; }
       if (follow) {
         const p = view.trains.positionOf(follow.id);
         if (p && clock < follow.until) { camera.cam.x += (p.x - camera.cam.x) * 0.06; camera.cam.z += (p.z - camera.cam.z) * 0.06; camera.apply(); } else follow = null;
       }
       stage.setFog(camera.cam.dist * 1.15, camera.cam.dist * 3.2);
       view.frame(np.active ? np.alpha : speed ? simAcc : 1, dt, clock);
-      extras.frame(dt);
+      extras.frame(dt); flat.frame();
       const c = myCo().cash;
       hud.setMoney(c, s.sandbox);
       if (c > lastCash + 50 && !orbit) sfx('cash');

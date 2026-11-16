@@ -53,6 +53,7 @@ export function createCamera(stage, size) {
       const o = c.position, dx = v.x - o.x, dy = v.y - o.y, dz = v.z - o.z, len = Math.hypot(dx, dy, dz);
       const ux = dx / len, uy = dy / len, uz = dz / len;
       let t = 0, prev = 0;
+      if (uy < -1e-6 && o.y > 4) { t = Math.max(0, (o.y - 4) / -uy - 0.5); prev = t; } // vederile 2D/clasică țin camera la zeci sau sute de plăci: sărim până sub cel mai înalt teren
       for (let i = 0; i < 400; i++) {
         t += 0.5;
         const x = o.x + ux * t, y = o.y + uy * t, z = o.z + uz * t;
