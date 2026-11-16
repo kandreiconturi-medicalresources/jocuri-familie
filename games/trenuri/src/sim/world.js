@@ -67,6 +67,7 @@ export function hashState(s) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
     if (t.paused) h = num(h, 77);
+    if (t.nk) h = arr(num(h, 91), t.nk);
     h = num(h, (t.rv ? t.rv.length : 0) + (t.redAt | 0) * 64); if (t.rv) h = arr(h, t.rv);
     if (t.rel !== undefined) h = num(h, t.rel);
     if (t.dead || t.state === 3 || t.toDepot || t.tow) h = hashDepotTrain(h, t);

@@ -45,6 +45,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const panels = createPanels(uiRoot, {
     sell: (id) => exec({ type: 'sellTrain', trainId: id }),
     orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
+    cars: (id, kinds) => exec({ type: 'setCars', trainId: id, kinds }),
     upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
     pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }),
     route: (id, route) => exec({ type: 'setRoute', trainId: id, route }),

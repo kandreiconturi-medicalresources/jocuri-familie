@@ -229,3 +229,11 @@ Flux ghidat în 6 pași, pentru cine n-a mai jucat tycoon: 1 **Ce cere orașul**
 - `ui/plannerRun.js` (fără DOM): `planCommand(plan)` face comanda `executePlan` și textele pașilor; `runPlan(plan, exec)` o trimite O SINGURĂ DATĂ prin `exec` (= `applyCommand` în teste și în jocul singur; în rețea `execWait` din `game.js` întoarce o promisiune închisă când gazda aplică comanda, cu timeout de 20 s) și întoarce pașii cu ✅/❌/⏭️ și motivul. La eroare nu s-a schimbat nimic (banii și harta rămân ca înainte). În rețea butonul arată „⏳ Se aplică…” până confirmă gazda, apoi rezultatul.
 - UI: `ui/planner.js` (panou fix ca asistentul de cumpărare, cu `tools` pe „Tren” ca harta să nu piardă planul), `plannerView.js` (pașii 0–4), `plannerEnd.js` (5–6), `plannerCards.js` (cardurile, și în panoul orașului), `plannerMap.js` (plăci colorate: verde = există, galben = nouă, albastru = pod, maro = tunel). „Tren nou pentru X” pune planul curent deoparte; se reface după „Fă tot”.
 - Teste: `tests/trenuri-planner.test.js` (sursa recomandată, vagoane vs. cerere/distanță, oraș pe drum vs. departe, „Fă tot” care livrează în 8 luni, lipsa banilor, determinism; `executePlan`: local cu livrare, bani puțini fără nicio schimbare, mesaj < 3 KB pentru traseu lung, competitiv fără gările altuia, nivelare `f`, lockstep cu 3 clienți cu hash-uri identice).
+
+## Faza 7 — Insulele (plan: `docs/ROADMAP.md`)
+### 7.0 Schimbă vagoanele (`sim/consist.js`, `ui/carsEditor.js`)
+- Comanda `setCars { trainId, kinds }` (în `ALLOWED`): 1–`MAX_CARS` vagoane din `CAR_TYPES`; refuzată pentru trenul altuia, la depou sau la remorcă (`depou`).
+- Costul se plătește la comandă față de vagoanele de acum (sau față de schimbarea încă în așteptare): vagon nou = `CAR_PRICE`, vagon scos = jumătate înapoi (`carsCost`).
+- În gară (`state 2`) se aplică imediat; din mers se ține în `t.nk` (intră în `hashState` doar când există) și se aplică în `arrive`, după descărcare și înainte de încărcare. Marfa care nu mai încape rămâne în gară; ordinele manuale pierd mărfurile fără vagon.
+- UI: „🚃 Schimbă vagoanele” în panoul trenului: atingi un vagon ca să-l scoți, ➕ din paletă, „🤖 Potrivite pentru rută” (`suggestKinds`), avertisment peste puterea locomotivei, cost sau bani înapoi.
+- Teste: `tests/trenuri-cars.test.js`.

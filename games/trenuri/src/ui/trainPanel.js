@@ -8,6 +8,7 @@ import { relOf, ageMonths } from '../sim/wear.js';
 import { lei } from './hud.js';
 import { trainKind } from './trainKind.js';
 import { dropControls } from './dropRow.js';
+import { carsEditor } from './carsEditor.js';
 
 /** Mărfurile pe care le poate duce un tren (după vagoanele lui). */
 export const carriable = (t) => GOODS.map((_, g) => g).filter((g) => t.kinds.includes(CAR_OF[g]));
@@ -68,6 +69,7 @@ export function createTrainPanel(card, ev) {
       row('Merge spre', dest ? dest.name : '—'), row('Viteză', `${m.vmax * 4} km/h`), row('Trage bine', `${m.power} vagoane`),
       row('Fiabilitate', `${rel}% (nou: ${m.rel}%)`), row('Vârstă', ageText(ageMonths(s, t))), row('Întreținere', lei(m.maint) + '/lună'),
       t.cars > m.power ? h('div', null, '⚠️ Are prea multe vagoane pentru locomotivă, așa că merge mai încet.') : null,
+      t.state === 3 || t.tow ? null : carsEditor(s, t, (kinds) => { ev.cars(t.id, kinds); again(); }),
       depotRows(s, t, again),
       shopRow(s, t, again),
       h('div', null, h('b', null, 'Încărcătură')), loadRows.length ? loadRows : h('div', null, 'Gol deocamdată.'),

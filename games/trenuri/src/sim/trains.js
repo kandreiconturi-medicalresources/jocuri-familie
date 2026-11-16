@@ -5,6 +5,7 @@ import { addNews } from './news.js';
 import { roll } from './rand.js';
 import { mark, blocked, linkCount } from './blocks.js';
 import { unload, load } from './cargo.js';
+import { applyCars } from './consist.js';
 import { relOf, repairTicks, serviceAt } from './wear.js';
 import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from './reserve.js';
 import { accelEvery, slopeVmax } from './physics.js';
@@ -98,6 +99,7 @@ function arrive(s, t) {
   if (!st) return;
   serviceAt(s, t, st);
   const earned = unload(s, t, st);
+  if (t.nk) applyCars(s, t, st); // vagoanele cerute din mers se schimbă aici
   load(s, t, st);
   if (earned > 0) addNews(s, '💰', `Trenul ${t.id} a adus ${earned} lei la ${st.name}.`);
 }
