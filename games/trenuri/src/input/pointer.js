@@ -71,7 +71,7 @@ export function bindPointer(canvas, camera, pickTile, h) {
   canvas.addEventListener('pointerdown', (e) => {
     if (inertia) { cancelAnimationFrame(inertia); inertia = 0; }
     vel = { x: 0, y: 0 };
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* pointer deja eliberat (ex. eveniment sintetic) */ }
     ptr.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button });
     if (ptr.size === 2) { clearHold(); pinched = true; stopDrag(true, e.pointerType === 'touch'); pinch = two(); for (const p of ptr.values()) p.moved = true; return; }
     if (ptr.size > 2) return;
