@@ -58,3 +58,7 @@ export const LEVEL = { unit: 60, maxSide: 20, maxArea: 220, clear: 40 }; // nive
 export const TUNNEL = { max: 6, cost: 700 }; // plăci în deal (cel mult) și preț pe placă de tunel
 export const LOCO_W = [20, 24, 26, 30, 28, 32]; // greutatea locomotivei pe model; vagonul gol = CAR_W, marfa = ½ pe unitate
 export const CAR_W = 12;
+
+// Etapa 6.6, runda 2: depouri, defecțiuni, remorcare, semnale de bloc. Duratele sunt în pași (10 pași = o zi).
+export const DEPOT = { cost: 6000, lift: 30, repairBase: 40, repairPer: 6, tracks: 2, towModel: 0, auto: TICKS_PER_DAY, self: 400, selfCost: 2000 };
+export const BLOCK_MIN = 3, BLOCK_MAX = 12; // „Semnale automate pe linie lungă”: unul la fiecare N plăci

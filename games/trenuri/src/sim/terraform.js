@@ -38,13 +38,30 @@ export function levelPlan(s, c, h, by) {
   return { ok: true, vol, cost: levelCostOf(vol), tiles };
 }
 
+export const TERRAIN_CHUNK = 32;
+/** Marchează dreptunghiul de plăci schimbat (randarea reface doar bucățile atinse): `dirty.terrain` + lista `dirty.tr`. */
+export function markTerrain(s, x0, y0, x1, y1) {
+  s.dirty.terrain = s.dirty.track = true;
+  (s.dirty.tr || (s.dirty.tr = [])).push([x0, y0, x1, y1]);
+}
+/** Bucățile de teren (32×32) de redesenat: cele atinse de dreptunghiurile marcate, cu 2 plăci margine (culori și normale depind de vecini). Sortate. */
+export function dirtyChunks(s) {
+  const C = TERRAIN_CHUNK, out = new Map();
+  for (const [x0, y0, x1, y1] of s.dirty.tr || []) {
+    const cx0 = (Math.max(0, x0 - 2) / C) | 0, cx1 = (Math.min(s.w - 1, x1 + 2) / C) | 0, cy0 = (Math.max(0, y0 - 2) / C) | 0, cy1 = (Math.min(s.h - 1, y1 + 2) / C) | 0;
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) out.set(cy * 1000 + cx, [cx, cy]);
+  }
+  return [...out.values()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+}
+
 function levelTerrain(s, cmd, c) {
   const p = levelPlan(s, cmd, cmd.h, c.id);
   if (!p.ok) return p;
   if (!s.sandbox && c.cash < p.cost) return fail('bani');
   if (!s.sandbox) c.cash -= p.cost;
   for (const [i, h] of p.tiles) s.height[i] = h;
-  s.dirty.terrain = s.dirty.track = true;
+  const r = rectOf(s, cmd);
+  markTerrain(s, r.x0, r.y0, r.x1, r.y1);
   return { ok: true, cost: p.cost };
 }
 
@@ -92,7 +109,8 @@ export function applyLevels(s, list, path) {
     if (!on.has(i) || s.water[i] || s.occ[i] || (s.track[i] & T_PRESENT)) return fail('teren');
   }
   for (const [x, y, h] of list) { const i = y * s.w + x; vol += Math.abs(s.height[i] - h); saved.push([i, s.height[i]]); s.height[i] = h; }
-  return { ok: true, cost: levelCostOf(vol), undo: () => { for (let k = saved.length - 1; k >= 0; k--) s.height[saved[k][0]] = saved[k][1]; } };
+  const xs = list.map((q) => q[0]), ys = list.map((q) => q[1]);
+  return { ok: true, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], cost: levelCostOf(vol), undo: () => { for (let k = saved.length - 1; k >= 0; k--) s.height[saved[k][0]] = saved[k][1]; } };
 }
 
 /** Pune șina pe drum (plăci [x,y]) și leagă plăcile; `tun(k)` spune ce plăci sunt de tunel. */

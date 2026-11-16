@@ -19,6 +19,7 @@ export function createTrainLabels(root, { camera, state, view, zoom }) {
       const refresh = t > 0.5; if (refresh) t = 0;
       const seen = new Set();
       for (const tr of near ? s.trains : []) {
+        if (tr.state === 3) continue;
         const p = vw.trains.positionOf(tr.id);
         if (!p) continue;
         v.set(p.x, p.y + 0.9, p.z).project(camera);

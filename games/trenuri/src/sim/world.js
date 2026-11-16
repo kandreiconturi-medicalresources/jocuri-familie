@@ -20,7 +20,7 @@ export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = f
   const s = {
     version: 2, tick: 0, rng: (n ^ 0xa5a5a5a5) >>> 0, seed: n, size, mode, sandbox: !!sandbox, w, h,
     height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
-    track: new Uint16Array(w * h), stations: [], trains: [], signals: [], sigId: 1,
+    track: new Uint16Array(w * h), stations: [], trains: [], signals: [], sigId: 1, depots: [],
     companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
     date: { y: year, m: 1, d: 1 }, news: [], stats: newStats(), nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
@@ -35,6 +35,17 @@ export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = f
 function fnv(h, v) { return Math.imul((h ^ (v & 255)) >>> 0, 0x01000193) >>> 0; }
 function num(h, v) { v |= 0; h = fnv(h, v); h = fnv(h, v >> 8); h = fnv(h, v >> 16); return fnv(h, v >> 24); }
 function arr(h, a) { for (let i = 0; i < a.length; i++) h = fnv(h, a[i]); return h; }
+
+function hashDepotTrain(h, t) {
+  h = num(num(num(h, t.dead | 0), t.dq | 0), (t.toDepot | 0) * 7 + (t.cpl | 0) + (t.resc | 0) * 3);
+  return t.tow ? num(h, t.tow.targetId * 9 + (t.tow.ph === 'haul' ? 1 : 0)) : h;
+}
+const PH = { lift: 1, repair: 2, lower: 3 };
+function hashDepot(h, d) {
+  h = arr(num(num(h, d.id), d.x * 256 + d.y), d.queue);
+  for (const j of d.jobs) h = num(num(h, j.trainId * 4 + PH[j.phase]), j.t * 8 + j.lane);
+  return h;
+}
 
 /** Hash doar al hărții generate (teren, apă, păduri, orașe). */
 export function hashMap(s) {
@@ -58,9 +69,12 @@ export function hashState(s) {
     if (t.paused) h = num(h, 77);
     h = num(h, (t.rv ? t.rv.length : 0) + (t.redAt | 0) * 64); if (t.rv) h = arr(h, t.rv);
     if (t.rel !== undefined) h = num(h, t.rel);
+    if (t.dead || t.state === 3 || t.toDepot || t.tow) h = hashDepotTrain(h, t);
     for (const b of t.load) h = num(num(num(h, b.c), b.n), b.from);
     for (const r of t.route) h = num(h, r);
   }
+  for (const d of s.depots) h = hashDepot(h, d);
+  if (s.autoBlock) h = num(h, s.autoBlock);
   for (const g of s.signals) h = num(num(h, g.id * 8 + g.dir + (g.twoWay ? 4096 : 0)), g.x * 256 + g.y);
   for (const c of s.companies) h = num(num(num(h, c.cash), c.loan), c.history.length);
   h = num(num(num(h, s.date.y), s.date.m), s.date.d);
@@ -99,6 +113,7 @@ export function deserialize(o) {
   if (!s.stats) s.stats = newStats();
   s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true, terrain: true, signals: true };
   if (!s.signals) { s.signals = []; s.sigId = 1; }
+  if (!s.depots) s.depots = [];
   deriveLayers(s);
   if (!o.signals) syncAuto(s); // salvare veche: semnalele automate apar singure
   return s;

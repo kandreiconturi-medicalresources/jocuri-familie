@@ -1,6 +1,7 @@
 // Semnale: automate (la intrarea în macaze și gări) și manuale (🚦). Rezervarea traseului e în reserve.js.
-import { DX, DY, opp, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, SIGNAL_COST } from './consts.js';
+import { DX, DY, opp, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, SIGNAL_COST, BLOCK_MIN, BLOCK_MAX } from './consts.js';
 import { linkCount } from './blocks.js';
+import { blockSignals } from './blocksig.js';
 
 const DIR = new Int8Array(9).fill(-1);
 for (let d = 0; d < 8; d++) DIR[(DY[d] + 1) * 3 + DX[d] + 1] = d;
@@ -21,6 +22,7 @@ export function syncAuto(s) {
   const old = new Map();
   for (const g of s.signals) if (g.auto) old.set(g.y * s.w * 8 + g.x * 8 + g.dir, g);
   const out = s.signals.filter((g) => !g.auto);
+  const mk = (x, y, dir, t) => out.push(old.get(y * s.w * 8 + x * 8 + dir) || { id: s.sigId++, owner: (t & T_OWNER_MASK) >> T_OWNER_SHIFT, x, y, dir, twoWay: false, auto: true });
   if (s.autoSig !== false) {
     for (let i = 0; i < s.track.length; i++) {
       const t = s.track[i];
@@ -29,10 +31,11 @@ export function syncAuto(s) {
       for (let d = 0; d < 8; d++) {
         if (!((t >> d) & 1)) continue;
         const dir = opp(d);
-        out.push(old.get(y * s.w * 8 + x * 8 + dir) || { id: s.sigId++, owner: (t & T_OWNER_MASK) >> T_OWNER_SHIFT, x, y, dir, twoWay: false, auto: true });
+        mk(x, y, dir, t);
       }
     }
   }
+  if (s.autoBlock > 0) blockSignals(s, s.autoBlock, dirOf, (i, dir) => mk(i % s.w, (i / s.w) | 0, dir, s.track[i]));
   s.signals = out;
   rebuildSignals(s);
   s.dirty.signals = true;
@@ -83,4 +86,13 @@ function setAutoSignals(s, cmd) {
   return { ok: true, cost: 0 };
 }
 
-export const SIGNAL_COMMANDS = { placeSignal, removeSignal, setAutoSignals };
+/** „Semnale automate pe linie lungă”: n = 0 oprit, altfel un semnal de bloc la fiecare n plăci. */
+function setAutoBlock(s, cmd) {
+  const n = cmd.n | 0;
+  if (n !== 0 && (n < BLOCK_MIN || n > BLOCK_MAX)) return fail('drum');
+  s.autoBlock = n;
+  syncAuto(s);
+  return { ok: true, cost: 0 };
+}
+
+export const SIGNAL_COMMANDS = { placeSignal, removeSignal, setAutoSignals, setAutoBlock };

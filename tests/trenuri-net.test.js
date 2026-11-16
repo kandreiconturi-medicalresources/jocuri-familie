@@ -54,6 +54,10 @@ async function settle(hub, host) {
   host.setSpeed(4);
   return hs;
 }
+/** Rulează până se îndeplinește condiția (compresia stării e asincronă, în timp real): fără timeout fix, doar o limită generoasă. */
+async function until(hub, cond, maxSec = 300) {
+  for (let t = 0; t < maxSec && !cond(); t += 0.05) { hub.step(0.05); await new Promise((r) => setTimeout(r, 1)); }
+}
 const same = (hs) => assert.ok(hs.every((h) => h === hs[0]), 'hash-uri diferite: ' + hs);
 
 test('3 clienți, comenzi la pași diferiți: același hash după 5000 de pași', async () => {
@@ -82,7 +86,7 @@ test('intrarea în timpul jocului: starea reconstruită e identică', async () =
   await hub.run(60);
   const late = hub.add('c', { world: null, hostId: 'a' });
   late.requestState();
-  await hub.run(5);
+  await until(hub, () => late.ready && !late.syncing);
   assert.ok(late.ready && !late.syncing, 'starea nu a ajuns');
   assert.equal(late.stats.resyncs, 1);
   await hub.run(30);
@@ -98,7 +102,7 @@ test('o bucată de stare pierdută se retrimite', async () => {
   hub.filter = (from, to, d) => d.k === 'sc' && d.i === 1 && !dropped && !!(dropped = 1);
   const late = hub.add('c', { world: null, hostId: 'a', raw: true });
   late.requestState();
-  await hub.run(12);
+  await until(hub, () => dropped && late.ready && !late.syncing);
   assert.equal(dropped, 1);
   assert.ok(late.ready && !late.syncing);
   hub.filter = null;

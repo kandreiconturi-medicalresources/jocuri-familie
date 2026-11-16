@@ -72,6 +72,8 @@ export function createTools(ctx) {
     } else if (o.tool === 'info') {
       const tr = ctx.view().trains.pickAt(t.fx, t.fz);
       if (tr) { ctx.panels.train(s, tr); return; }
+      const dp = s.depots.find((d) => d.x === t.x && d.y === t.y);
+      if (dp) { ctx.panels.depot(s, dp); return; }
       const st = stationAt(t.x, t.y);
       if (st) { ctx.panels.station(s, st); return; }
       const ind = ctx.panels.industryNear(s, t.x, t.y);

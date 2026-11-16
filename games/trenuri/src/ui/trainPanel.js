@@ -42,6 +42,14 @@ export function createTrainPanel(card, ev) {
     return h('button', { class: 'opt', disabled: t.route.length >= 8, onclick: () => { const r = t.route.slice(); r.splice(Math.max(0, t.at) + 1, 0, best.id); ev.route(t.id, r); again(); } }, `🔧 Trece pe la atelier (${best.name})`, h('small', null, 'Trenul oprește acolo și e reparat'));
   }
 
+  /** Depou: „Trimite remorcă” la un tren defect, „Trimite la depou” la reparat. */
+  function depotRows(s, t, again) {
+    if (t.tow || t.state === 3) return null;
+    if (t.dead) return h('button', { class: 'opt go', disabled: !!t.resc, onclick: () => { ev.rescue(t.id); again(); } }, t.resc ? '🚑 Remorca vine' : '🚑 Trimite remorcă', h('small', null, 'Pleacă de la cel mai apropiat depou'));
+    if (!s.depots.some((d) => d.owner === t.owner)) return h('div', { class: 'note' }, '🏭 Depoul repară trenurile uzate. Construiește-l la capătul unei linii: 🧰 Mai mult → Depou.');
+    return h('button', { class: 'opt', disabled: !!t.toDepot, onclick: () => { ev.depot(t.id); again(); } }, t.toDepot ? '🏭 Merge la depou' : '🏭 Trimite la depou', h('small', null, 'Se repară, apoi își reia ruta'));
+  }
+
   return function train(s, t) {
     const m = MODELS[t.model], cap = capacity(t), again = () => setTimeout(() => train(s, t), 120);
     const names = t.route.map((id) => (s.stations.find((q) => q.id === id) || { name: '?' }).name).join(' ⇄ ');
@@ -56,6 +64,7 @@ export function createTrainPanel(card, ev) {
       row('Merge spre', dest ? dest.name : '—'), row('Viteză', `${m.vmax * 4} km/h`), row('Trage bine', `${m.power} vagoane`),
       row('Fiabilitate', `${rel}% (nou: ${m.rel}%)`), row('Vârstă', ageText(ageMonths(s, t))), row('Întreținere', lei(m.maint) + '/lună'),
       t.cars > m.power ? h('div', null, '⚠️ Are prea multe vagoane pentru locomotivă, așa că merge mai încet.') : null,
+      depotRows(s, t, again),
       shopRow(s, t, again),
       h('div', null, h('b', null, 'Încărcătură')), loadRows.length ? loadRows : h('div', null, 'Gol deocamdată.'),
       row('Locuri', cap.map((c, k) => (c ? CAR_TYPES[k].icon + c : '')).join(' ')), row('A câștigat', lei(t.money)),

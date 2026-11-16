@@ -7,16 +7,17 @@ import { CAR_TYPES, NG } from './goods.js';
 import { suggestKinds } from './advice.js';
 import { EXPERT_COMMANDS, initCompany } from './expert/index.js';
 import { SIGNAL_COMMANDS, syncAuto } from './signals.js';
-import { TERRAIN_COMMANDS, applyLevels, layPath } from './terraform.js';
+import { TERRAIN_COMMANDS, applyLevels, layPath, markTerrain } from './terraform.js';
 import { STATION_COMMANDS } from './stations.js';
 import { hold, releaseAll } from './reserve.js';
+import { DEPOT_COMMANDS } from './depots.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.',
-  limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.',
+  limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -28,7 +29,7 @@ function buildTrack(s, cmd, c) {
   if (lv && !lv.ok) return fail(lv.err);
   const r = pathCost(s, path, c.id), total = r.ok ? r.cost + (lv ? lv.cost : 0) : 0;
   if (!r.ok || !spend(s, c, total)) { if (lv) lv.undo(); return fail(r.ok ? 'bani' : r.err); }
-  if (lv) s.dirty.terrain = true;
+  if (lv && lv.box) markTerrain(s, ...lv.box);
   layPath(s, path, c);
   syncAuto(s);
   return { ok: true, cost: total };
@@ -40,7 +41,7 @@ function removeTrack(s, cmd, c) {
   const i = y * s.w + x, t = s.track[i];
   if (!(t & T_PRESENT)) return fail('inexistent');
   if (ownerOf(t) !== c.id) return fail('proprietar');
-  if (s.stations.some((st) => st.y * s.w + st.x === i)) return fail('gara');
+  if (s.stations.some((st) => st.y * s.w + st.x === i) || s.depots.some((d) => d.y * s.w + d.x === i)) return fail('gara');
   if (s.trains.some((tr) => tr.path.indexOf(i, tr.seg) >= 0)) return fail('tren');
   for (let d = 0; d < 8; d++) {
     if (!((t >> d) & 1)) continue;
@@ -170,6 +171,7 @@ function sellTrain(s, cmd, c) {
   if (k < 0) return fail('inexistent');
   const tr = s.trains[k];
   if (tr.owner !== c.id) return fail('proprietar');
+  if (tr.state === 3 || tr.tow) return fail('depou');
   mark(s, tr, -1);
   releaseAll(s, tr);
   const back = (MODELS[tr.model].price + tr.cars * CAR_PRICE) >> 1;
@@ -191,7 +193,7 @@ function joinCompany(s, cmd) {
   return { ok: true, cost: 0 };
 }
 
-const TABLE = { ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...DEPOT_COMMANDS, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

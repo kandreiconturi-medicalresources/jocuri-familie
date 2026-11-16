@@ -69,8 +69,8 @@ function chunk(s, g, cx, cy) {
 }
 
 export function createTerrain(s, g) {
-  const root = new Group();
-  for (let cy = 0; cy * CH < s.h; cy++) for (let cx = 0; cx * CH < s.w; cx++) root.add(chunk(s, g, cx, cy));
+  const root = new Group(), chunks = new Map();
+  for (let cy = 0; cy * CH < s.h; cy++) for (let cx = 0; cx * CH < s.w; cx++) { const m = chunk(s, g, cx, cy); chunks.set(cy * 1000 + cx, m); root.add(m); }
   const tex = waterTexture(), tex2 = waterTexture(), big = Math.max(s.w, s.h) * 4;
   tex.repeat.set(big / 6, big / 6); tex2.repeat.set(big / 9, big / 9);
   const wm = new MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.86, side: DoubleSide, depthWrite: false });
@@ -81,6 +81,15 @@ export function createTerrain(s, g) {
   root.add(water, glint);
   return {
     root,
+    /** După nivelare: reface doar bucățile (cx, cy) date. */
+    rebuild(list) {
+      for (const [cx, cy] of list) {
+        const old = chunks.get(cy * 1000 + cx);
+        if (old) { root.remove(old); old.geometry.dispose(); }
+        const m = chunk(s, g, cx, cy);
+        chunks.set(cy * 1000 + cx, m); root.add(m);
+      }
+    },
     tick(t, night = 0) {
       tex.offset.set(t * 0.004, t * 0.0026); tex2.offset.set(-t * 0.0033, t * 0.0021);
       wm.color.setRGB(1 - 0.6 * night, 1 - 0.55 * night, 1 - 0.3 * night); glint.material.color.copy(wm.color);

@@ -13,7 +13,12 @@ const cityHasStation = (s, c) => s.stations.some((st) => Math.max(Math.abs(c.x -
 export function computeTodos(s, co = 0) {
   const out = [];
   for (const t of s.trains) {
-    if (t.owner !== co || !(t.route.length < 2 || t.lost)) continue;
+    if (t.owner === co && t.dead && t.state === 1) {
+      const i = t.path[Math.min(t.seg, t.path.length - 1)];
+      out.push({ id: 'dead:' + t.id, kind: 'train', icon: '❗', x: i % s.w, y: (i / s.w) | 0, text: t.resc ? `Trenul ${t.id} e defect pe traseu. Remorca vine!` : `Trenul ${t.id} s-a defectat pe traseu și blochează linia. Trimite remorcă (🚑)!`, ref: { type: 'train', id: t.id } });
+      continue;
+    }
+    if (t.tow || t.owner !== co || !(t.route.length < 2 || t.lost)) continue;
     const st = s.stations.find((q) => q.id === t.to) || s.stations.find((q) => q.id === t.route[0]);
     const i = t.state === 1 && t.path.length ? t.path[Math.min(t.seg, t.path.length - 1)] : null;
     const x = i === null ? (st ? st.x : 0) : i % s.w, y = i === null ? (st ? st.y : 0) : (i / s.w) | 0;

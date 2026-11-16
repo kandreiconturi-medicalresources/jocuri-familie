@@ -45,7 +45,7 @@ export function createExtras(ctx) {
     log(cmd) { logStep(cmd, ctx.state().date); },
     todo() { refresh(); openTodo(ctx.panels.card, items, go); },
     catalog() { openCatalog(ctx.panels.card, ctx.state(), ctx.tools); },
-    trains() { openTrainList(ctx.panels.card, ctx.state(), { pause: ctx.pause, pick: (tr) => { const st = ctx.state().stations.find((q) => q.id === tr.to); if (st) focus(st.x, st.y); ctx.panels.train(ctx.state(), tr); } }); },
+    trains() { openTrainList(ctx.panels.card, ctx.state(), { pause: ctx.pause, depot: ctx.depot, rescue: ctx.rescue, pick: (tr) => { const st = ctx.state().stations.find((q) => q.id === tr.to); if (st) focus(st.x, st.y); ctx.panels.train(ctx.state(), tr); } }); },
     /** „Arată pe hartă”: camera merge acolo și apare un 📍. */
     show(x, y) { focus(x, y); markers.ping(x, y); },
     go,

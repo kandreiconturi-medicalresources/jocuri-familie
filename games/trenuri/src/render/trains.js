@@ -73,12 +73,13 @@ export function createTrains(s, g, camera) {
       for (const t of s.trains) {
         const it = items.get(t.id);
         if (!it) continue;
+        it.group.visible = t.state !== 3; // la depou sau cuplat la remorcă: nu se vede
+        if (t.state === 3) continue;
         let path = t.path;
         if (path.length < 2) {
           const st = s.stations.find((z) => z.id === t.to);
-          if (!st) continue;
-          if (!it.stub || it.stubId !== st.id) { it.stub = [st.y * s.w + st.x]; it.stubId = st.id; }
-          path = it.stub;
+          if (st) { if (!it.stub || it.stubId !== st.id) { it.stub = [st.y * s.w + st.x]; it.stubId = st.id; } path = it.stub; }
+          else if (!path.length) continue; // remorca stă pe placa depoului: path are o placă
         }
         const d = it.prev + (it.cur - it.prev) * alpha, moving = it.cur !== it.prev;
         it.parts.forEach((p, k) => {

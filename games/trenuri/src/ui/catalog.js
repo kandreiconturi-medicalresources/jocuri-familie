@@ -1,10 +1,10 @@
 // Catalogul de construcții: categorii (Șine, Gări, Îmbunătățiri, Trenuri). Ce nu poți cumpăra apare gri, cu motivul.
 import { h } from '../../../../shared/ui/dom.js';
-import { STATION_NAMES, STATION_COST, STATION_RADIUS, UPGRADES, MODELS, COST, CAR_PRICE } from '../sim/consts.js';
+import { DEPOT, STATION_NAMES, STATION_COST, STATION_RADIUS, UPGRADES, MODELS, COST, CAR_PRICE } from '../sim/consts.js';
 import { lei } from './hud.js';
 import { viewer } from '../sim/viewer.js';
 
-const TABS = ['🛤️ Șine', '🚉 Gări', '🔧 Îmbunătățiri', '🚂 Trenuri'];
+const TABS = ['🛤️ Șine', '🚉 Gări', '🔧 Îmbunătățiri', '🚂 Trenuri', '🏭 Depou'];
 let tab = 0;
 
 /** Un rând din catalog: gri când `why` (motivul) există. */
@@ -34,6 +34,10 @@ export function openCatalog(card, s, tools) {
       return entry({ icon: '🚂', name: m.name, info: `${m.vmax * 4} km/h · trage ${m.power} vagoane · fiabilitate ${m.rel}%${fut ? '' : ' · ' + lei(m.maint) + '/lună'}`, price: m.price,
         why: fut ? `Apare în anul ${m.year}.` : s.stations.length < 2 ? 'Ai nevoie de două gări legate cu șină.' : need(cost), on: st.tool === 'train' && st.model === m.id, pick: go({ tool: 'train', model: m.id }) });
     }),
+    () => [
+      entry({ icon: '🏭', name: 'Depou', info: 'La capătul unei linii: coadă, 2 linii de reparații și o macara. Trimite aici trenurile uzate; o remorcă salvează trenurile defecte.', price: DEPOT.cost, why: need(DEPOT.cost), on: st.tool === 'depot', pick: go({ tool: 'depot' }) }),
+      entry({ icon: '🚑', name: 'Remorcă', info: 'Vine singură de la depou după o zi (modul simplu) sau o trimiți din panoul trenului defect.', pick: () => {} }),
+    ],
   ];
   const draw = () => {
     const el = card.open(h('h3', null, '📋 Ce pot construi'),

@@ -15,6 +15,7 @@ export function rebuildBlocks(s) {
   s.blk = new Uint8Array(s.w * s.h);
   s.stm = new Uint8Array(s.w * s.h);
   for (const st of s.stations) s.stm[st.y * s.w + st.x] = 1;
+  for (const d of s.depots || []) s.stm[d.y * s.w + d.x] = 1; // depoul se poartă ca o gară: intrarea e un singur loc
   for (const t of s.trains) mark(s, t, 1);
 }
 

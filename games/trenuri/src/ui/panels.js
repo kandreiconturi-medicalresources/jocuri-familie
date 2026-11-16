@@ -7,6 +7,7 @@ import { createCard } from './card.js';
 import { viewer } from '../sim/viewer.js';
 import { createEcoPanels } from './ecoPanels.js';
 import { createTrainPanel } from './trainPanel.js';
+import { openDepotPanel } from './depotPanel.js';
 import { lei } from './hud.js';
 
 export function createPanels(root, ev) {
@@ -16,7 +17,7 @@ export function createPanels(root, ev) {
   const trainPanel = createTrainPanel(card, ev);
 
   const api = {
-    card, isOpen: card.isOpen, close, city: eco.city, industry: eco.industry, station: eco.station, train: trainPanel,
+    card, isOpen: card.isOpen, close, city: eco.city, industry: eco.industry, station: eco.station, train: trainPanel, depot: (s, d) => openDepotPanel(card, s, d),
     news(s) {
       const co = s.companies[viewer.co] || s.companies[0], last = co.history.slice(-6).reverse();
       open(h('h3', null, '📰 Ziarul orașelor'), row('Bani', lei(co.cash)), row('Trenuri', s.trains.length), row('Gări', s.stations.length),

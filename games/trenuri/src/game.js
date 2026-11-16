@@ -40,6 +40,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
     pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }),
     route: (id, route) => exec({ type: 'setRoute', trainId: id, route }),
+    depot: (id) => exec({ type: 'sendToDepot', trainId: id }),
+    rescue: (id) => exec({ type: 'rescueTrain', trainId: id }),
     show: (x, y) => extras.show(x, y),
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
@@ -66,7 +68,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     canAfford: (c) => s.sandbox || myCo().cash >= c,
     follow: (id) => { follow = { id, until: clock + 5 }; },
   });
-  const extras = createExtras({ stage, uiRoot, panels, camera, helper, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }) });
+  const extras = createExtras({ stage, uiRoot, panels, camera, helper, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
   mountExtraTools(hud, tools);
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, setSpeedUi: (v) => setSpeed(v),
@@ -99,7 +101,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
   setAmbient(prefs.get('ambient'));
 
-  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅'];
+  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭'];
   function toastNews() {
     const n = s.news, k = n.indexOf(lastNews);
     if (k === n.length - 1) return;

@@ -43,18 +43,17 @@ function one(s, g, dep, colorOf) {
   root.rotation.y = Math.atan2(DX[dep.dir || 0], DY[dep.dir || 0]);
   const owner = colorOf(dep.owner);
   block.material.color.set(owner);
-  return { root, update(job, tm) {
-    const done = !job;
-    block.visible = !done; spark.visible = false; hook.visible = false;
-    cable.visible = !done;
-    if (done) { trolley.position.x += (lane[0] - trolley.position.x) * 0.05; cable.scale.y = 0.001; return; }
-    const p = job.t <= 1 ? Math.max(0, job.t) : (tm * 0.3) % 1, e = p * p * (3 - 2 * p);
-    let x, y;
-    if (job.phase === 'lift') { x = lane[0] + (lane[1] - lane[0]) * e; y = 0.18 + Math.sin(e * Math.PI) * 0.35; }
-    else if (job.phase === 'lower') { x = lane[1] + (lane[0] - lane[1]) * e; y = 0.18 + Math.sin(e * Math.PI) * 0.35; }
-    else { x = lane[1]; y = 0.18; spark.visible = Math.floor(tm * 12) % 2 === 0; spark.position.set(x + (Math.random() - 0.5) * 0.15, 0.3 + Math.random() * 0.1, 0.9 + (Math.random() - 0.5) * 0.3); }
+  const lanes = [0, 1].map((k) => { // câte un bloc „locomotivă” pe fiecare linie de reparații
+    const b = new Mesh(blockGeo, new MeshLambertMaterial({ color: owner })); b.position.set(lane[k], 0.18, 0.9); b.visible = false; root.add(b); return b;
+  });
+  return { root, update(jobs, tm) {
+    const crane = jobs.find((j) => j.phase !== 'repair');
+    block.visible = !!crane; spark.visible = false; hook.visible = false; cable.visible = !!crane;
+    lanes.forEach((b, k) => { const j = jobs.find((q) => q.lane === k && q.phase === 'repair'); b.visible = !!j; if (j && Math.floor(tm * 12 + k) % 2 === 0) { spark.visible = true; spark.position.set(lane[k] + (Math.random() - 0.5) * 0.15, 0.3 + Math.random() * 0.1, 0.9 + (Math.random() - 0.5) * 0.3); } });
+    if (!crane) { trolley.position.x += (0 - trolley.position.x) * 0.05; cable.scale.y = 0.001; return; }
+    const p = Math.min(1, crane.t / crane.d), e = p * p * (3 - 2 * p), to = lane[crane.lane];
+    const x = crane.phase === 'lift' ? to * e : to * (1 - e), y = 0.18 + Math.sin(e * Math.PI) * 0.35;
     block.position.set(x, y, 0.9); trolley.position.x = x; cable.scale.y = Math.max(0.01, 0.92 - y); cable.position.y = -(0.92 - y) / 2 - 0.03;
-    hook.visible = false;
   } };
 }
 
@@ -70,7 +69,7 @@ export function createDepots(s, g, colorOf) {
         alive.add(d.id);
         let it = items.get(d.id);
         if (!it) { it = one(s, g, d, colorOf); items.set(d.id, it); root.add(it.root); }
-        it.update((d.jobs || [])[0] || null, tm);
+        it.update(d.jobs || [], tm);
       }
       for (const [id, it] of items) if (!alive.has(id)) { root.remove(it.root); items.delete(id); }
     },

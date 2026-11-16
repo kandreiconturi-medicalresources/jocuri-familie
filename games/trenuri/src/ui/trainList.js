@@ -9,6 +9,10 @@ import { trainKind } from './trainKind.js';
 import { ageText } from './trainPanel.js';
 
 export const stateOf = (t) => {
+  if (t.tow) return '🚑 Remorcă';
+  if (t.dead) return '🚨 Defect pe traseu';
+  if (t.state === 3) return t.cpl ? '🚑 Remorcat' : '🏭 La depou';
+  if (t.toDepot) return '🏭 Merge la depou';
   if (t.paused) return t.state === 2 ? '⏸ În pauză' : '⏸ Se oprește la gară';
   if (t.route.length < 2) return '❗ Fără rută';
   if (t.lost) return '❗ Fără drum';
@@ -18,7 +22,7 @@ export const stateOf = (t) => {
 };
 
 export function openTrainList(card, s, ev) {
-  const mine = s.trains.filter((t) => t.owner === viewer.co);
+  const mine = s.trains.filter((t) => t.owner === viewer.co && !t.gone);
   const again = () => setTimeout(() => openTrainList(card, s, ev), 150);
   card.open(h('h3', null, '🚆 Trenurile mele'),
     mine.length ? mine.map((t) => {
@@ -27,6 +31,7 @@ export function openTrainList(card, s, ev) {
         h('button', { class: 'tmain', onclick: () => ev.pick(t) },
           h('b', null, `${t.id} · ${trainKind(s, t).full}`), h('small', null, MODELS[t.model].name), h('span', null, stateOf(t)),
           h('small', null, `${t.money >= 0 ? '+' : ''}${lei(t.money)} · ${ageText(ageMonths(s, t))} · fiabilitate ${rel}%`, why.length ? ' · ' + why[0] : '')),
+        t.dead && !t.resc ? h('button', { class: 'rb', 'aria-label': 'Trimite remorcă', title: 'Trimite remorcă', onclick: () => { ev.rescue(t.id); again(); } }, '🚑') : t.state !== 3 && !t.toDepot ? h('button', { class: 'rb', 'aria-label': 'Trimite la depou', title: 'Trimite la depou', onclick: () => { ev.depot(t.id); again(); } }, '🏭') : null,
         h('button', { class: 'rb' + (t.paused ? ' on' : ''), 'aria-label': t.paused ? 'Continuă' : 'Pauză', onclick: () => { ev.pause(t.id, !t.paused); again(); } }, t.paused ? '▶' : '⏸'));
     }) : h('div', null, 'Nu ai niciun tren încă. Folosește 🚂 Tren ca să cumperi unul.'),
     h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'));

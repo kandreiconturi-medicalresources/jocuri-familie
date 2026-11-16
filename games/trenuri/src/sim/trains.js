@@ -8,6 +8,8 @@ import { unload, load } from './cargo.js';
 import { relOf, repairTicks, serviceAt } from './wear.js';
 import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from './reserve.js';
 import { accelEvery, slopeVmax } from './physics.js';
+import { missionPath, arriveMission } from './mission.js';
+import { breakHeavy, deadTick } from './depots.js';
 export { capacity, tileDist } from './cargo.js';
 
 /** Cel mai scurt drum pe șine între două plăci (indici), sau null. Dijkstra, ordine deterministă. */
@@ -48,14 +50,26 @@ export function effVmax(s, t) {
   return v;
 }
 
+/** Pornește trenul pe drumul p, din indicele k0; false dacă primul bloc e ocupat. */
+function launch(s, t, p, k0) {
+  if (p.length > k0 + 1 && enter(s, t, p, k0 + 1, true) !== GO) { t.wait = 8; return false; }
+  t.rl = 0; t.org = 0; t.path = p; t.seg = k0; t.pos = 0; t.left = pathLen(s.w, p.slice(k0)); t.speed = 0; t.state = 1; t.hold = 0;
+  return true;
+}
+
 function depart(s, t) {
+  if (t.tow || t.toDepot) { // misiune de depou (remorcă sau tren trimis la reparat)
+    const m = missionPath(s, t);
+    if (m === null) { t.wait = RETRY; return; }
+    if (m) { if (m !== 'done') launch(s, t, m.p, m.k0); return; }
+  }
   const len = t.route.length;
   if (len < 2) { t.wait = RETRY; return; }
   const cur = t.route.indexOf(t.to);
   const at = cur >= 0 ? cur : t.at, nxt = (at + 1) % len;
   const A = s.stations.find((q) => q.id === t.to), B = s.stations.find((q) => q.id === t.route[nxt]);
   if (!A || !B || A.id === B.id) { t.wait = RETRY; return; }
-  const a0 = A.y * s.w + A.x, b0 = B.y * s.w + B.x;
+  const a0 = t.org ? t.org - 1 : A.y * s.w + A.x, b0 = B.y * s.w + B.x;
   let p = findRail(s, a0, b0);
   if (p) { // dacă drumul cel mai scurt e ocupat sau pe el vine alt tren, caută linia liberă (linie dublă, macazuri), dacă nu e un ocol prea mare
     const ahead = new Set();
@@ -72,13 +86,12 @@ function depart(s, t) {
     return;
   }
   t.lost = 0;
-  if (p.length > 1 && enter(s, t, p, 1, true) !== GO) { t.wait = 8; return; } // șina e ocupată sau rezervată: așteaptă în gară
-  t.rl = 0;
+  if (!launch(s, t, p, 0)) return; // șina e ocupată sau rezervată: așteaptă în gară
   t.from = A.id; t.to = B.id; t.at = nxt;
-  t.path = p; t.seg = 0; t.pos = 0; t.left = pathLen(s.w, p); t.speed = 0; t.state = 1; t.hold = 0;
 }
 
 function arrive(s, t) {
+  if ((t.tow || t.toDepot) && arriveMission(s, t)) return;
   const st = s.stations.find((q) => q.id === t.to);
   t.speed = 0; t.state = 2; t.wait = DWELL; t.hold = 0;
   holdOnlyStation(s, t);
@@ -127,14 +140,17 @@ function reroute(s, t) {
 
 function move(s, t) {
   const m = MODELS[t.model];
+  if (t.state === 3) return; // la depou sau cuplat la remorcă
   if (t.state === 2) { // oprit în gară
     if (t.wait > 0) { t.wait--; return; }
     if (t.paused) return;
     depart(s, t);
     return;
   }
+  if (t.dead) { deadTick(s, t); return; }
   if (t.broken > 0) { t.broken--; t.speed = 0; return; }
   if (s.tick % TICKS_PER_DAY === 0 && roll(s, 2000) < 100 - relOf(t)) {
+    if (breakHeavy(s, t)) return;
     t.broken = repairTicks(t); t.speed = 0;
     addNews(s, '🔧', `Trenul ${t.id} s-a stricat puțin. Mecanicii îl repară într-o zi!`);
     return;

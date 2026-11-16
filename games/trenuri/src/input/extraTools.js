@@ -1,5 +1,5 @@
 // Unelte 6.6: 🚦 semnal, ⛏️ nivelare/defrișare, 🕳️ tunel, ⬆️ peroane la gară. Totul trece prin ctx.exec(comandă).
-import { levelPlan, maxPlatforms, platformsOf, upgradeCost, TUNNEL, T_PRESENT, DX, DY, opp } from '../sim/index.js';
+import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, T_PRESENT, DX, DY, opp } from '../sim/index.js';
 import { lei } from '../ui/hud.js';
 
 const GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', BLUE = '#8fd3ff';
@@ -7,6 +7,7 @@ export const EXTRA_TOOLS = [
   { id: 'signal', e: '🚦', t: 'Semnal', hint: 'Atinge o șină ca să pui un semnal. Trenul stă la roșu până se eliberează traseul din fața lui.' },
   { id: 'level', e: '⛏️', t: 'Nivelare', hint: 'Atinge două colțuri: nivelez terenul dintre ele sau tai pădurea.' },
   { id: 'tunnel', e: '🕳️', t: 'Tunel', hint: 'Atinge două plăci de aceeași înălțime, de o parte și de alta a dealului (cel mult 6 plăci între ele).' },
+  { id: 'depot', e: '🏭', t: 'Depou', hint: 'Atinge capătul unei linii (o șină cu o singură legătură): acolo se repară trenurile și pleacă remorcile.' },
   { id: 'platform', e: '⬆️', t: 'Gară mai mare', hint: 'Atinge o gară ca să-i adaugi un peron: încap mai multe trenuri deodată.' },
 ];
 
@@ -32,6 +33,7 @@ export function createExtraTools(c) {
   function paint(id) {
     if (id === 'level' && a) c.ov().set(hov ? tiles(rect(a, hov), (o.mode === 'level' && !levelInfo(hov).plan.ok) ? RED : GREEN) : [{ x: a.x, y: a.y, color: GOLD }]);
     else if (id === 'tunnel' && a) c.ov().set([{ x: a.x, y: a.y, color: GOLD }]);
+    else if (id === 'depot') { const m = [], S0 = S(); for (let i = 0; i < S0.track.length; i++) if (depotSpot(S0, i)) m.push({ x: i % S0.w, y: (i / S0.w) | 0, color: GREEN }); for (const d of S0.depots) m.push({ x: d.x, y: d.y, color: GOLD }); c.ov().set(m); }
     else if (id === 'platform') c.ov().set(S().stations.map((st) => ({ x: st.x, y: st.y, color: platformsOf(st) < maxPlatforms(S(), st) ? GREEN : BLUE })));
     else if (id === 'signal') c.ov().set(S().signals.filter((g) => !g.auto).map((g) => ({ x: g.x, y: g.y, color: GOLD })));
     else c.ov().clear();
@@ -61,6 +63,10 @@ export function createExtraTools(c) {
         if (!(S().track[i] & T_PRESENT)) { c.hud().hint('Atinge o șină.', true); return; }
         const r = o.erase ? c.exec({ type: 'removeSignal', x: t.x, y: t.y }) : c.exec({ type: 'placeSignal', x: t.x, y: t.y, dir: Math.max(0, entryDir(t)), twoWay: o.twoWay });
         if (r.ok) c.hud().hint(o.erase ? 'Semnalul a dispărut.' : '🚦 Semnal pus! Trenul stă la roșu până e liber traseul din fața lui.', false, 4000);
+      } else if (id === 'depot') {
+        const r = c.exec({ type: 'buildDepot', x: t.x, y: t.y });
+        if (r.ok) c.hud().hint('🏭 Depou nou! Trimite trenurile uzate la reparat din panoul lor.', false, 5000);
+        else if (r.err === 'drum') c.hud().hint('Depoul se pune la capătul unei linii: trage o ramură scurtă de la linia principală și atinge-i capătul.', true, 6000);
       } else if (id === 'level') tapLevel(t);
       else if (id === 'tunnel') tapTunnel(t);
       else if (id === 'platform') {
@@ -79,6 +85,7 @@ export function createExtraTools(c) {
           { label: '→ Un sens', on: !o.twoWay && !o.erase, fn: () => { o.twoWay = false; o.erase = false; c.bar(); } },
           { label: '↔ Ambele sensuri', on: o.twoWay && !o.erase, fn: () => { o.twoWay = true; o.erase = false; c.bar(); } },
           { label: '🧹 Șterge semnal', on: o.erase, fn: () => { o.erase = true; c.bar(); } },
+          { label: c.S().autoBlock ? `🧱 Semnale automate pe linie lungă: la ${c.S().autoBlock} plăci ✅` : '🧱 Semnale automate pe linie lungă', small: c.S().autoBlock ? 'Atinge ca să le oprești' : 'Trenurile din același sens merg la un bloc distanță', fn: () => { c.exec({ type: 'setAutoBlock', n: c.S().autoBlock ? 0 : 6 }); c.bar(); } },
         ];
       }
       if (id === 'level') {
@@ -87,6 +94,7 @@ export function createExtraTools(c) {
           { label: '🌲 Taie pădurea', on: o.mode === 'clear', fn: () => { o.mode = 'clear'; a = null; c.bar(); paint(id); } },
         ];
       }
+      if (id === 'depot') return [{ label: '🏭 Depou', small: lei(DEPOT.cost), fn: () => {} }];
       if (id === 'tunnel') return [{ label: '🕳️ Tunel', small: `≤ ${TUNNEL.max} plăci · ${lei(TUNNEL.cost)}/placă`, fn: () => {} }];
       return [];
     },

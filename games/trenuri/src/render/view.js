@@ -15,6 +15,7 @@ import { createLinks } from './links.js';
 import { createPlatforms, createSwitches } from './platforms.js';
 import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
+import { dirtyChunks } from '../sim/terraform.js';
 import { createOverlay } from './overlay.js';
 import { perf } from '../../../../shared/engine/perf.js';
 
@@ -47,6 +48,12 @@ export function createView(stage, s) {
   }
   function refresh() {
     const d = s.dirty, q = perf.quality();
+    if (d.terrain) { // teren nivelat: doar bucățile atinse (sau tot, la încărcare fără dreptunghiuri)
+      const rects = d.tr || [];
+      for (const [x0, y0, x1, y1] of rects) g.refresh(x0 - 1, y0 - 1, x1 + 1, y1 + 1);
+      terrain.rebuild(rects.length ? dirtyChunks(s) : []);
+      d.terrain = false; d.tr = []; d.forest = d.cities = d.stations = d.signals = true;
+    }
     if (d.forest) { swap('forest', () => createForest(s, g, q)); d.forest = false; }
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
     if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }

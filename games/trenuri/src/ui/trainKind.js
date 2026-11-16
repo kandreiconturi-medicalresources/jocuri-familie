@@ -15,6 +15,7 @@ export function mainGood(s, t) {
 
 /** { icon, text, full }: full = textul întreg de afișat. */
 export function trainKind(s, t) {
+  if (t.tow) return { icon: '🚑', text: 'Remorcă', full: '🚑 Remorcă' };
   const freight = t.kinds.some((k) => k >= 2);
   if (!freight) {
     const pass = t.kinds.includes(0), mail = t.kinds.includes(1);

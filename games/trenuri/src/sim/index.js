@@ -15,7 +15,9 @@ export { industryAdvice, trainAdvice, suggestKinds, routeGoods, nearestSource } 
 export { relOf, ageMonths, wearMonthly } from './wear.js';
 export { parallelPlan, trackSection, switches, links } from './parallel.js';
 export { computeTodos } from './todo.js';
+export { depotSpot, startRescue } from './depots.js';
 export { signalAspect, syncAuto } from './signals.js';
+export { dirtyChunks, TERRAIN_CHUNK } from './terraform.js';
 export { levelPlan, levelCostOf, fitLevels } from './terraform.js';
 export { maxPlatforms, platformsOf, upgradeCost } from './stations.js';
 export { weightOf, pullOf, heaviness } from './physics.js';
