@@ -102,3 +102,10 @@
 .sl-btns { display: flex; gap: 4px; }
 .sl-btns .opt { min-width: 44px; min-height: 44px; padding: 0 8px; }
 .warnrow { font-weight: 700; color: #c62838; }
+/* 7.5: membrii echipelor în cutiuța din rețea (gazda îi poate muta cu o atingere) */
+.nethud .tmem { display: flex; flex-wrap: wrap; gap: 3px; margin: 1px 0 3px 18px; }
+.nethud .tmem .chip { font: inherit; font-size: 11px; padding: 1px 6px; border-radius: 9px; border: 0; background: #ede4ff; color: #3a1a6a; pointer-events: auto; }
+.nethud .tmem button.chip { cursor: pointer; background: #ffe8cc; min-height: 22px; }
+/* 7.5: pastilele echipelor din lobby */
+.lobby .pl .team { margin-left: auto; padding: 4px 10px; border-radius: 14px; font-size: 13px; min-height: 32px; }
+.lobby .team.t0 { background: #ffd8a8; } .lobby .team.t1 { background: #a5d8ff; } .lobby .team.t2 { background: #e5dbff; } .lobby .team.t3 { background: #d3f9d8; }

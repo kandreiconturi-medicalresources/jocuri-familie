@@ -34,3 +34,4 @@ export { shipLoad, shipFree } from './shipTrade.js';
 export { bridgeInfo, bridgeShape, bridgeCost, bridgeSteel } from './bigBridge.js';
 export { landValue, landPrice, landWorth, parcelInfo, industryPrice, parcelsW, parcelId, tileOwner } from './land.js';
 export { repayAmount } from './bank.js';
+export { TEAMS, normTeams, teamMembers, teamPlayers } from './teams.js';

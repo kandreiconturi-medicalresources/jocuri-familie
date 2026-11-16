@@ -35,6 +35,7 @@ export function candidates(s, co, L) {
 
 /** O gară deja a companiei care acoperă nodul (ca să nu mai punem alta). */
 export function ownStation(s, co, n) {
+  if (n.port) return n.o.owner === co.id ? n.o : null; // 7.5: portul e chiar gara de capăt
   return s.stations.find((st) => st.owner === co.id && (n.city
     ? Math.max(Math.abs(n.o.x - st.x), Math.abs(n.o.y - st.y)) <= STATION_RADIUS[st.size] + 2
     : near(st, n.o))) || null;

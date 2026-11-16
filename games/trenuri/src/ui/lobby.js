@@ -3,7 +3,7 @@
 import { h } from '../../../../shared/ui/dom.js';
 import { connectRooms } from '../../../../shared/net/rooms.js';
 import { createKeypad } from '../../../../shared/ui/keypad.js';
-import { SCENARIOS, AI_LEVELS } from '../sim/index.js';
+import { SCENARIOS, AI_LEVELS, TEAMS } from '../sim/index.js';
 
 const ERRORS = { not_found: 'Nu există nicio cameră cu codul ăsta.', full: 'Camera e plină (maxim 4 jucători).', bad: 'Codul nu e bun.', busy: 'Serverul e ocupat acum. Încearcă iar.' };
 const BLOCKED = { time: 'limit', disabled: 'disabled' };
@@ -24,7 +24,7 @@ export function distinctColors(players) {
 /** hooks = { begin(cfg, { rooms, you, hostId, late, players }), setRoom(players), msgInGame(): bool, ended(), blocked(reason) }. */
 export function createLobby(root, hooks) {
   let rooms = null, room = null, view = 'menu', el = null, inGame = false;
-  const opt = { mode: 'coop', size: 'S', year: 1950, scn: -1, expert: false, nAi: 2, lvl: 1, islands: false };
+  const opt = { mode: 'coop', size: 'S', year: 1950, scn: -1, expert: false, nAi: 2, lvl: 1, islands: false, team: {} }; // team: idJucător → indicele echipei (7.5)
   const err = h('p', { class: 'err' });
   const keypad = createKeypad({ onChange: () => { err.textContent = ''; }, onSubmit: (c) => rooms.join(c) });
   addEventListener('keydown', (e) => { if (view === 'join' && el) keypad.onKey(e); });
@@ -70,10 +70,21 @@ export function createLobby(root, hooks) {
     const cfg = { mode: opt.mode, seed: (Math.random() * 4294967295) >>> 0, size: opt.size, year: opt.year, scn: opt.mode === 'coop' && opt.scn >= 0 ? SCENARIOS[opt.scn].id : null, players: distinctColors(list()) };
     if (opt.expert && !cfg.scn) { cfg.expert = true; cfg.ai = new Array(opt.nAi).fill(opt.lvl); } // etapa 6.5: mod expert cu 0–3 concurenți AI
     if (opt.islands && !cfg.scn) { cfg.map = 'islands'; cfg.ai = new Array(opt.nAi).fill(opt.lvl); } // etapa 7.1: lumea cu insule (AI și în simplu)
+    if (opt.mode === 'team') { // 7.5: pe echipe = competitiv pe insule, o companie per echipă
+      cfg.mode = 'comp'; cfg.map = 'islands'; cfg.ai = new Array(opt.nAi).fill(opt.lvl);
+      cfg.teams = TEAMS.map((_, k) => cfg.players.filter((p) => teamOf(p.id) === k).map((p) => p.id)).filter((m) => m.length);
+    }
     rooms.send({ k: 'start', cfg });
     begin(cfg, false);
   }
 
+  const teamOf = (id) => Math.min(opt.team[id] | 0, TEAMS.length - 1);
+  /** Pastila echipei: atingerea o mută la echipa următoare (cât jucători sunt în cameră, cel mult 4). */
+  const teamChip = (p, n, host) => {
+    const k = teamOf(p.id), tm = TEAMS[k];
+    const next = () => { opt.team[p.id] = (k + 1) % Math.max(1, Math.min(n, TEAMS.length)); render(); };
+    return host ? h('button', { class: 'opt team t' + k, onclick: next }, tm.icon + ' ' + tm.name) : h('span', { class: 'team t' + k }, tm.icon + ' ' + tm.name);
+  };
   const btn = (label, fn, cls) => h('button', { class: 'opt ' + (cls || ''), onclick: fn }, label);
   const choice = (title, items, cur, set) => h('div', { class: 'optrow' }, h('span', null, title), h('div', { class: 'rowb' }, items.map(([v, t]) => btn(t, () => { set(v); render(); }, v === cur ? 'on' : ''))));
 
@@ -88,16 +99,17 @@ export function createLobby(root, hooks) {
   function roomView() {
     const pl = list(), me = pl.find((p) => p.id === room.you), host = !!(me && me.host), cols = distinctColors(pl);
     const roster = h('div', { class: 'plist' }, pl.map((p, i) => h('div', { class: 'pl' + (p.id === room.you ? ' me' : '') },
-      h('i', { class: 'dot', style: { background: cols[i] ? cols[i].color : p.color } }), p.name || 'Jucător', p.host ? ' 👑' : '')));
+      h('i', { class: 'dot', style: { background: cols[i] ? cols[i].color : p.color } }), p.name || 'Jucător', p.host ? ' 👑' : '', opt.mode === 'team' ? teamChip(p, pl.length, host) : null)));
     const sc = opt.scn >= 0 ? SCENARIOS[opt.scn] : null;
     const step = (d) => { opt.scn = (opt.scn + d + SCENARIOS.length) % SCENARIOS.length; render(); };
     const options = host ? h('div', { class: 'lob' },
-      choice('Cum jucăm', [['coop', '🤝 Împreună'], ['comp', '🏆 Întrecere']], opt.mode, (v) => { opt.mode = v; if (v === 'comp') opt.scn = -1; }),
+      choice('Cum jucăm', [['coop', '🤝 Împreună'], ['comp', '🏆 Întrecere'], ['team', '👪 Pe echipe']], opt.mode, (v) => { opt.mode = v; if (v !== 'coop') opt.scn = -1; if (v === 'team') opt.islands = true; }),
+      opt.mode === 'team' ? h('p', { class: 'hint' }, 'Atinge echipa de lângă nume ca s-o schimbi. Fiecare echipă are insula ei; toți din echipă construiesc împreună.') : null,
       opt.mode === 'coop' ? choice('Harta', [[-1, '🌍 Nouă'], [0, '🎯 Scenariu']], opt.scn >= 0 ? 0 : -1, (v) => { opt.scn = v < 0 ? -1 : Math.max(0, opt.scn); }) : null,
       sc ? h('div', { class: 'rowb' }, btn('◀', () => step(-1)), h('span', { class: 'val' }, `${sc.icon} ${sc.name}`), btn('▶', () => step(1))) : [
         choice('Mărime', SIZES, opt.size, (v) => { opt.size = v; }), choice('Anul', YEARS, opt.year, (v) => { opt.year = v; })],
       sc ? null : choice('Mod', [[false, 'Simplu'], [true, '🎓 Expert']], opt.expert, (v) => { opt.expert = v; }),
-      sc ? null : choice('Lumea', [[false, '🌍 Continent'], [true, '🏝️ Insule']], opt.islands, (v) => { opt.islands = v; if (!v && opt.nAi > 3) opt.nAi = 3; }),
+      sc ? null : choice('Lumea', [[false, '🌍 Continent'], [true, '🏝️ Insule']], opt.islands, (v) => { opt.islands = v; if (!v && opt.nAi > 3) opt.nAi = 3; if (!v && opt.mode === 'team') opt.mode = 'comp'; }),
       !sc && (opt.expert || opt.islands) ? choice('Concurenți AI', (opt.islands ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]).map((n) => [n, String(n)]), opt.nAi, (v) => { opt.nAi = v; }) : null,
       !sc && (opt.expert || opt.islands) && opt.nAi ? choice('Cât de iscusiți', AI_LEVELS.map((l, i) => [i, l.name]), opt.lvl, (v) => { opt.lvl = v; }) : null)
       : h('p', null, 'Așteptăm gazda să aleagă și să pornească jocul…');

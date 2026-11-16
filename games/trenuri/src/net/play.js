@@ -7,15 +7,20 @@ import { createNetHud } from '../ui/netHud.js';
 /** hooks = { root, hint(text, warn), sfx(name), setWorld(state, opts), setSpeedUi(v), onStop() }. */
 export function createNetPlay(hooks) {
   let sess = null, you = null, uiT = 0;
-  const hud = createNetHud(hooks.root);
+  const hud = createNetHud(hooks.root, (pl, co, name) => { if (sess && node().isHost()) node().assign(pl, co, name); });
   const node = () => sess.node;
   const coFor = (s) => (!s.net || s.net.mode !== 'comp' ? 0 : s.net.pl[you]);
 
   /** Mapare jucători → companii după încărcarea unei salvări: coop = o companie; competitiv = în ordinea camerei. */
   function fixNet(s, players) {
     if (!s.net || (s.net.mode !== 'comp' && s.net.mode !== 'coop')) s.net = { mode: 'coop', pl: {} };
+    const old = s.net.pl || {};
     s.net.pl = {};
-    if (s.net.mode === 'comp') players.forEach((p, i) => { if (i < s.companies.length) s.net.pl[p.id] = i; });
+    if (s.net.team) { // 7.5: pe echipe, cine era deja într-o echipă rămâne acolo; ceilalți intră în prima echipă a oamenilor
+      const first = s.companies.findIndex((c) => !c.ai && !c.dead);
+      if (!s.net.nm) s.net.nm = {};
+      players.forEach((p) => { const k = old[p.id]; s.net.pl[p.id] = k !== undefined && k < s.companies.length ? k : Math.max(0, first); s.net.nm[p.id] = String(p.name || 'Jucător').slice(0, 14); });
+    } else if (s.net.mode === 'comp') players.forEach((p, i) => { if (i < s.companies.length) s.net.pl[p.id] = i; });
     return s;
   }
 

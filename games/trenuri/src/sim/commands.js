@@ -21,6 +21,7 @@ import { SHIP_COMMANDS } from './ships.js';
 import { BRIDGE_COMMANDS } from './bigBridge.js';
 import { LAND_COMMANDS } from './land.js';
 import { BANK_COMMANDS } from './bank.js';
+import { TEAM_COMMANDS } from './teams.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
@@ -209,13 +210,14 @@ function joinCompany(s, cmd) {
   if (s.mode === 'expert') initCompany(s.companies[id]);
   else if (s.islands) s.companies[id].tr = []; // 7.4: banca și în modul simplu
   n.pl[cmd.pl] = id;
+  if (n.team) { if (!n.nm) n.nm = {}; n.nm[cmd.pl] = s.companies[id].name.slice(0, 14); } // 7.5: echipă nouă cu un singur membru
   if (s.islands) claimIsland(s, id);
   addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
   return { ok: true, cost: 0 };
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

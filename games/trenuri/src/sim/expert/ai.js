@@ -7,6 +7,7 @@ import { planTrack } from '../plan.js';
 import { roll } from '../rand.js';
 import { LOAN_TR, AI_LEVELS } from './consts.js';
 import { candidates, ownStation, spotFor, nodeKey } from './aiplan.js';
+import { aiSea } from './aiSea.js';
 
 const run = (s, co, cmd) => applyCommand(s, { by: co.id, ...cmd });
 const ageM = (s, t) => s.date.y * 12 + s.date.m - (t.born === undefined ? s.date.y * 12 + s.date.m : t.born);
@@ -21,13 +22,13 @@ function pickModel(s, budget) {
 }
 
 /** Împrumută tranșe până acoperă `need` (cât permite nivelul și ratingul); întoarce true dacă acum are destul. */
-function fund(s, co, L, need) {
+export function fund(s, co, L, need) {
   while (co.cash < need && co.tr.length < L.loans) if (!run(s, co, { type: 'takeLoan' }).ok) break;
   return co.cash >= need;
 }
 
 /** O legătură nouă: gări (sau cele existente), șină, un tren cu vagoane potrivite mărfii. */
-function buildLink(s, co, L, c) {
+export function buildLink(s, co, L, c) {
   const sa = ownStation(s, co, c.a), sb = ownStation(s, co, c.b);
   const pa = sa || spotFor(s, c.a, c.b), pb = sb || spotFor(s, c.b, c.a);
   if (!pa || !pb) return 'bad';
@@ -83,6 +84,7 @@ export function aiMonth(s, co) {
   if (co.tr.length && co.cash > L.reserve * 2 + LOAN_TR) run(s, co, { type: 'repayLoan' });
   upkeep(s, co, L);
   if (co.ai.cool > 0) { co.ai.cool--; return; }
+  if (s.islands) aiSea(s, co, L); // 7.5: port, vapoare, export și import (când AI-ul nu „se odihnește” după un proiect)
   const recent = co.history.slice(-6).reduce((n, v) => n + v, 0);
   if (co.cash < L.reserve / 4 && recent < 0) { // criză: vinde trenul cu cel mai mic câștig pe lună
     const mine = s.trains.filter((t) => t.owner === co.id && ageM(s, t) > 3);
