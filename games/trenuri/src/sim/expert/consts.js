@@ -14,6 +14,11 @@ export const AI_DEFS = [
   { name: 'Feroviara Vulturul', color: '#9775fa' },
   { name: 'Trenuri Cetina', color: '#20c997' },
   { name: 'Calea Lăstunului', color: '#ff922b' },
+  // doar în lumea cu insule (până la 7 AI): modul expert obișnuit folosește primele 3
+  { name: 'Linia Pescărușului', color: '#74c0fc' },
+  { name: 'Drumul de Fier Arinul', color: '#e64980' },
+  { name: 'Șinele Cocorului', color: '#a9e34b' },
+  { name: 'Vagoanele Bujorului', color: '#f783ac' },
 ];
 /** Nivelurile AI: răbdare (luni între proiecte), rezervă de bani, tranșe de împrumut, lungime maximă, trenuri pe linie. */
 export const AI_LEVELS = [

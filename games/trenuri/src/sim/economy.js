@@ -8,6 +8,7 @@ import { monthlyEvents } from './events.js';
 import { isEx, payMonthly } from './expert/finance.js';
 import { expertMonthly } from './expert/index.js';
 import { wearMonthly } from './wear.js';
+import { islandMonthly } from './islandMonth.js';
 
 export function spawnCargo(s) {
   for (const st of s.stations) {
@@ -57,4 +58,5 @@ export function monthly(s) {
     if (co.id === 0 && !co.dead) addNews(s, '📅', `Luna s-a încheiat: ${co.history[co.history.length - 1] >= 0 ? 'câștig' : 'pierdere'} de ${Math.abs(co.history[co.history.length - 1])} lei.`);
   }
   if (s.mode === 'expert') expertMonthly(s);
+  if (s.islands) islandMonthly(s);
 }

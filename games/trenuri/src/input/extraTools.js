@@ -1,5 +1,5 @@
 // Unelte 6.6: 🚦 semnal, ⛏️ nivelare/defrișare, 🕳️ tunel, ⬆️ peroane la gară. Totul trece prin ctx.exec(comandă).
-import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, T_PRESENT, DX, DY, opp } from '../sim/index.js';
+import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, PORT, T_PRESENT, DX, DY, opp } from '../sim/index.js';
 import { lei } from '../ui/hud.js';
 
 const GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', BLUE = '#8fd3ff';
@@ -9,6 +9,7 @@ export const EXTRA_TOOLS = [
   { id: 'tunnel', e: '🕳️', t: 'Tunel', hint: 'Atinge două plăci de aceeași înălțime, de o parte și de alta a dealului (cel mult 6 plăci între ele).' },
   { id: 'depot', e: '🏭', t: 'Depou', hint: 'Atinge capătul unei linii (o șină cu o singură legătură): acolo se repară trenurile și pleacă remorcile.' },
   { id: 'platform', e: '⬆️', t: 'Gară mai mare', hint: 'Atinge o gară ca să-i adaugi un peron: încap mai multe trenuri deodată.' },
+  { id: 'port', e: '⚓', t: 'Port', island: true, hint: 'Atinge o placă de pe coasta insulei tale, chiar lângă apă: acolo acostează vapoarele.' },
 ];
 
 export function createExtraTools(c) {
@@ -67,6 +68,9 @@ export function createExtraTools(c) {
         const r = c.exec({ type: 'buildDepot', x: t.x, y: t.y });
         if (r.ok) c.hud().hint('🏭 Depou nou! Trimite trenurile uzate la reparat din panoul lor.', false, 5000);
         else if (r.err === 'drum') c.hud().hint('Depoul se pune la capătul unei linii: trage o ramură scurtă de la linia principală și atinge-i capătul.', true, 6000);
+      } else if (id === 'port') {
+        const r = c.exec({ type: 'buildPort', x: t.x, y: t.y });
+        if (r.ok) c.hud().hint('⚓ Port nou! Adu marfă cu trenul în depozit, apoi cumpără un 🚢 vapor.', false, 6000);
       } else if (id === 'level') tapLevel(t);
       else if (id === 'tunnel') tapTunnel(t);
       else if (id === 'platform') {
@@ -95,6 +99,7 @@ export function createExtraTools(c) {
         ];
       }
       if (id === 'depot') return [{ label: '🏭 Depou', small: lei(DEPOT.cost), fn: () => {} }];
+      if (id === 'port') return [{ label: '⚓ Port', small: lei(PORT.cost) + ' · depozit ' + PORT.cap + ' t', fn: () => {} }];
       if (id === 'tunnel') return [{ label: '🕳️ Tunel', small: `≤ ${TUNNEL.max} plăci · ${lei(TUNNEL.cost)}/placă`, fn: () => {} }];
       return [];
     },

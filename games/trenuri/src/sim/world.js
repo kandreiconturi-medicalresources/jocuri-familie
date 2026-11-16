@@ -9,26 +9,32 @@ import { NG } from './goods.js';
 import { initExpert } from './expert/init.js';
 import { hashExpert } from './expert/hash.js';
 import { syncAuto } from './signals.js';
+import { generateIslands } from './islandGen.js';
+import { setupIslands, finishIslands } from './islandMonth.js';
+import { hashIslands } from './islands.js';
 
 /** Statistici pentru obiectivele scenariilor: marfă predată (cerută), venit total, niveluri câștigate de orașe. */
 export const newStats = () => ({ del: new Array(NG).fill(0), earn: 0, up: 0 });
 
-export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, ai = [], players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
+export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = false, year = 1840, ai = [], map = 'normal', players = [{ id: 0, name: 'Tu', color: '#ff6b6b' }] } = {}) {
   const n = typeof seed === 'string' ? hashSeed(seed) : seed >>> 0;
-  const w = SIZES[size] || SIZES.S, h = w;
-  const m = generateMap(n, size, w, h);
+  const isl = map === 'islands' ? generateIslands(n, size, players.length + ai.length) : null; // etapa 7.1: o insulă per companie
+  const w = isl ? isl.w : SIZES[size] || SIZES.S, h = isl ? isl.h : w;
+  const m = isl || generateMap(n, size, w, h);
   const s = {
     version: 2, tick: 0, rng: (n ^ 0xa5a5a5a5) >>> 0, seed: n, size, mode, sandbox: !!sandbox, w, h,
-    height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
+    height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: isl ? isl.industries : placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
     track: new Uint16Array(w * h), stations: [], trains: [], signals: [], sigId: 1, depots: [],
     companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
     date: { y: year, m: 1, d: 1 }, news: [], stats: newStats(), nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
-  if (mode === 'expert') { initExpert(s, ai); s.over = null; }
+  if (mode === 'expert') { initExpert(s, isl ? [] : ai); s.over = null; }
+  if (isl) setupIslands(s, isl, ai);
   deriveLayers(s);
   for (const c of s.cities) { c.got = new Array(NG).fill(0); c.prev = new Array(NG).fill(0); c.level = levelOf(c.pop); growBuildings(s, c, 99); }
   s.news.push({ tick: 0, icon: '🚂', text: 'Bun venit! Leagă două orașe cu o cale ferată.' });
   s.news.push({ tick: 0, icon: '🏭', text: 'Pe hartă sunt ferme, păduri și mine. Ce produc ele poate hrăni orașele!' });
+  if (isl) finishIslands(s);
   return s;
 }
 
@@ -62,7 +68,7 @@ export function hashState(s) {
   for (let i = 0; i < s.track.length; i++) h = fnv(fnv(h, s.track[i]), s.track[i] >> 8);
   for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); h = arr(h, c.got); }
   for (const o of s.industries) { h = num(num(num(h, o.type), o.x * 256 + o.y), o.boost); h = arr(arr(h, o.in), o.out); }
-  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); }
+  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); if (t.port) h = num(h, 900 + t.dock); }
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
@@ -80,6 +86,7 @@ export function hashState(s) {
   for (const c of s.companies) h = num(num(num(h, c.cash), c.loan), c.history.length);
   h = num(num(num(h, s.date.y), s.date.m), s.date.d);
   if (s.mode === 'expert') h = hashExpert(s, h);
+  if (s.islands) h = hashIslands(s, h, num);
   return h >>> 0;
 }
 
@@ -95,7 +102,7 @@ function unb64(str, Type) {
   return new Type(u.buffer);
 }
 const BIG = ['height', 'water', 'forest', 'track'];
-const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc'];
+const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc', 'isl', 'seaC'];
 
 /** Obiect JSON simplu (poate merge în localStorage). */
 export function serialize(s) {

@@ -16,6 +16,7 @@ import { createPlatforms, createSwitches } from './platforms.js';
 import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
 import { createTerminals } from './terminal.js';
+import { createSea } from './ships.js';
 import { dirtyChunks } from '../sim/terraform.js';
 import { createOverlay } from './overlay.js';
 import { createGhost } from './ghost.js';
@@ -37,8 +38,10 @@ export function createView(stage, s) {
   const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), ghost = createGhost(s, g, stage), links = createLinks(s, g);
   const clouds = createClouds(s, g, stage.camera), signals = createSignals(s, g);
   let depots = null, platK = '', platT = 0;
+  const sea = s.islands ? createSea(s, g, (id) => colorOf(id)) : null; // etapa 7.2: porturi și vapoare
   root.add(terrain.root, trains.root, signals.root, overlay.mesh, links.mesh, ghost.root);
   stage.scene.add(root, clouds.root);
+  if (sea) root.add(sea.root);
   shade(root);
   const colorOf = (id) => (s.companies[id] ? s.companies[id].color : '#ff6b6b');
   const powered = new Set();
@@ -84,6 +87,7 @@ export function createView(stage, s) {
       ghost.frame(t);
       if (!depots && Array.isArray(s.depots)) { depots = createDepots(s, g, colorOf); if (depots) { shade(depots.root); root.add(depots.root); } }
       if (depots) depots.update(t);
+      if (sea) sea.update(alpha, t);
       if (dyn.terminals) dyn.terminals.userData.update(t);
       terrain.tick(t, stage.night);
       clouds.root.visible = perf.quality() >= 2;

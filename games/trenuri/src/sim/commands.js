@@ -15,6 +15,9 @@ import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
 import { validOrders, cleanOrders } from './orders.js';
 import { executePlan } from './execPlan.js';
+import { islandApply, claimIsland } from './islands.js';
+import { PORT_COMMANDS } from './ports.js';
+import { SHIP_COMMANDS } from './ships.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
@@ -23,6 +26,8 @@ export const ERR_TEXT = {
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
   loc: 'Terminalul mare are nevoie de loc liber și plat lângă gară (4×5 plăci) și de o linie dreaptă.',
+  insula: 'Insula asta e a altei companii: aici nu poți construi. Fă comerț cu ea prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
+  port: 'Portul se pune pe insula ta, pe o placă de uscat chiar lângă apă.', vapor: 'Ruta vaporului nu e bună: alege porturi la care se ajunge pe apă.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -199,17 +204,18 @@ function joinCompany(s, cmd) {
   s.companies.push({ id, name: String(cmd.name || 'Jucător').slice(0, 20), color: String(cmd.color || '#8fd3ff').slice(0, 9), cash: START_CASH, loan: 0, history: [], month: 0, record: 0 });
   if (s.mode === 'expert') initCompany(s.companies[id]);
   n.pl[cmd.pl] = id;
+  if (s.islands) claimIsland(s, id);
   addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
   return { ok: true, cost: 0 };
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');
   if (cmd.type === 'setSpeed') return { ok: true }; // viteza o ține gazda, în afara simulării
   const fn = TABLE[cmd.type] || EXPERT_COMMANDS[cmd.type], c = s.companies[cmd.by | 0];
   if (!fn || !c) return fail('drum');
-  return fn(s, cmd, c);
+  return s.islands ? islandApply(s, cmd, c, fn) : fn(s, cmd, c);
 }

@@ -20,6 +20,7 @@ import { showOver } from './ui/exOver.js';
 import { createExtras } from './ui/extras.js';
 import { mountExtraTools } from './ui/tools-extra.js';
 import { mountMobileControls } from './ui/mobileControls.js';
+import { createIslandUi } from './ui/islandUi.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -32,7 +33,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const exec = (cmd) => {
     if (np.active) { const r = np.submit(cmd); if (!r.ok) { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } return r; } // în rețea: răspunsul vine când gazda aplică comanda
     const r = applyCommand(s, { by: 0, ...cmd });
-    if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
+    if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(r.text || ERR_TEXT[r.err] || 'Nu merge asta.', true, r.text ? 7000 : 3500); }
     return r;
   };
   const waits = []; // „Fă tot” în rețea: promisiunea se închide când gazda aplică comanda și răspunde
@@ -70,7 +71,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (on) panels.layer(s); else panels.close();
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
-    expert: () => ex.show(),
+    expert: () => ex.show(), islands: () => isl.open(),
     todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
     menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
@@ -82,6 +83,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   });
   const extras = createExtras({ stage, uiRoot, panels, camera, helper, exec, execWait, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
   mountExtraTools(hud, tools);
+  const isl = createIslandUi({ card: panels.card, state: () => s, me: () => viewer.co, exec, hud, tools, show: (x, y) => extras.show(x, y) });
+  Object.assign(panels, { port: isl.port, ship: isl.ship, shipNear: isl.shipNear }); // Info pe port / vapor
   mountMobileControls(uiRoot, camera);
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
@@ -114,7 +117,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
   setAmbient(prefs.get('ambient'));
 
-  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭'];
+  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭', '🧱', '⚓'];
   function toastNews() {
     const n = s.news, k = n.indexOf(lastNews);
     if (k === n.length - 1) return;
@@ -175,7 +178,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       orbit = demo; simAcc = 0; lastCash = myCo().cash; shown = new Set(); tipT = -3; resetSounds();
       lastBest = s.scn ? s.scn.best : 0; endShown = !s.scn || s.scn.done; lastMonth = -1;
       if (overUi) { overUi.close(); overUi = null; }
-      exMonth = -1; hud.setExpert(s.mode === 'expert' && !demo);
+      exMonth = -1; hud.setExpert(s.mode === 'expert' && !demo); hud.setIslands(!!s.islands && !demo); isl.setWorld(s, demo);
       uiRoot.classList.toggle('demo', demo);
       helper.show(!demo); hud.setGoal(null);
       if (!resync) { panels.close(); tools.setTool('track'); }
@@ -188,9 +191,10 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (s.scn) { const sc = scn(); if (sc) hud.setGoal(goalChip(s, sc)); }
     },
     newWorld(size, demo, year = 1950, opt = null) {
-      const w = createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year, mode: opt && opt.expert ? 'expert' : 'simple', ai: opt && opt.ai ? opt.ai : [] });
+      const w = createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year, mode: opt && opt.expert ? 'expert' : 'simple', ai: opt && opt.ai ? opt.ai : [], map: opt && opt.islands ? 'islands' : 'normal' });
       game.setWorld(w, { demo });
-      if (opt && opt.expert) helper.say('Mod expert! Deschide 💼 sus: împrumuturi, bursă, raport anual. Atinge ⓘ ca să afli ce înseamnă.', { force: true });
+      if (opt && opt.islands) helper.say('Lumea cu insule! Insula ta nu are toate resursele. Atinge 🗺️ sus ca să vezi ce-ți lipsește, apoi fă un port ⚓ (🧰 Mai mult) și un vapor 🚢.', { force: true });
+      else if (opt && opt.expert) helper.say('Mod expert! Deschide 💼 sus: împrumuturi, bursă, raport anual. Atinge ⓘ ca să afli ce înseamnă.', { force: true });
     },
     startScenario(id) {
       const sc = scenarioById(id);

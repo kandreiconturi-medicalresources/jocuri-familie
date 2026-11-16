@@ -1,6 +1,7 @@
 // Straturi derivate (nu intră în hash și nu se salvează): drumuri între orașe și plăcile ocupate de clădiri.
 import { createHeap, KEY } from './heap.js';
 import { markYards } from './terminal.js';
+import { markIslands } from './islands.js';
 import { DX, DY } from './consts.js';
 import { rebuildBlocks } from './blocks.js';
 import { rebuildSignals } from './signals.js';
@@ -36,6 +37,7 @@ function landPath(w, h, water, a, b) {
 
 export function deriveLayers(s) {
   const { w, h, cities } = s;
+  if (s.islands) markIslands(s);
   s.roads = new Uint8Array(w * h);
   s.occ = new Uint8Array(w * h);
   for (let i = 1; i < cities.length; i++) {

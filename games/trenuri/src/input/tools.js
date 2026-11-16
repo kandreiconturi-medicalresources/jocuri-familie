@@ -81,10 +81,12 @@ export function createTools(ctx) {
     } else if (o.tool === 'info') {
       const tr = ctx.view().trains.pickAt(t.fx, t.fz);
       if (tr) { ctx.panels.train(s, tr); return; }
+      const sh = s.ships && ctx.panels.shipNear ? ctx.panels.shipNear(s, t.fx, t.fz) : null; // insule: vapor sau port
+      if (sh) { ctx.panels.ship(sh); return; }
       const dp = s.depots.find((d) => d.x === t.x && d.y === t.y);
       if (dp) { ctx.panels.depot(s, dp); return; }
       const st = stationAt(t.x, t.y);
-      if (st) { ctx.panels.station(s, st); return; }
+      if (st) { if (st.port && ctx.panels.port) ctx.panels.port(st); else ctx.panels.station(s, st); return; }
       const ind = ctx.panels.industryNear(s, t.x, t.y);
       if (ind) { ctx.panels.industry(s, ind); return; }
       const c = ctx.panels.cityNear(s, t.x, t.y);
@@ -93,7 +95,7 @@ export function createTools(ctx) {
   }
 
   const api = {
-    state: o,
+    state: o, world: S,
     setTool(id) {
       o.tool = id; reset();
       if (extra.has(id)) { ctx.hud.setTool('upgrade'); ctx.hud.hint(EXTRA_TOOLS.find((q) => q.id === id).hint, false, 6000); } else ctx.hud.setTool(id); // uneltele 6.6 n-au buton în bara principală

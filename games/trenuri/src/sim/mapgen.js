@@ -8,7 +8,7 @@ function lat(x, y, s) {
   return ((h ^ (h >>> 16)) >>> 0) & 255;
 }
 const smooth = (t) => (t * t * (768 - 2 * t)) >> 16; // 0..256 -> 0..256
-function noise(x, y, c, s) {
+export function noise(x, y, c, s) {
   const gx = Math.floor(x / c), gy = Math.floor(y / c);
   const tx = smooth(((x - gx * c) << 8) / c | 0), ty = smooth(((y - gy * c) << 8) / c | 0);
   const a = lat(gx, gy, s), b = lat(gx + 1, gy, s), d = lat(gx, gy + 1, s), e = lat(gx + 1, gy + 1, s);
@@ -16,8 +16,8 @@ function noise(x, y, c, s) {
   return (top * 256 + (bot - top) * ty) >> 16;
 }
 
-const FIRST = ['Valea', 'Dealu', 'Podu', 'Lunca', 'Poiana', 'Izvoru', 'Câmpu', 'Pădurea', 'Piatra', 'Stejaru', 'Crinul', 'Soarele', 'Brazii', 'Fluturii', 'Albina', 'Mărul'];
-const SECOND = ['Mare', 'Mic', 'Nou', 'Verde', 'Frumos', 'Vesel', 'de Sus', 'de Jos', 'Senin', 'Albastru', 'Auriu', 'Liniștit'];
+export const FIRST = ['Valea', 'Dealu', 'Podu', 'Lunca', 'Poiana', 'Izvoru', 'Câmpu', 'Pădurea', 'Piatra', 'Stejaru', 'Crinul', 'Soarele', 'Brazii', 'Fluturii', 'Albina', 'Mărul'];
+export const SECOND = ['Mare', 'Mic', 'Nou', 'Verde', 'Frumos', 'Vesel', 'de Sus', 'de Jos', 'Senin', 'Albastru', 'Auriu', 'Liniștit'];
 const COUNT = { S: [6, 8], M: [8, 11], L: [10, 14] };
 const MIN_DIST = { S: 11, M: 12, L: 13 };
 

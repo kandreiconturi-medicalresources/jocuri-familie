@@ -6,7 +6,7 @@ import { SCENARIOS, EXPERT_SCENARIOS, isUnlocked, isXUnlocked, MEDAL_ICONS, AI_L
 const num = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 export function createMenu(root, { hasSave, medals, firstTime, online, onNet, onContinue, onNew, onScenario, onFree, onTutorial, onHome }) {
-  let el = null, year = 1840, expert = false, nAi = 2, lvl = 1;
+  let el = null, year = 1840, expert = false, nAi = 2, lvl = 1, islands = false;
   const mount = (node) => { if (el) el.remove(); el = node; root.append(el); };
   const back = (fn) => (e) => { if (e.target === e.currentTarget) fn(); }; // tap pe fundal
 
@@ -26,13 +26,14 @@ export function createMenu(root, { hasSave, medals, firstTime, online, onNet, on
   }
 
   function newGame() {
-    const opts = () => (expert ? { expert: true, ai: new Array(nAi).fill(lvl) } : null);
+    const opts = () => (expert || islands ? { expert, islands, ai: new Array(nAi).fill(lvl) } : null);
     const size = (k, t, sub) => h('button', { class: 'opt', onclick: () => onNew(k, year, opts()) }, t, h('small', null, sub));
     const exBox = h('div', { class: 'rowb' });
-    const paintEx = () => exBox.replaceChildren(
+    const paintEx = () => { if (!islands && nAi > 3) nAi = 3; exBox.replaceChildren(...[
+      h('button', { class: 'opt exopt' + (islands ? ' on' : ''), title: 'O insulă pentru fiecare companie. Resursele lipsă le aduci cu vaporul.', onclick: () => { islands = !islands; paintEx(); } }, islands ? '🏝️ Insule: pornit' : '🏝️ Insule: oprit', h('small', null, 'Porturi, vapoare și comerț între insule')),
       h('button', { class: 'opt exopt' + (expert ? ' on' : ''), title: 'Împrumuturi, bursă, întreținere completă și concurenți AI.', onclick: () => { expert = !expert; paintEx(); } }, expert ? '🎓 Mod expert: pornit' : '🎓 Mod expert: oprit', h('small', null, 'Împrumuturi, bursă și concurenți AI')),
-      expert ? [0, 1, 2, 3].map((n) => h('button', { class: 'opt sm' + (n === nAi ? ' on' : ''), onclick: () => { nAi = n; paintEx(); } }, n ? n + ' AI' : 'Fără AI')) : null,
-      expert && nAi ? AI_LEVELS.map((l, i) => h('button', { class: 'opt sm' + (i === lvl ? ' on' : ''), onclick: () => { lvl = i; paintEx(); } }, l.name)) : null);
+      expert || islands ? (islands ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3]).map((n) => h('button', { class: 'opt sm' + (n === nAi ? ' on' : ''), onclick: () => { nAi = n; paintEx(); } }, n ? n + ' AI' : 'Fără AI')) : null,
+      (expert || islands) && nAi ? AI_LEVELS.map((l, i) => h('button', { class: 'opt sm' + (i === lvl ? ' on' : ''), onclick: () => { lvl = i; paintEx(); } }, l.name)) : null].flat().filter(Boolean)); };
     paintEx();
     const ys = [[1840, 'Începuturile', 'locomotive cu abur'], [1900, 'Epoca aburului', 'abur rapid'], [1950, 'Epoca nouă', 'diesel și electrice']];
     const yb = ys.map(([y, t, sub]) => h('button', { class: 'opt' + (y === year ? ' on' : ''), onclick: () => { year = y; yb.forEach((b, i) => b.classList.toggle('on', ys[i][0] === y)); } }, y + ' · ' + t, h('small', null, sub)));

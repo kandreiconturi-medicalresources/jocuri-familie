@@ -1,5 +1,5 @@
 // Valoarea unei companii (clasamentul din modul competitiv) și crearea lumii pentru un meci în rețea.
-import { STATION_COST, MODELS, CAR_PRICE, COST, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
+import { STATION_COST, MODELS, CAR_PRICE, COST, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, SHIP_MODELS } from './consts.js';
 import { createWorld } from './world.js';
 import { createScenarioWorld, scenarioById } from './scenarios/index.js';
 import { netWorth } from './expert/stocks.js';
@@ -11,6 +11,7 @@ export function companyValue(s, id) {
   let v = c.cash - c.loan;
   for (const st of s.stations) if (st.owner === id) v += STATION_COST[st.size];
   for (const t of s.trains) if (t.owner === id) v += MODELS[t.model].price + t.cars * CAR_PRICE;
+  if (s.ships) for (const q of s.ships) if (q.owner === id) v += SHIP_MODELS[q.model].price;
   let tiles = 0;
   for (let i = 0; i < s.track.length; i++) { const t = s.track[i]; if ((t & T_PRESENT) && ((t & T_OWNER_MASK) >> T_OWNER_SHIFT) === id) tiles++; }
   return v + tiles * (COST.tile >> 1);
@@ -31,7 +32,8 @@ export function createNetWorld(cfg) {
   }
   const coop = cfg.mode !== 'comp';
   const players = coop ? [{ id: 0, name: 'Echipa', color: pl[0].color }] : pl.map((p) => ({ id: p.id, name: p.name, color: p.color }));
-  const s = createWorld({ seed: cfg.seed >>> 0, size: cfg.size || 'S', year: cfg.year || 1950, players, mode: cfg.expert ? 'expert' : 'simple', ai: cfg.expert ? cfg.ai || [] : [] });
+  const isl = cfg.map === 'islands'; // etapa 7.1: lumea cu insule (AI-urile merg și în modul simplu)
+  const s = createWorld({ seed: cfg.seed >>> 0, size: cfg.size || 'S', year: cfg.year || 1950, players, mode: cfg.expert ? 'expert' : 'simple', ai: cfg.expert || isl ? cfg.ai || [] : [], map: isl ? 'islands' : 'normal' });
   s.net = { mode: coop ? 'coop' : 'comp', pl: {} };
   if (!coop) pl.forEach((p, i) => { s.net.pl[p.id] = i; });
   return s;
