@@ -47,7 +47,10 @@ function script(cfg, by = 0) {
 /** Oprește gazda, lasă mesajele să ajungă ca toți să fie la același pas; apoi repornește. */
 async function settle(hub, host) {
   host.setSpeed(0);
-  await hub.run(8);
+  await hub.run(2);
+  // clienții pot fi încă în urmă (ajung din urmă după o încărcare); așteptăm să se alinieze, nu un timp fix
+  const aligned = () => { const t = [...hub.nodes.values()].map((n) => n.world.tick); return t.every((x) => x === t[0]); };
+  await until(hub, aligned);
   const ticks = [...hub.nodes.values()].map((n) => n.world.tick);
   assert.ok(ticks.every((t) => t === ticks[0]), 'pași diferiți: ' + ticks);
   const hs = [...hub.nodes.values()].map((n) => hashState(n.world));
