@@ -12,6 +12,9 @@ import { createClouds } from './clouds.js';
 import { createTrains } from './trains.js';
 import { createIndustries, createUpgrades } from './industries.js';
 import { createLinks } from './links.js';
+import { createPlatforms, createSwitches } from './platforms.js';
+import { createSignals } from './signals3d.js';
+import { createDepots } from './depot.js';
 import { createOverlay } from './overlay.js';
 import { perf } from '../../../../shared/engine/perf.js';
 
@@ -27,10 +30,11 @@ function shade(obj) {
 const electric = (m) => m.key === 'electric' || m.key === 'glont';
 
 export function createView(stage, s) {
-  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null };
+  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null };
   const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), links = createLinks(s, g);
-  const clouds = createClouds(s, g, stage.camera);
-  root.add(terrain.root, trains.root, overlay.mesh, links.mesh);
+  const clouds = createClouds(s, g, stage.camera), signals = createSignals(s, g);
+  let depots = null, platK = '', platT = 0;
+  root.add(terrain.root, trains.root, signals.root, overlay.mesh, links.mesh);
   stage.scene.add(root, clouds.root);
   shade(root);
   const colorOf = (id) => (s.companies[id] ? s.companies[id].color : '#ff6b6b');
@@ -45,8 +49,8 @@ export function createView(stage, s) {
     const d = s.dirty, q = perf.quality();
     if (d.forest) { swap('forest', () => createForest(s, g, q)); d.forest = false; }
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
-    if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; }
-    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); d.stations = false; }
+    if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }
+    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g)); d.stations = false; }
     if (d.industries) { swap('industries', () => createIndustries(s, g)); d.industries = false; d.forest = true; if (links.visible) links.rebuild(); }
     if (q >= 2 && powered.size !== lastPowered) { swap('power', () => createCatenary(s, g, powered)); lastPowered = powered.size; }
     if (q < 2 && dyn.power) { root.remove(dyn.power); dyn.power = null; lastPowered = -1; }
@@ -64,8 +68,12 @@ export function createView(stage, s) {
     frame(alpha, dt, t) {
       stage.frame(t);
       if (t - scanT > 1.5) { scanT = t; scanPower(); }
+      if (t - platT > 1) { platT = t; const k = s.stations.map((q) => q.platforms | 0).join(); if (k !== platK) { platK = k; s.dirty.stations = true; } }
       refresh();
       trains.update(alpha, dt, stage.night);
+      signals.update(dt);
+      if (!depots && Array.isArray(s.depots)) { depots = createDepots(s, g, colorOf); if (depots) { shade(depots.root); root.add(depots.root); } }
+      if (depots) depots.update(t);
       terrain.tick(t, stage.night);
       clouds.root.visible = perf.quality() >= 2;
       if (clouds.root.visible) clouds.update(dt, stage.night);

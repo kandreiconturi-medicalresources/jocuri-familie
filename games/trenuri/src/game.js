@@ -18,6 +18,7 @@ import { createNetPlay } from './net/play.js';
 import { createExpertUi } from './ui/exHub.js';
 import { showOver } from './ui/exOver.js';
 import { createExtras } from './ui/extras.js';
+import { mountExtraTools } from './ui/tools-extra.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -30,7 +31,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const exec = (cmd) => {
     if (np.active) { const r = np.submit(cmd); if (!r.ok) { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } return r; } // în rețea: răspunsul vine când gazda aplică comanda
     const r = applyCommand(s, { by: 0, ...cmd });
-    if (r.ok) sfx('build'); else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
+    if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
     return r;
   };
   const panels = createPanels(uiRoot, {
@@ -43,12 +44,12 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
-  const helper = createHelper(uiRoot, { enabled: () => prefs.get('tips') });
+  const helper = createHelper(uiRoot, { enabled: () => prefs.get('tips'), onOpen: () => extras.conductor() });
   const scn = () => (s && s.scn ? scenarioById(s.scn.id) : null);
   const setSpeed = (v) => { speed = v; hud.setSpeed(v); };
   const hud = createHud(uiRoot, {
     speed: (v) => (np.active ? np.setSpeed(v) : setSpeed(v)),
-    tool: (id) => tools.setTool(id),
+    tool: (id) => (id === 'train' && s && s.stations.length >= 2 && !tutorial.active ? extras.buy() : tools.setTool(id)),
     news: () => panels.news(s),
     layer: () => {
       const on = !view.links.visible;
@@ -65,7 +66,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     canAfford: (c) => s.sandbox || myCo().cash >= c,
     follow: (id) => { follow = { id, until: clock + 5 }; },
   });
-  const extras = createExtras({ stage, uiRoot, panels, camera, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }) });
+  const extras = createExtras({ stage, uiRoot, panels, camera, helper, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }) });
+  mountExtraTools(hud, tools);
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -222,7 +224,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       }
       stage.setFog(camera.cam.dist * 1.15, camera.cam.dist * 3.2);
       view.frame(np.active ? np.alpha : speed ? simAcc : 1, dt, clock);
-      extras.frame();
+      extras.frame(dt);
       const c = myCo().cash;
       hud.setMoney(c, s.sandbox);
       if (c > lastCash + 50 && !orbit) sfx('cash');

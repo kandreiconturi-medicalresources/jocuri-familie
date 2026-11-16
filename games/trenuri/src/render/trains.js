@@ -6,6 +6,8 @@ import { CAR_TYPES } from '../sim/goods.js';
 import { poseAt, travelled } from './pose.js';
 import { carGroup, setNight } from './trainParts.js';
 import { createSmoke } from './smoke.js';
+import { createCargo, wagonFills } from './cargo.js';
+import { makeBeacon } from './depot.js';
 import { blobGeometry, blobMaterial } from './blob.js';
 import { perf } from '../../../../shared/engine/perf.js';
 
@@ -34,11 +36,14 @@ export function createTrains(s, g, camera) {
       if (!it) {
         const group = new Group(), c = colorOf(t), parts = [carGroup('trains/' + MODELS[t.model].glb, c, true)];
         for (let i = 0; i < t.cars; i++) parts.push(carGroup(CAR_MODEL[t.kinds[i]], c, false));
+        const cargos = t.kinds.slice(0, t.cars).map((k, i) => { const cg = createCargo(k, CAR_MODEL[k], q === 0); parts[i + 1].add(cg.group); return cg; });
+        const beacon = t.tow ? makeBeacon() : null;
+        if (beacon) parts[0].add(beacon.mesh);
         parts.forEach((p) => group.add(p));
         root.add(group);
         const lights = []; parts[0].traverse((o) => { if (o.userData.light) lights.push(o); });
         const d = travelled(s, t);
-        it = { group, parts, cars: t.cars, prev: d, cur: d, path: t.path, lights, roll: 0 };
+        it = { group, parts, cars: t.cars, prev: d, cur: d, path: t.path, lights, roll: 0, cargos, beacon, sig: '' };
         items.set(t.id, it);
       }
     }
@@ -55,6 +60,8 @@ export function createTrains(s, g, camera) {
         const d = travelled(s, t);
         if (it.path !== t.path) { it.path = t.path; it.prev = d; } else it.prev = it.cur;
         it.cur = d;
+        const sig = t.load.map((b) => b.c + ':' + b.n).join();
+        if (sig !== it.sig) { const first = it.sig === ''; it.sig = sig; wagonFills(t).forEach((f, i) => { if (it.cargos[i]) { it.cargos[i].set(f.fill, f.good); if (first) it.cargos[i].snap(); } }); }
       }
     },
     resync() { sync(); },
@@ -84,6 +91,8 @@ export function createTrains(s, g, camera) {
           if (blobs.visible && nb < MAX_BLOBS) blobs.setMatrixAt(nb++, m4.compose(vv.set(ox, oy + 0.04, oz), qq.setFromEuler(ee.set(0, yaw, 0)), ss.set(0.55, 1, 1.0)));
           if (k === 0 && MODELS[t.model].smoke && acc > 0.1 && moving) smoke.emit(ox + Math.sin(yaw) * 0.2, oy + 0.56, oz + Math.cos(yaw) * 0.2, 1);
         });
+        for (const cg of it.cargos) cg.step(dt);
+        if (it.beacon) it.beacon.update();
         if (it.lit !== lit) { it.lit = lit; for (const l of it.lights) l.visible = lit; }
       }
       if (acc > 0.1) acc = 0;

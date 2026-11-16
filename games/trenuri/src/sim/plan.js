@@ -1,16 +1,23 @@
 // Costul unui traseu de șină și planificarea lui (A* pe grilă cu 8 direcții).
 import { createHeap, KEY } from './heap.js';
-import { DX, DY, LEN, COST, MAX_BRIDGE, MAX_STEP, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
+import { DX, DY, LEN, COST, MAX_BRIDGE, MAX_STEP, LEVEL, T_PRESENT, T_TUNNEL, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
+import { fitLevels, levelVolume, levelCostOf } from './terraform.js';
 
 const ownerOf = (v) => (v & T_OWNER_MASK) >> T_OWNER_SHIFT;
 
 /** Cost de a trece pe placa `i` venind din `p` (fără a verifica apa lungă). Întoarce -1 dacă e interzis. */
-function tileCost(s, p, i, by) {
+function tileCost(s, p, i, by, lvl = false) {
   if (s.occ[i]) return -1;
   const t = s.track[i];
   if ((t & T_PRESENT) && ownerOf(t) !== by) return -1;
+  if (p !== i && ((t | s.track[p]) & T_TUNNEL)) { // în tunel se merge doar pe legăturile deja făcute
+    const dx = (i % s.w) - (p % s.w), dy = ((i / s.w) | 0) - ((p / s.w) | 0), d = DX.findIndex((v, q) => v === dx && DY[q] === dy);
+    return ((s.track[p] >> d) & 1) ? 0 : -1;
+  }
   const wet = s.water[i] === 1;
-  if (!wet && !s.water[p] && Math.abs(s.height[i] - s.height[p]) > MAX_STEP) return -1;
+  const steep = !wet && !s.water[p] && Math.abs(s.height[i] - s.height[p]) > MAX_STEP;
+  if (steep && !(lvl && !(t & T_PRESENT))) return -1;
+  if (steep) return COST.tile + (Math.abs(s.height[i] - s.height[p]) - MAX_STEP) * LEVEL.unit + (s.forest[i] ? COST.forest : 0); // nivelare: se plătește volumul
   if (t & T_PRESENT) return 0;
   if (wet) return COST.water;
   const dh = Math.abs(s.height[i] - s.height[p]);
@@ -40,8 +47,22 @@ export function pathCost(s, path, by) {
 }
 
 /** Cel mai ieftin traseu între două plăci: { path:[[x,y],...], cost } sau null. */
-/** opts.reuse=false: nu trece peste șină existentă (linie dublă); opts.prefer: Set de plăci preferate (restul costă mai mult). */
+/** opts.reuse=false: nu trece peste șină existentă (linie dublă); opts.prefer: Set de plăci preferate (restul costă mai mult).
+ *  opts.level=true: dacă nu există traseu, propune unul „cu nivelare”: { path, cost (total), level: [[x,y,h]], levelCost }. */
 export function planTrack(s, from, to, by = 0, opts = null) {
+  const r = search(s, from, to, by, opts, false);
+  if (r || !opts || !opts.level) return r;
+  const q = search(s, from, to, by, opts, true);
+  if (!q) return null;
+  const idx = q.path.map((p) => p[1] * s.w + p[0]), list = fitLevels(s, idx), saved = list.map(([x, y]) => s.height[y * s.w + x]);
+  const vol = levelVolume(s, list);
+  for (const [x, y, h] of list) s.height[y * s.w + x] = h;
+  const c = pathCost(s, q.path, by); // cu înălțimile schimbate, drumul trebuie să fie bun
+  list.forEach(([x, y], k) => { s.height[y * s.w + x] = saved[k]; });
+  return c.ok ? { path: q.path, cost: c.cost + levelCostOf(vol), level: list, levelCost: levelCostOf(vol) } : null;
+}
+
+function search(s, from, to, by, opts, lvl) {
   const reuse = !opts || opts.reuse !== false, prefer = opts && opts.prefer;
   const w = s.w, h = s.h, n = w * h;
   if (!from || !to) return null;
@@ -60,7 +81,7 @@ export function planTrack(s, from, to, by = 0, opts = null) {
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
       const ni = ny * w + nx;
       if (!reuse && ni !== b && (s.track[ni] & T_PRESENT)) continue;
-      let tc = tileCost(s, cur, ni, by);
+      let tc = tileCost(s, cur, ni, by, lvl);
       if (tc < 0) continue;
       if (prefer && ni !== b && !prefer.has(ni)) tc += COST.tile * 4;
       const ng = g[cur] + (((tc + COST.link) * LEN[d]) >> 8) + 1;
@@ -73,6 +94,7 @@ export function planTrack(s, from, to, by = 0, opts = null) {
   const path = [];
   for (let c = b; c !== -1; c = prev[c]) path.push([c % w, (c / w) | 0]);
   path.reverse();
+  if (lvl) return { path, cost: 0 };
   const r = pathCost(s, path, by);
   return r.ok ? { path, cost: r.cost } : null;
 }

@@ -1,0 +1,24 @@
+/* Etapa 6.6: asistentul de cumpărare, panoul „Unde am rămas”, etichetele trenurilor */
+.card.wz { width: min(460px, 94vw); }
+.wz-head { display: flex; align-items: center; gap: 8px; }
+.wz-head h3 { margin: 0; flex: 1; }
+.wz-steps { display: flex; gap: 4px; margin: 6px 0; font-size: 11px; font-weight: 800; flex-wrap: wrap; }
+.wz-steps span { padding: 2px 8px; border-radius: 10px; background: #ece6f8; color: #7a6aa8; }
+.wz-steps span.on { background: #ffd23f; color: #3a1a6a; }
+.wz-steps span.ok { background: #bff0c8; color: #1f6a30; }
+.wz-card { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; margin-top: 6px; padding: 6px 12px; border-radius: 18px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; text-align: left; font: 700 15px/1.2 var(--font); cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.25); touch-action: manipulation; }
+.wz-card.on { background: #ffd23f; }
+.wz-card.dis { opacity: .45; cursor: default; }
+.wz-i { font-size: 40px; line-height: 1; min-width: 48px; text-align: center; }
+.wz-t { display: flex; flex-direction: column; gap: 1px; }
+.wz-t small { font-weight: 600; font-size: 12px; }
+.wz-t .wz-n { color: #8a4a00; font-weight: 800; }
+.wz-prev { width: 100%; height: auto; margin: 8px 0; background: linear-gradient(#cfe9ff, #eaf6df); border-radius: 12px; border: 2px solid #c9b8ee; }
+.card .bar { height: 12px; margin: 3px 0; border-radius: 6px; background: #e4dcf5; overflow: hidden; }
+.card .bar i { display: block; height: 100%; background: #5bd66f; }
+.card .wh-goal { font-weight: 800; font-size: 16px; margin-bottom: 4px; }
+.card .wh-do { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.card .kind { font-weight: 800; font-size: 16px; color: #5a2ba0; }
+.helper { cursor: pointer; }
+.tl-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.tl { position: absolute; left: 0; top: 0; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,.92); border: 2px solid #5a2ba0; color: #3a1a6a; font: 800 12px/1.2 var(--font); white-space: nowrap; will-change: transform; }

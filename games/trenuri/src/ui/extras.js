@@ -5,10 +5,14 @@ import { createMarkers } from '../render/markers.js';
 import { openTodo } from './todo.js';
 import { openCatalog } from './catalog.js';
 import { openTrainList } from './trainList.js';
+import { openBuyWizard } from './buyWizard.js';
+import { openWhereAmI, logStep } from './whereAmI.js';
+import { createTrainLabels } from './trainLabels.js';
 
 /** ctx: { stage, uiRoot, panels, camera, state(), view(), hud, tools, pause(id,on) } */
 export function createExtras(ctx) {
   const markers = createMarkers(ctx.uiRoot, { camera: ctx.stage.camera, groundAt: (x, z) => (ctx.view() ? ctx.view().ground.at(x, z) : 0), onPick: (it) => go(it) });
+  const labels = createTrainLabels(ctx.uiRoot, { camera: ctx.stage.camera, state: ctx.state, view: ctx.view, zoom: () => ctx.camera.cam.dist });
   let items = [], t = 0, on = false;
 
   function focus(x, y) { const c = ctx.camera; c.focus(x + 0.5, y + 0.5, Math.min(c.cam.dist, 22)); }
@@ -29,12 +33,16 @@ export function createExtras(ctx) {
     markers.set(items);
     ctx.hud.setTodo(items.length);
   }
-  return {
+  const api = {
     markers,
     /** Pornit doar în joc (nu în demo). */
-    enable(b) { on = b; markers.show(b); markers.clear(); items = []; ctx.hud.setTodo(0); t = 0.9; },
+    enable(b) { on = b; markers.show(b); labels.show(b); markers.clear(); items = []; ctx.hud.setTodo(0); t = 0.9; },
     update(dt) { t += dt; if (t >= 1) { t = 0; refresh(); } },
-    frame() { markers.frame(); },
+    frame(dt = 0.016) { markers.frame(); labels.frame(dt); },
+    /** Pe conductor: „Unde am rămas”. */
+    conductor() { openWhereAmI(ctx.panels.card, ctx.state(), { show: (x, y) => api.show(x, y), buy: () => api.buy(), last: ctx.helper ? ctx.helper.last : '' }); },
+    buy() { openBuyWizard(ctx.panels.card, ctx.state(), ctx.tools, api, ctx.hud); },
+    log(cmd) { logStep(cmd, ctx.state().date); },
     todo() { refresh(); openTodo(ctx.panels.card, items, go); },
     catalog() { openCatalog(ctx.panels.card, ctx.state(), ctx.tools); },
     trains() { openTrainList(ctx.panels.card, ctx.state(), { pause: ctx.pause, pick: (tr) => { const st = ctx.state().stations.find((q) => q.id === tr.to); if (st) focus(st.x, st.y); ctx.panels.train(ctx.state(), tr); } }); },
@@ -42,4 +50,5 @@ export function createExtras(ctx) {
     show(x, y) { focus(x, y); markers.ping(x, y); },
     go,
   };
+  return api;
 }

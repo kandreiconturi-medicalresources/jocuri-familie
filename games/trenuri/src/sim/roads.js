@@ -2,6 +2,8 @@
 import { createHeap, KEY } from './heap.js';
 import { DX, DY } from './consts.js';
 import { rebuildBlocks } from './blocks.js';
+import { rebuildSignals } from './signals.js';
+import { rebuildReserve } from './reserve.js';
 
 /** Drum pe uscat între două orașe (A* pe 4 direcții, fără apă). Întoarce lista de indici sau null. */
 function landPath(w, h, water, a, b) {
@@ -50,4 +52,6 @@ export function deriveLayers(s) {
   }
   for (const o of s.industries) s.occ[o.y * w + o.x] = 1;
   rebuildBlocks(s);
+  rebuildSignals(s);
+  rebuildReserve(s);
 }

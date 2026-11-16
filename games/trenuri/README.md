@@ -127,3 +127,70 @@ Format de date: **neschimbat** (biții din `track`, `state`); câmpuri noi pe tr
 5. **Pauză:** `pauseTrain` / `resumeTrain` prin `applyCommand` (merg în rețea). Trenul în mers își termină drumul și stă în gara următoare (nu blochează linia). Buton în panoul trenului și în lista 🚆 Trenuri (stare, profit, vârstă, fiabilitate).
 6. **Uzură și atelier** (`sim/wear.js`): fiabilitatea scade lunar (simplu: 1 punct pe trimestru, minim 70; expert: 2–4 puncte pe lună, minim 30); cu cât e mai mică, cu atât penele sunt mai dese și mai lungi. Îmbunătățirea de gară „Atelier de întreținere” repară trenul care oprește acolo; în panoul trenului „Trece pe la atelier” pune gara cu atelier în rută. Explicație în UI: „Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.”
 7. **Teste:** `tests/trenuri-fix.test.js` (lanț sondă → rafinărie → oraș, explicații, ramificație + macaz, linie dublă fără așteptare, `reuse:false`, pauză determinist și în lockstep cu 3 noduri, uzură + atelier, lista „De făcut”).
+
+## Etapa 6.6 — „ca în viața reală” (contract, scris înainte de implementare)
+
+### Semnalizare cu rezervare de traseu (`sim/signals.js`)
+- `state.signals: [{ id, owner, x, y, dir /*0–7, sensul în care protejează*/, twoWay, auto }]`.
+- `state.resv: Uint16Array(w*h)`: id-ul trenului + 1 care are placa rezervată; 0 = liberă.
+- Semnalele **automate** se pun singure la intrarea în fiecare macaz și în fiecare gară (o opțiune le poate opri). Semnalele **manuale** se pun cu unealta 🚦 pe o placă de șină, într-un singur sens sau în ambele.
+- Un tren care ajunge la un semnal cere rezervarea plăcilor de pe ruta lui până la **următorul semnal**, inclusiv tot macazul.
+  - Dacă toate plăcile sunt libere, le rezervă și semnalul e verde.
+  - Altfel semnalul e roșu și trenul așteaptă.
+  - Plăcile se eliberează pe rând, după ce trece ultimul vagon. Când tot traseul s-a eliberat, semnalul devine verde automat.
+- Linie simplă cu stație de încrucișare (o bucată de linie dublă): trenul rezervă linia simplă până la semnalul de la capătul îndepărtat al încrucișării, iar cel din sens opus stă la roșu.
+- Dacă un tren așteaptă mai mult de N zile, caută un traseu alternativ prin altă ramificație. Dacă nu găsește, se întoarce, ca să nu existe blocaje permanente.
+- `signalAspect(state, id) → 0 roșu | 1 verde`, citit de randare.
+- **Macazuri:** orice placă cu mai mult de 2 conexiuni. Trenul alege ramura după rută și după rezervare: prima linie liberă spre destinație.
+- **Fizică mai realistă:** accelerarea depinde de puterea locomotivei și de greutatea trenului (marfa încărcată cântărește). Rampele încetinesc trenurile grele, pantele le accelerează ușor.
+
+### Teren (`sim/terraform.js`)
+- `levelTerrain {x0,y0,x1,y1,h}` nivelează, iar costul crește cu volumul mutat.
+- `clearArea` taie pădure sau dărâmă obstacole (nu orașe).
+- `planTrack` poate propune „cu nivelare” când nu găsește traseu: arată costul total.
+- Tunel scurt prin deal: `buildTunnel` între 2 plăci la aceeași înălțime, cu deal între ele, maximum 6 plăci.
+
+### Gări care cresc (`sim/stations.js`)
+- `station.platforms` 1–4: fiecare peron = o linie paralelă, iar fiecare tren ocupă un peron.
+- Numărul maxim de peroane depinde de nivelul orașului și de producția din rază (sat → 2, oraș → 3, metropolă sau producție mare → 4).
+- Comanda `upgradeStation {id}` e plătită și desenează vizibil mai multe linii și o clădire mai mare.
+
+### Depouri, defecțiuni și remorcare (`sim/depots.js`, runda 2)
+- `state.depots: [{ id, owner, x, y, dir, repairTracks: 2, cranes: 1, queue: [trainIds], jobs: [{ trainId, phase: 'lift'|'repair'|'lower', t }] }]`.
+  - `buildDepot` se pune pe o placă de șină cu intrare.
+  - `sendToDepot {trainId, depotId?}` trimite trenul acolo (cel mai apropiat, dacă nu e ales).
+- La depou, macaraua ridică locomotiva pe linia de reparații (`lift`), urmează reparația (`repair`, care durează după uzură), apoi macaraua o pune înapoi (`lower`). Trenul își reia ruta automat.
+- **Defecțiune pe traseu:** trenul se oprește, `broken: true`, și își păstrează rezervarea, deci blochează secțiunea.
+  - `rescueTrain {trainId}` trimite o locomotivă de remorcare de la cel mai apropiat depou: un tren special cu `tow: { targetId }`. Aceasta ajunge, se cuplează și remorchează trenul la depou.
+  - În modul simplu, remorcarea pornește singură după o zi. În expert o comanzi tu; altfel reparația pe loc e scumpă și lentă.
+- Atelierul din 6.6 rămâne o variantă mai mică: repară doar uzura ușoară, la oprire.
+
+### Vizual și interfață (`render/`, `ui/`)
+- **Vagoane cu încărcătura vizibilă:** goale sau pline, cu grămezi de cărbune sau minereu, bușteni, containere colorate pe marfă, cisterne cu culoarea mărfii și saci de cereale. Gradul de umplere se vede.
+- **Semafoare 3D** roșu/verde la semnale, macazuri vizibile, peroane multiple.
+- **Depoul:** hală, 2 linii de reparații și o macara animată care ridică locomotiva. Locomotiva de remorcare are girofar.
+- **Cumpărarea unui tren**, pas cu pas, cu iconițe mari:
+  1. Ce transporți: Pasageri / Poștă / Marfă.
+  2. Ce marfă (combustibil, cereale, oțel…), cu sursa și destinația propuse.
+  3. Locomotiva (viteză, putere, preț).
+  4. Vagoanele, cu previzualizare.
+
+  În panoul trenului se văd mereu tipul și marfa: „🚂 Tren de marfă · ⛽ Combustibil”.
+- **Conductorul se poate apăsa.** Deschide „Unde am rămas”: obiectivul curent, ultimii pași făcuți, ce să faci acum (sfaturi după cereri) și butoane „Arată-mi”.
+
+## Etapa 6.6 — ce s-a implementat (semnale, teren, gări); depourile și remorcarea rămân pentru runda 2
+**Semnale cu rezervare** (`sim/signals.js`, `sim/reserve.js`):
+- `state.signals = [{ id, owner, x, y, dir, twoWay, auto }]`; `dir` = direcția pasului prin care trenul **intră** pe placă (0=N … 7=NV, ca `DX/DY`); `twoWay` o face valabilă și în sens invers. `state.sigId` e contorul de id-uri (separat de `nextId`). `signalAspect(state, id) → 0 roșu | 1 verde` (în `sim/signals.js`, citit de randare).
+- Semnalele **automate** (`auto: true`) se pun singure la fiecare intrare de macaz (3+ legături) și de gară, la construirea șinei sau a gării; `setAutoSignals {on}` le oprește. Cele manuale: `placeSignal {x,y,dir,twoWay}` (150 lei, pe o placă de șină cu legătură spre `dir`) și `removeSignal {id | x,y}`.
+- Derivate (nu se salvează, se reconstruiesc în `deriveLayers`): `sgm` (biții direcțiilor cu semnal pe placă), `resv` (id tren + 1 pe placă), `pocc` (peroane ocupate pe placa gării). Pe tren: `rv` (plăcile ținute, se salvează), `rl` (indicele până la care a eliberat), `redAt` (placa semnalului unde stă la roșu, +1).
+- Trenul cere la semnal plăcile până **înaintea următorului semnal** (la plecarea din gară, de la prima placă); dacă una e rezervată, ocupată fizic sau gara nu are peron liber, e roșu. Plăcile se eliberează după coadă; semnalul e verde automat. La plecare drumul ocolește plăcile rezervate (linie dublă, încrucișare).
+- Timpuri la roșu: după `SIG_ALT` (30 pași) caută alt drum prin altă ramificație (cu penalizare, nu interdicție), după `SIG_OVER` (60) intră și în gara cu peroanele pline (altfel două trenuri față în față între gări s-ar bloca), după `SIG_REV + (id & 7)·20` (150+) se întoarce. Limitare: fără semnale intermediare, o linie fără macaz e rezervată întreagă (un singur tren pe secțiune), deci trenurile în convoi așteaptă.
+- **Fizică** (`sim/physics.js`): greutate = locomotivă + vagoane + marfa/2; raportul greutate/forță (`heaviness`) schimbă la câți pași crește viteza (2–4) și cât se pierde la urcare (`slopeVmax`: viteza scade cu panta × raport; la vale crește puțin). Pod și tunel sunt plate.
+
+**Teren** (`sim/terraform.js`): `levelTerrain {x0,y0,x1,y1,h}` (cel mult 20×20 și 220 plăci; cost `60·volum + volum²/8`; refuză clădiri, șine străine, gări), `clearArea {x0,y0,x1,y1}` (taie pădurea, 40 lei/placă; nu atinge orașe sau industrii), `buildTunnel {x0,y0,x1,y1}` (linie dreaptă, capete la aceeași înălțime, 1–6 plăci cu deal între ele, 700 lei/placă; plăcile din mijloc au `T_TUNNEL`). `planTrack(..., { level: true })` propune, doar dacă nu există traseu, `{ path, cost, level: [[x,y,h]], levelCost }`; `buildTrack { path, level }` aplică nivelarea și plătește totul odată (și pe fir în rețea: `lv`). După schimbarea terenului `state.dirty.terrain = true` (randarea trebuie să refacă terenul). Uneltele: ⛏️ Nivelare (nivelează / taie pădurea), 🕳️ Tunel, opțiunea ⛰️ „Cu nivelare” la unealta Șină.
+
+**Gări** (`sim/stations.js`): `station.platforms` 1–4 (lipsa = 1). `maxPlatforms`: sat 2, oraș 3, metropolă 4; fără oraș 1, +1 pentru fiecare industrie în rază (3 sau mai multe = 4). `upgradeStation {id}` costă 2500 × peroanele de acum; eroarea `limita` când nu se mai poate. Fiecare tren ținut în gară ocupă un peron; cu 2 peroane încarcă 2 trenuri deodată.
+
+**UI**: butonul „🧰 Mai mult” (`ui/tools-extra.js`, legat cu o linie în `game.js`) deschide 🚦 Semnal, ⛏️ Nivelare, 🕳️ Tunel, ⬆️ Gară mai mare; logica e în `input/extraTools.js`. Comenzile noi sunt în `ALLOWED` (`net/wire.js`).
+
+**Teste**: `tests/trenuri-signals.test.js` (+ `tests/trenuri-sig-helpers.js`): semnale automate/manuale, două trenuri opuse pe încrucișare, 4 trenuri pe 3 macazuri fără nicio placă ocupată de 2, verde după eliberare, timeout cu traseu alternativ și întoarcere, nivelare și tunel, limitele peroanelor, 2 trenuri pe 2 peroane, rampa, determinism cu serializare la mijloc și lockstep cu 3 noduri. În `tests/trenuri-eco.test.js` am scos o singură aserțiune veche („unul a cedat”): cu rezervarea trenul al doilea așteaptă în gară, deci nu mai e nevoie de întoarcere.

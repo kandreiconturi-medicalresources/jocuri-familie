@@ -5,6 +5,7 @@ import { relOf, ageMonths } from '../sim/wear.js';
 import { trainAdvice } from '../sim/advice.js';
 import { viewer } from '../sim/viewer.js';
 import { lei } from './hud.js';
+import { trainKind } from './trainKind.js';
 import { ageText } from './trainPanel.js';
 
 export const stateOf = (t) => {
@@ -24,7 +25,7 @@ export function openTrainList(card, s, ev) {
       const rel = relOf(t), why = trainAdvice(s, t).filter((x) => !x.startsWith('⏸'));
       return h('div', { class: 'trow' },
         h('button', { class: 'tmain', onclick: () => ev.pick(t) },
-          h('b', null, `🚂 ${t.id} · ${MODELS[t.model].name}`), h('span', null, stateOf(t)),
+          h('b', null, `${t.id} · ${trainKind(s, t).full}`), h('small', null, MODELS[t.model].name), h('span', null, stateOf(t)),
           h('small', null, `${t.money >= 0 ? '+' : ''}${lei(t.money)} · ${ageText(ageMonths(s, t))} · fiabilitate ${rel}%`, why.length ? ' · ' + why[0] : '')),
         h('button', { class: 'rb' + (t.paused ? ' on' : ''), 'aria-label': t.paused ? 'Continuă' : 'Pauză', onclick: () => { ev.pause(t.id, !t.paused); again(); } }, t.paused ? '▶' : '⏸'));
     }) : h('div', null, 'Nu ai niciun tren încă. Folosește 🚂 Tren ca să cumperi unul.'),

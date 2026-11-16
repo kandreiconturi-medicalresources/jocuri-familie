@@ -10,7 +10,7 @@ const trim = new Map(), bbox = new Map(), stripeMat = new MeshLambertMaterial({ 
 let glowMat = null, beamMat = null, beamGeo = null;
 export const lights = { get glow() { return glowMat; }, get beam() { return beamMat; } };
 
-function box(name) {
+export function box(name) {
   if (bbox.has(name)) return bbox.get(name);
   const b = { x: 0.6, y: 1.5, z: 1.3, h: 1.5 };
   for (const p of getParts(name)) { p.geo.computeBoundingBox(); const bb = p.geo.boundingBox; b.x = Math.max(b.x, bb.max.x); b.z = Math.max(b.z, bb.max.z); b.h = Math.max(b.h, bb.max.y); }

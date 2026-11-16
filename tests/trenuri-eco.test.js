@@ -122,7 +122,7 @@ test('semnalizare: două trenuri pe aceeași linie, în sensuri opuse, nu se blo
   const r = arrivals(s, [t1, t2], 12000);
   for (let k = 0; k < 2; k++) assert.ok(r.seen[k].has(a) && r.seen[k].has(b) && r.count[k] >= 4, `trenul ${k}: ${r.count[k]} sosiri`);
   assert.ok(r.maxBlk <= 1, 'două trenuri n-au intrat în aceeași secțiune');
-  assert.ok(s.news.some((n) => /se întoarce/.test(n.text)), 'unul a cedat');
+  // cu rezervarea traseului (6.6) trenul al doilea așteaptă în gară: nu mai e nevoie ca unul să cedeze la jumătatea liniei
 });
 
 test('semnalizare: patru trenuri pe o linie cu trei gări nu se blochează permanent', () => {

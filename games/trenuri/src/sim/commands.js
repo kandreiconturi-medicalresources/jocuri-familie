@@ -6,13 +6,17 @@ import { mark } from './blocks.js';
 import { CAR_TYPES, NG } from './goods.js';
 import { suggestKinds } from './advice.js';
 import { EXPERT_COMMANDS, initCompany } from './expert/index.js';
+import { SIGNAL_COMMANDS, syncAuto } from './signals.js';
+import { TERRAIN_COMMANDS, applyLevels, layPath } from './terraform.js';
+import { STATION_COMMANDS } from './stations.js';
+import { hold, releaseAll } from './reserve.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.',
-  expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.',
+  limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -20,25 +24,14 @@ const spend = (s, c, amt) => { if (!s.sandbox && c.cash < amt) return false; if 
 const ownerOf = (t) => (t & T_OWNER_MASK) >> T_OWNER_SHIFT;
 
 function buildTrack(s, cmd, c) {
-  const path = cmd.path, r = pathCost(s, path, c.id);
-  if (!r.ok) return fail(r.err);
-  if (!spend(s, c, r.cost)) return fail('bani');
-  const w = s.w;
-  for (let k = 0; k < path.length; k++) {
-    const i = path[k][1] * w + path[k][0];
-    let t = s.track[i] | T_PRESENT | (c.id << T_OWNER_SHIFT);
-    if (s.water[i]) t |= T_BRIDGE;
-    if (k > 0) {
-      const dx = path[k][0] - path[k - 1][0], dy = path[k][1] - path[k - 1][1];
-      const d = DX.findIndex((v, q) => v === dx && DY[q] === dy), pi = path[k - 1][1] * w + path[k - 1][0];
-      t |= 1 << opp(d);
-      s.track[pi] |= 1 << d;
-    }
-    s.track[i] = t;
-    s.forest[i] = 0;
-  }
-  s.dirty.track = s.dirty.forest = true;
-  return { ok: true, cost: r.cost };
+  const path = cmd.path, lv = cmd.level && Array.isArray(path) && path.every((p) => Array.isArray(p)) ? applyLevels(s, cmd.level, path) : null; // nivelare opțională, plătită odată cu șina
+  if (lv && !lv.ok) return fail(lv.err);
+  const r = pathCost(s, path, c.id), total = r.ok ? r.cost + (lv ? lv.cost : 0) : 0;
+  if (!r.ok || !spend(s, c, total)) { if (lv) lv.undo(); return fail(r.ok ? 'bani' : r.err); }
+  if (lv) s.dirty.terrain = true;
+  layPath(s, path, c);
+  syncAuto(s);
+  return { ok: true, cost: total };
 }
 
 function removeTrack(s, cmd, c) {
@@ -56,6 +49,8 @@ function removeTrack(s, cmd, c) {
     if (!(s.track[ni] & 0xff) && !s.stations.some((st) => st.y * s.w + st.x === ni)) s.track[ni] = 0;
   }
   s.track[i] = 0;
+  s.signals = s.signals.filter((g) => g.auto || g.x !== x || g.y !== y);
+  syncAuto(s);
   s.dirty.track = true;
   return { ok: true, cost: 0 };
 }
@@ -83,9 +78,10 @@ function buildStation(s, cmd, c) {
   const cityId = nearCity(s, x, y), city = cityId >= 0 ? s.cities[cityId] : null;
   const same = city ? s.stations.filter((st) => st.cityId === cityId).length : 0;
   const name = city ? `${STATION_NAMES[size]} ${city.name}${same ? ' ' + (same + 1) : ''}` : `${STATION_NAMES[size]} ${s.stations.length + 1}`;
-  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: UPGRADES.map(() => 0) };
+  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, platforms: 1, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: UPGRADES.map(() => 0) };
   s.stations.push(st);
   s.stm[i] = 1;
+  syncAuto(s);
   s.dirty.track = s.dirty.stations = s.dirty.forest = true;
   addNews(s, '🚉', `S-a deschis ${name}!`);
   return { ok: true, cost, id: st.id };
@@ -101,6 +97,7 @@ function removeStation(s, cmd, c) {
   const i = st.y * s.w + st.x;
   s.stm[i] = 0;
   if (!(s.track[i] & 0xff)) s.track[i] = 0;
+  syncAuto(s);
   s.dirty.track = s.dirty.stations = true;
   return { ok: true, cost: 0 };
 }
@@ -119,8 +116,9 @@ function buyTrain(s, cmd, c) {
   if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route[0] !== st.id || route.some((id) => !s.stations.some((q) => q.id === id && q.owner === c.id))) return fail('gara');
   const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m, rv: [], rl: 0, redAt: 0 };
   s.trains.push(tr);
+  hold(s, tr, st.y * s.w + st.x); // trenul stă pe un peron
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
 }
@@ -173,6 +171,7 @@ function sellTrain(s, cmd, c) {
   const tr = s.trains[k];
   if (tr.owner !== c.id) return fail('proprietar');
   mark(s, tr, -1);
+  releaseAll(s, tr);
   const back = (MODELS[tr.model].price + tr.cars * CAR_PRICE) >> 1;
   c.cash += back;
   s.trains.splice(k, 1);
@@ -192,7 +191,7 @@ function joinCompany(s, cmd) {
   return { ok: true, cost: 0 };
 }
 
-const TABLE = { joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

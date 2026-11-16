@@ -8,6 +8,7 @@ import { placeIndustries } from './indgen.js';
 import { NG } from './goods.js';
 import { initExpert } from './expert/init.js';
 import { hashExpert } from './expert/hash.js';
+import { syncAuto } from './signals.js';
 
 /** Statistici pentru obiectivele scenariilor: marfă predată (cerută), venit total, niveluri câștigate de orașe. */
 export const newStats = () => ({ del: new Array(NG).fill(0), earn: 0, up: 0 });
@@ -19,7 +20,7 @@ export function createWorld({ seed = 1, size = 'S', mode = 'simple', sandbox = f
   const s = {
     version: 2, tick: 0, rng: (n ^ 0xa5a5a5a5) >>> 0, seed: n, size, mode, sandbox: !!sandbox, w, h,
     height: m.height, water: m.water, forest: m.forest, cities: m.cities, industries: placeIndustries(n, size, w, h, m.height, m.water, m.forest, m.cities),
-    track: new Uint16Array(w * h), stations: [], trains: [],
+    track: new Uint16Array(w * h), stations: [], trains: [], signals: [], sigId: 1,
     companies: players.map((p, i) => ({ id: i, name: p.name, color: p.color, cash: sandbox ? SANDBOX_CASH : START_CASH, loan: 0, history: [], month: 0, record: 0 })),
     date: { y: year, m: 1, d: 1 }, news: [], stats: newStats(), nextId: 1, dirty: { track: true, forest: true, cities: true, stations: true, industries: true },
   };
@@ -50,15 +51,17 @@ export function hashState(s) {
   for (let i = 0; i < s.track.length; i++) h = fnv(fnv(h, s.track[i]), s.track[i] >> 8);
   for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); h = arr(h, c.got); }
   for (const o of s.industries) { h = num(num(num(h, o.type), o.x * 256 + o.y), o.boost); h = arr(arr(h, o.in), o.out); }
-  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(h, t.owner), t.size); h = arr(arr(h, t.cargo), t.up); }
+  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); }
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
     if (t.paused) h = num(h, 77);
+    h = num(h, (t.rv ? t.rv.length : 0) + (t.redAt | 0) * 64); if (t.rv) h = arr(h, t.rv);
     if (t.rel !== undefined) h = num(h, t.rel);
     for (const b of t.load) h = num(num(num(h, b.c), b.n), b.from);
     for (const r of t.route) h = num(h, r);
   }
+  for (const g of s.signals) h = num(num(h, g.id * 8 + g.dir + (g.twoWay ? 4096 : 0)), g.x * 256 + g.y);
   for (const c of s.companies) h = num(num(num(h, c.cash), c.loan), c.history.length);
   h = num(num(num(h, s.date.y), s.date.m), s.date.d);
   if (s.mode === 'expert') h = hashExpert(s, h);
@@ -77,7 +80,7 @@ function unb64(str, Type) {
   return new Type(u.buffer);
 }
 const BIG = ['height', 'water', 'forest', 'track'];
-const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm'];
+const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc'];
 
 /** Obiect JSON simplu (poate merge în localStorage). */
 export function serialize(s) {
@@ -94,7 +97,9 @@ export function deserialize(o) {
   s.height = unb64(o.height, Uint8Array); s.water = unb64(o.water, Uint8Array); s.forest = unb64(o.forest, Uint8Array);
   s.track = unb64(o.track, Uint16Array);
   if (!s.stats) s.stats = newStats();
-  s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true };
+  s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true, terrain: true, signals: true };
+  if (!s.signals) { s.signals = []; s.sigId = 1; }
   deriveLayers(s);
+  if (!o.signals) syncAuto(s); // salvare veche: semnalele automate apar singure
   return s;
 }

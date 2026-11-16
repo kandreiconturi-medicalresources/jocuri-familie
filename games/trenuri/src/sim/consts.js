@@ -49,3 +49,12 @@ export const UPGRADES = [
 ];
 export const WORKSHOP = 4; // indicele atelierului în UPGRADES
 export const REL_FLOOR = { simple: 70, expert: 30 }; // fiabilitatea minimă după uzură
+
+// Etapa 6.6: semnale cu rezervare, teren, peroane, fizică.
+export const SIGNAL_COST = 150;
+export const SIG_ALT = 30, SIG_OVER = 60, SIG_REV = 150; // pași de așteptare la roșu: caută alt drum (3 zile), intră în gara plină (6), se întoarce (15)
+export const MAX_PLATFORMS = 4, PLATFORM_COST = 2500; // preț = PLATFORM_COST × peroanele de acum
+export const LEVEL = { unit: 60, maxSide: 20, maxArea: 220, clear: 40 }; // nivelare: preț pe unitate de volum mutat
+export const TUNNEL = { max: 6, cost: 700 }; // plăci în deal (cel mult) și preț pe placă de tunel
+export const LOCO_W = [20, 24, 26, 30, 28, 32]; // greutatea locomotivei pe model; vagonul gol = CAR_W, marfa = ½ pe unitate
+export const CAR_W = 12;

@@ -1,15 +1,17 @@
 // Trenuri: drum pe rețeaua de șine, accelerare/frânare, semnalizare, pane, oprire în gară.
 import { createHeap, KEY } from './heap.js';
-import { DX, DY, LEN, MODELS, DWELL, RETRY, TICKS_PER_DAY, YIELD_BASE, YIELD_LONG } from './consts.js';
+import { DX, DY, LEN, MODELS, DWELL, RETRY, TICKS_PER_DAY, YIELD_BASE, YIELD_LONG, SIG_ALT, SIG_REV } from './consts.js';
 import { addNews } from './news.js';
 import { roll } from './rand.js';
 import { mark, blocked, linkCount } from './blocks.js';
 import { unload, load } from './cargo.js';
 import { relOf, repairTicks, serviceAt } from './wear.js';
+import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from './reserve.js';
+import { accelEvery, slopeVmax } from './physics.js';
 export { capacity, tileDist } from './cargo.js';
 
 /** Cel mai scurt drum pe șine între două plăci (indici), sau null. Dijkstra, ordine deterministă. */
-export function findRail(s, a, b, avoid = null) {
+export function findRail(s, a, b, avoid = null, pen = null) {
   const { w, track } = s, n = w * s.h;
   const g = new Int32Array(n).fill(-1), prev = new Int32Array(n).fill(-1);
   const heap = createHeap();
@@ -21,7 +23,7 @@ export function findRail(s, a, b, avoid = null) {
     const x = cur % w, y = (cur / w) | 0, t = track[cur];
     for (let d = 0; d < 8; d++) {
       if (!((t >> d) & 1)) continue;
-      const ni = (y + DY[d]) * w + x + DX[d], ng = g[cur] + LEN[d];
+      const ni = (y + DY[d]) * w + x + DX[d], ng = g[cur] + LEN[d] + (pen ? pen(ni) : 0);
       if (avoid && ni !== b && avoid(ni)) continue;
       if (g[ni] >= 0 && g[ni] <= ng) continue;
       g[ni] = ng; prev[ni] = cur;
@@ -58,9 +60,9 @@ function depart(s, t) {
   if (p) { // dacă drumul cel mai scurt e ocupat sau pe el vine alt tren, caută linia liberă (linie dublă, macazuri), dacă nu e un ocol prea mare
     const ahead = new Set();
     for (const o of s.trains) if (o !== t && o.state === 1) for (let k = o.seg; k < o.path.length; k++) ahead.add(o.path[k]);
-    const busy = (i) => !s.stm[i] && linkCount(s.track[i]) < 3 && (blocked(s, i) || ahead.has(i)); // macazurile sunt comune celor două linii
+    const busy = (i) => pfull(s, i) || (!s.stm[i] && linkCount(s.track[i]) < 3 && (blocked(s, i) || ahead.has(i) || (s.resv[i] && s.resv[i] !== t.id + 1))); // macazurile sunt comune celor două linii
     if (p.some((i, k) => k > 0 && busy(i))) {
-      const alt = findRail(s, a0, b0, busy);
+      const alt = findRail(s, a0, b0, busy) || findRail(s, a0, b0, null, (i) => (busy(i) ? 2048 : 0)); // altfel, drumul cu cele mai puține plăci ocupate
       if (alt && pathLen(s.w, alt) <= pathLen(s.w, p) * 2 + 768) p = alt;
     }
   }
@@ -70,7 +72,8 @@ function depart(s, t) {
     return;
   }
   t.lost = 0;
-  if (p.length > 1 && blocked(s, p[1])) { t.wait = 8; return; } // șina e ocupată: așteaptă în gară
+  if (p.length > 1 && enter(s, t, p, 1, true) !== GO) { t.wait = 8; return; } // șina e ocupată sau rezervată: așteaptă în gară
+  t.rl = 0;
   t.from = A.id; t.to = B.id; t.at = nxt;
   t.path = p; t.seg = 0; t.pos = 0; t.left = pathLen(s.w, p); t.speed = 0; t.state = 1; t.hold = 0;
 }
@@ -78,6 +81,7 @@ function depart(s, t) {
 function arrive(s, t) {
   const st = s.stations.find((q) => q.id === t.to);
   t.speed = 0; t.state = 2; t.wait = DWELL; t.hold = 0;
+  holdOnlyStation(s, t);
   if (!st) return;
   serviceAt(s, t, st);
   const earned = unload(s, t, st);
@@ -87,7 +91,9 @@ function arrive(s, t) {
 
 /** Când așteaptă prea mult la intrarea în secțiune, trenul se întoarce la gara de unde a plecat. */
 function reverse(s, t) {
+  releaseFrom(s, t, t.seg + 2);
   const L = segLen(s.w, t.path, t.seg), p = t.path.slice(0, t.seg + 2).reverse();
+  t.rl = 0; t.redAt = 0;
   t.pos = L - t.pos; t.path = p; t.seg = 0; t.left = pathLen(s.w, p) - t.pos;
   const f = t.from; t.from = t.to; t.to = f;
   t.speed = 0; t.hold = 0;
@@ -107,10 +113,14 @@ function shouldYield(s, t) {
 function reroute(s, t) {
   const last = t.path.length - 1, here = t.path[t.seg + 1], back = t.path[t.seg];
   if (t.seg + 2 > last) return false;
-  const alt = findRail(s, here, t.path[last], (i) => i === back || blocked(s, i));
+  const bad = (i) => blocked(s, i) || pfull(s, i) || (!s.stm[i] && s.resv[i] && s.resv[i] !== t.id + 1);
+  const alt = findRail(s, here, t.path[last], (i) => i === back || bad(i)) || findRail(s, here, t.path[last], (i) => i === back, (i) => (bad(i) ? 2048 : 0));
   if (!alt || alt.length < 2) return false;
+  const rest = t.path.slice(t.seg + 1);
+  if (alt.length === rest.length && alt.every((v, k) => v === rest[k])) return false; // același drum: nimic de schimbat
   const path = t.path.slice(0, t.seg + 2).concat(alt.slice(1)), L = pathLen(s.w, path), done = pathLen(s.w, t.path.slice(0, t.seg + 1)) + t.pos;
   if (L - done > t.left * 2 + 768) return false;
+  releaseFrom(s, t, t.seg + 2);
   t.path = path; t.left = L - done;
   return true;
 }
@@ -129,32 +139,46 @@ function move(s, t) {
     addNews(s, '🔧', `Trenul ${t.id} s-a stricat puțin. Mecanicii îl repară într-o zi!`);
     return;
   }
-  const vm = effVmax(s, t);
-  if (!(s.tick & 1)) { // 1 treaptă de viteză la 2 pași
+  const vm = slopeVmax(s, t, effVmax(s, t));
+  if (s.tick % accelEvery(t) === 0) { // 1 treaptă de viteză la 2–4 pași (după greutate)
     if (t.speed * (t.speed + 1) >= t.left) t.speed = Math.max(2, t.speed - 1);
     else if (t.speed < vm) t.speed++;
     else if (t.speed > vm) t.speed--;
   }
   const last = t.path.length - 2;
   let adv = Math.min(t.speed, t.left), stop = false;
-  if (t.seg < last && blocked(s, t.path[t.seg + 2])) { // secțiunea următoare e ocupată
+  let gate = t.seg < last ? enter(s, t, t.path, t.seg + 2) : GO; // semnal: GO / ocupat / roșu
+  if (gate !== GO) { // secțiunea următoare e ocupată sau rezervată
     const room = segLen(s.w, t.path, t.seg) - t.pos;
     if (adv >= room) { adv = room; stop = true; }
   }
   t.left -= adv; t.pos += adv;
-  while (t.seg < last && t.pos >= segLen(s.w, t.path, t.seg) && !blocked(s, t.path[t.seg + 2])) { t.pos -= segLen(s.w, t.path, t.seg); t.seg++; stop = false; }
+  while (gate === GO && t.seg < last && t.pos >= segLen(s.w, t.path, t.seg)) {
+    t.pos -= segLen(s.w, t.path, t.seg); t.seg++; stop = false;
+    gate = t.seg < last ? enter(s, t, t.path, t.seg + 2) : GO;
+  }
   if (stop || (t.seg < last && t.pos >= segLen(s.w, t.path, t.seg))) {
     t.speed = 0;
-    if (adv === 0 && (t.hold === 3 || t.hold % 12 === 11) && reroute(s, t)) { t.hold++; return; }
-    if (adv === 0 && ++t.hold >= YIELD_BASE && shouldYield(s, t)) reverse(s, t);
+    t.redAt = gate === RED ? t.path[t.seg + 2] + 1 : 0;
+    if (adv !== 0) return;
+    const nx = t.path[t.seg + 2];
+    if (gate === RED || (nx !== undefined && s.resv[nx] && s.resv[nx] !== t.id + 1)) { // semafor roșu sau placă ținută de alt tren: după SIG_ALT caută alt drum, apoi se întoarce
+      t.hold++;
+      if (t.hold >= SIG_ALT && (t.hold - SIG_ALT) % 12 === 0 && reroute(s, t)) return;
+      if (t.hold >= SIG_REV + (t.id & 7) * 20) reverse(s, t); // fiecare tren așteaptă altfel: nu se întorc amândoi odată
+      return;
+    }
+    if ((t.hold === 3 || t.hold % 12 === 11) && reroute(s, t)) { t.hold++; return; }
+    if (++t.hold >= YIELD_BASE && shouldYield(s, t)) reverse(s, t);
     return;
   }
-  t.hold = 0;
+  t.hold = 0; t.redAt = 0;
   if (t.left <= 0) { t.pos = segLen(s.w, t.path, last); arrive(s, t); }
 }
 
 export function stepTrain(s, t) {
   mark(s, t, -1);
   move(s, t);
+  if (t.state === 1) releaseTail(s, t);
   mark(s, t, 1);
 }

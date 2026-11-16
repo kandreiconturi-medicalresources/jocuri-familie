@@ -4,6 +4,7 @@ import { CAR_TYPES } from '../sim/goods.js';
 import { lei } from '../ui/hud.js';
 import { createTrackTool } from './trackTool.js';
 import { createParallelTool } from './parallelTool.js';
+import { createExtraTools, EXTRA_TOOLS } from './extraTools.js';
 
 const GOLD = '#ffd23f', BLUE = '#8fd3ff';
 
@@ -13,11 +14,12 @@ export function createTools(ctx) {
   const S = () => ctx.state(), hud = () => ctx.hud, ov = () => ctx.view().overlay;
   const stationAt = (x, y) => S().stations.find((st) => st.x === x && st.y === y);
   const env = { S, hud, ov, exec: (c) => ctx.exec(c), canAfford: ctx.canAfford, errText: ctx.errText, tool: () => o.tool, bar: () => subBar(), switchTool: (id) => api.setTool(id) };
-  const track = createTrackTool(env), par = createParallelTool(env);
+  const track = createTrackTool(env), par = createParallelTool(env), extra = createExtraTools(env);
 
   function paint() {
     if (o.tool === 'track') return track.paint();
     if (o.tool === 'parallel') return par.paint();
+    if (extra.has(o.tool)) return extra.paint(o.tool);
     const tiles = [];
     if (o.tool === 'train' && from) { const st = S().stations.find((q) => q.id === from); if (st) tiles.push({ x: st.x, y: st.y, color: GOLD }); }
     ov().set(tiles);
@@ -32,14 +34,16 @@ export function createTools(ctx) {
     } else if (o.tool === 'upgrade') h.setSub(UPGRADES.map((u, k) => ({ label: u.icon + ' ' + u.name, small: lei(u.cost), on: o.up === k, fn: () => { o.up = k; subBar(); h.hint('Atinge o gară ca să-i dai: ' + u.name + '. ' + u.text, false, 5000); } })));
     else if (o.tool === 'track') h.setSub(track.bar());
     else if (o.tool === 'parallel') h.setSub(par.bar());
+    else if (extra.has(o.tool)) h.setSub(extra.bar(o.tool));
     else h.setSub([]);
   }
-  function reset() { from = null; track.reset(); par.reset(); paint(); subBar(); }
+  function reset() { from = null; track.reset(); par.reset(); extra.reset(); paint(); subBar(); }
 
   function tap(t) {
     const s = S();
     if (o.tool === 'track') track.tap(t);
     else if (o.tool === 'parallel') par.tap(t);
+    else if (extra.has(o.tool)) extra.tap(o.tool, t);
     else if (o.tool === 'station') {
       const r = ctx.exec({ type: 'buildStation', x: t.x, y: t.y, size: o.size, dir: 0 });
       if (r.ok) hud().hint('Gară nouă! Leag-o cu șină de alt oraș.', false, 4000);
@@ -79,7 +83,11 @@ export function createTools(ctx) {
 
   const api = {
     state: o,
-    setTool(id) { o.tool = id; reset(); ctx.hud.setTool(id); ctx.panels.close(); subBar(); },
+    setTool(id) {
+      o.tool = id; reset();
+      if (extra.has(id)) { ctx.hud.setTool('upgrade'); ctx.hud.hint(EXTRA_TOOLS.find((q) => q.id === id).hint, false, 6000); } else ctx.hud.setTool(id); // uneltele 6.6 n-au buton în bara principală
+      ctx.panels.close(); subBar();
+    },
     /** Alegeri din catalog: { tool, size?, model?, up? }. */
     choose(c) { Object.assign(o, c); api.setTool(c.tool); },
     wantsDrag: () => o.tool === 'track',
@@ -91,6 +99,7 @@ export function createTools(ctx) {
     key(e) { return o.tool === 'track' ? track.key(e.key) : false; },
     hover(t) {
       if (o.tool === 'track') track.hover(t);
+      else if (extra.has(o.tool)) extra.hover(o.tool, t);
       else if (o.tool === 'station' && t) {
         const r = STATION_RADIUS[o.size], tiles = [];
         for (let y = Math.max(0, t.y - r); y <= Math.min(S().h - 1, t.y + r); y++) for (let x = Math.max(0, t.x - r); x <= Math.min(S().w - 1, t.x + r); x++) tiles.push({ x, y, color: x === t.x && y === t.y ? GOLD : BLUE });

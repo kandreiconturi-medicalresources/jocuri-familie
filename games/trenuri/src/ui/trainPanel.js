@@ -6,6 +6,7 @@ import { capacity, carried } from '../sim/cargo.js';
 import { trainAdvice } from '../sim/advice.js';
 import { relOf, ageMonths } from '../sim/wear.js';
 import { lei } from './hud.js';
+import { trainKind } from './trainKind.js';
 
 /** Mărfurile pe care le poate duce un tren (după vagoanele lui). */
 export const carriable = (t) => GOODS.map((_, g) => g).filter((g) => t.kinds.includes(CAR_OF[g]));
@@ -47,7 +48,7 @@ export function createTrainPanel(card, ev) {
     const dest = s.stations.find((q) => q.id === t.to), why = trainAdvice(s, t), rel = relOf(t);
     const loadRows = [];
     for (let g = 0; g < NG; g++) if (carried(t, g)) loadRows.push(goodRow(g, carried(t, g)));
-    open(h('h3', null, `🚂 Trenul ${t.id}`), h('div', null, `${m.name} · ${t.cars} vagoane: ` + t.kinds.map((k) => CAR_TYPES[k].icon).join('')), h('div', null, names),
+    open(h('h3', null, `Trenul ${t.id}`), h('div', { class: 'kind' }, trainKind(s, t).full), h('div', null, `${m.name} · ${t.cars} vagoane: ` + t.kinds.map((k) => CAR_TYPES[k].icon).join('')), h('div', null, names),
       why.length ? h('div', { class: 'why' }, why.map((l) => h('div', null, l))) : null,
       h('div', { class: 'btns' },
         h('button', { class: 'opt' + (t.paused ? ' on' : ''), onclick: () => { ev.pause(t.id, !t.paused); again(); } }, t.paused ? '▶ Continuă' : '⏸ Pauză', h('small', null, t.paused ? 'Pleacă iar' : 'Oprește la gară')),

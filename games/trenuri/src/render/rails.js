@@ -2,6 +2,7 @@
 import { Group, Mesh, MeshLambertMaterial } from 'three';
 import { DX, DY } from '../sim/consts.js';
 import { stationShape } from './shapes.js';
+import { platformsOf } from './platforms.js';
 import { perf } from '../../../../shared/engine/perf.js';
 
 export { createTrack } from './tracks.js';
@@ -16,6 +17,8 @@ export function createStations(s, g, colorOf) {
     const t = s.track[st.y * s.w + st.x];
     for (let d = 0; d < 8; d++) if ((t >> d) & 1) { yaw = Math.atan2(DX[d], DY[d]); break; }
     mesh.rotation.y = yaw + Math.PI;
+    const np = platformsOf(st);
+    mesh.scale.set(1, 1 + 0.12 * (np - 1), 1 + 0.28 * (np - 1)); // clădire mai mare la upgrade
     mesh.position.set(st.x + 0.5, g.tileY(st.x, st.y), st.y + 0.5);
     mesh.userData.station = st.id; mesh.userData.cast = true; mesh.userData.recv = true;
     mesh.castShadow = mesh.receiveShadow = q >= 1;

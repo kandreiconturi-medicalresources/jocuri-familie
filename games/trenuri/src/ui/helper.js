@@ -28,10 +28,10 @@ export function drawConductor() {
     svg('path', { d: 'M30 15 L32 12.5 L34 15 L32 17.5 Z', fill: '#e8863a' }));
 }
 
-export function createHelper(root, { enabled }) {
+export function createHelper(root, { enabled, onOpen }) {
   let timer = 0, sticky = false;
   const bubble = h('button', { class: 'bubble hidden', 'aria-label': 'Închide sfatul', onclick: () => { if (!sticky) api.hide(); } });
-  const face = h('button', { class: 'helper', 'aria-label': 'Ajutorul', onclick: () => { if (sticky) return; if (bubble.classList.contains('hidden') && api.last) api.say(api.last, { force: true }); else api.hide(); } }, drawConductor());
+  const face = h('button', { class: 'helper', 'aria-label': 'Ajutorul', onclick: () => { if (sticky) return; if (onOpen) { api.hide(); onOpen(); return; } if (bubble.classList.contains('hidden') && api.last) api.say(api.last, { force: true }); else api.hide(); } }, drawConductor());
   root.append(face, bubble);
   const api = {
     el: [face, bubble], last: '',

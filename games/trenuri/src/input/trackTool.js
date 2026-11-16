@@ -8,12 +8,14 @@ import { lei } from '../ui/hud.js';
 const GREEN = '#5bd66f', RED = '#ff5a6a', GOLD = '#ffd23f', BLUE = '#8fd3ff', CYAN = '#3ee6e0';
 
 export function createTrackTool(c) {
-  let pts = [], segs = [], pending = null, anchor = null, noReuse = false, lastHover = null, sw = null;
+  let pts = [], segs = [], pending = null, anchor = null, noReuse = false, lvl = false, lastHover = null, sw = null;
   const S = () => c.S();
   const onTrack = (t) => !!(S().track[t.y * S().w + t.x] & T_PRESENT);
   const from = () => (pts.length ? pts[pts.length - 1] : anchor);
   const same = (a, b) => a && b && a.x === b.x && a.y === b.y;
-  const plan = (a, b) => (a && b && !same(a, b) ? planTrack(S(), [a.x, a.y], [b.x, b.y], viewer.co, noReuse ? { reuse: false } : null) : null);
+  const plan = (a, b) => (a && b && !same(a, b) ? planTrack(S(), [a.x, a.y], [b.x, b.y], viewer.co, noReuse || lvl ? { reuse: !noReuse, level: lvl } : null) : null);
+  /** Nivelările propuse de segmente (⛰️), fără dubluri: [[x,y,h]]. */
+  const levels = () => { const m = new Map(); for (const s of segs) for (const q of s.level || []) m.set(q[1] * S().w + q[0], q); return [...m.values()]; };
   function fullPath() {
     const out = [];
     for (const s of segs) for (let k = out.length ? 1 : 0; k < s.path.length; k++) out.push(s.path[k]);
@@ -54,7 +56,7 @@ export function createTrackTool(c) {
   }
   function build() {
     if (!segs.length) { c.hud().hint('Pune cel puțin două puncte.', true); return; }
-    const r = c.exec({ type: 'buildTrack', path: fullPath() });
+    const lv = levels(), r = c.exec(lv.length ? { type: 'buildTrack', path: fullPath(), level: lv } : { type: 'buildTrack', path: fullPath() });
     if (r.ok) c.hud().hint('Șina e gata! Pune gări la capete.', false, 4000);
     reset();
   }
@@ -97,6 +99,7 @@ export function createTrackTool(c) {
       }
       if (pts.length) items.push({ label: '✖ Anulează tot', cls: 'no', fn: reset });
       items.push({ label: noReuse ? '👯 Nu refolosi șina: DA' : '👯 Nu refolosi șina', small: 'pentru linie dublă', on: noReuse, fn: () => { noReuse = !noReuse; pending = null; segs = []; pts = []; refresh(); } });
+      items.push({ label: lvl ? '⛰️ Cu nivelare: DA' : '⛰️ Cu nivelare', small: 'trece peste dealuri', on: lvl, fn: () => { lvl = !lvl; pending = null; segs = []; pts = []; refresh(); } });
       if (!pts.length) items.push({ label: '🛤️🛤️ Șină paralelă', fn: () => c.switchTool('parallel') });
       return items;
     },
