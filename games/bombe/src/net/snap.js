@@ -1,10 +1,10 @@
-// Snapshot-uri: gazda trimite doar diferențele față de ce a trimis înainte (cu o stare întreagă la început, la runde noi și la 10 s).
+// Snapshot-uri: gazda trimite doar diferențele față de ce a trimis înainte (cu o stare întreagă la început, la meci nou și la 10 s).
 // Clientul numără pașii singur (bombe, flăcări, zbor), așa că timpii nu se retrimit. `q` = numărul mesajului: dacă lipsește unul, clientul cere starea întreagă.
 import { W, H } from '../logic/rules.js';
 
-const HOT = ['x', 'y', 'alive', 'bombs', 'maxBombs', 'range', 'spd', 'kick', 'shield', 'inv', 'face', 'mv', 'score', 'glove', 'remote', 'cu', 'ce', 'bestB', 'bestR'];
+const HOT = ['x', 'y', 'alive', 'bombs', 'maxBombs', 'range', 'spd', 'face', 'mv', 'lives', 'rt', 'glove', 'remote', 'cu', 'ce', 'bestB', 'bestR'];
 const COLD = ['tp', 'slide', 'sdx', 'sdy', 'bp', 'bp2', 'la', 'ci']; // doar în starea întreagă (contează doar pentru o gazdă nouă)
-const HEAD = ['ph', 'r', 'w', 'mw'];
+const HEAD = ['ph', 'r', 'mw'];
 export const FULL_EVERY = 150; // mesaje (10 s)
 const MAX_LEN = 3800;
 
@@ -19,13 +19,13 @@ export function createPacker() {
     /** `ready` = numărătoarea „Pregătiți!”; `force` = cere starea întreagă (de ex. un client a pierdut un mesaj). */
     pack(s, ev, ready = 0, force = false) {
       const ix = (id) => s.players.findIndex((p) => p.id === id);
-      const full = force || !prev || prev.round !== s.round || s.tick < prev.tick || q % FULL_EVERY === 0;
+      const full = force || !prev || prev.mc !== s.mc || s.tick < prev.tick || q % FULL_EVERY === 0;
       const tup = (b) => [b.uid, b.x, b.y, s.tick + b.t, b.r, b.dx, b.dy, ix(b.o), b.pass.map(ix), b.fl > 0 ? s.tick + b.fl : 0, b.fx, b.fy];
       const m = { k: 'snap', q: ++q, n: s.tick, ev: ev.slice(0, 20) };
       const rows = s.players.map((p) => HOT.map((f) => val(p, f)));
       const bk = new Map(s.bombs.map((b) => [b.uid, bkey(s, b)]));
       const fk = new Map(s.flames.map((f) => [f.i, s.tick + f.t + ':' + f.o]));
-      const head = { ph: s.phase, r: s.round, w: s.winner, mw: s.matchWinner, rd: ready };
+      const head = { ph: s.phase, r: s.mc, mw: s.matchWinner, rd: ready };
       if (full) {
         Object.assign(m, { full: 1, ...head, et: s.endT, si: s.shrinkI, bn: s.bn });
         m.p = s.players.map((p, i) => rows[i].concat(COLD.map((f) => p[f])));
@@ -53,7 +53,7 @@ export function createPacker() {
       }
       if (JSON.stringify(m).length > MAX_LEN) m.ev = m.ev.slice(0, 4); // serverul primește cel mult 4 KB pe mesaj
       if (full && JSON.stringify(m).length > MAX_LEN) delete m.lt;
-      prev = { round: s.round, tick: s.tick, head, rows, bk, fk, grid: s.grid.slice(), pick: s.pick.slice(), loot: s.loot.slice() };
+      prev = { mc: s.mc, tick: s.tick, head, rows, bk, fk, grid: s.grid.slice(), pick: s.pick.slice(), loot: s.loot.slice() };
       return m;
     },
   };
@@ -68,7 +68,7 @@ export function applySnap(s, m) {
   const flame = (f) => ({ i: f[0], t: f[1] - m.n, o: id(f[2]) });
   if (m.full) {
     s.q = m.q; s.need = false;
-    Object.assign(s, { phase: m.ph, round: m.r, winner: m.w, matchWinner: m.mw, endT: m.et, shrinkI: m.si, bn: m.bn, tick: m.n, gv: (s.gv || 0) + 1 });
+    Object.assign(s, { phase: m.ph, mc: m.r, matchWinner: m.mw, endT: m.et, shrinkI: m.si, bn: m.bn, tick: m.n, gv: (s.gv || 0) + 1 });
     m.p.forEach((row, i) => { const p = s.players[i]; if (p) HOT.concat(COLD).forEach((f, k) => { p[f] = row[k]; }); });
     s.bombs = m.b.map(bomb); s.flames = m.f.map(flame);
     dec(m.g, s.grid); dec(m.pk, s.pick); if (m.lt) dec(m.lt, s.loot);
@@ -77,7 +77,7 @@ export function applySnap(s, m) {
   if (m.q !== s.q + 1) { s.need = true; return s; } // am pierdut un mesaj: așteptăm starea întreagă
   const dn = Math.max(0, m.n - s.tick);
   s.q = m.q; s.tick = m.n;
-  for (const k of HEAD) if (k in m) s[{ ph: 'phase', r: 'round', w: 'winner', mw: 'matchWinner' }[k]] = m[k];
+  for (const k of HEAD) if (k in m) s[{ ph: 'phase', r: 'mc', mw: 'matchWinner' }[k]] = m[k];
   for (const d of m.p || []) {
     const p = s.players[d[0]];
     if (p) for (let k = 1; k < d.length; k += 2) p[HOT[d[k]]] = d[k + 1];

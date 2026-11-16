@@ -1,15 +1,14 @@
 // Controlorul unei partide: local, gazdă (simulează și trimite snapshot-uri) sau client (trimite input, afișează).
 import { rng } from '../../../shared/engine/rng.js';
-import { createMatch, step, startRound } from './logic/match.js';
+import { createMatch, step, startMatch } from './logic/match.js';
 import { createPacker, applySnap } from './net/snap.js';
 
-export const READY = 75;   // 2,5 s de „Pregătiți!” la fiecare rundă
-const NEXT_ROUND = 100;    // pauză după rundă
+export const READY = 75;   // 2,5 s de „Pregătiți!” la începutul meciului
 
 /** cfg = { arenaId, players, seed, rules }; slots = { [playerId]: indexul intrării locale }; net = { rooms, you, hostId } sau null. */
 export function createPlay({ input, cfg, slots, net, onEvents }) {
   const s = createMatch(cfg);
-  let isHost = !net || net.host, ready = READY, rest = 0, n = 0, evBuf = [], lastSent = '', sentAt = 0, needAt = 0, wantFull = false;
+  let isHost = !net || net.host, ready = READY, n = 0, evBuf = [], lastSent = '', sentAt = 0, needAt = 0, wantFull = false;
   const packer = createPacker();
   const remote = {};
 
@@ -36,9 +35,6 @@ export function createPlay({ input, cfg, slots, net, onEvents }) {
     let ev = [];
     if (s.phase === 'play') {
       if (ready > 0) { ready--; if (ready === 0) onEvents([{ e: 'go' }]); else if (ready % 25 === 0) onEvents([{ e: 'count', n: Math.ceil(ready / 25) }]); } else ev = step(s, { ...remote, ...locals() });
-    } else if (s.phase === 'round_end') {
-      ev = step(s, {});
-      if (++rest >= NEXT_ROUND) { rest = 0; startRound(s); ready = READY; }
     }
     if (ev.length) { onEvents(ev); evBuf.push(...ev); }
     if (net && ++n % 2 === 0) {
@@ -83,8 +79,7 @@ export function createPlay({ input, cfg, slots, net, onEvents }) {
       }
     },
     rematch() { // doar gazda/local
-      for (const p of s.players) { p.score = 0; p.bestB = 1; p.bestR = 2; }
-      s.matchWinner = null; s.round = 0; startRound(s); ready = READY; rest = 0;
+      startMatch(s); ready = READY;
     },
   };
   return api;

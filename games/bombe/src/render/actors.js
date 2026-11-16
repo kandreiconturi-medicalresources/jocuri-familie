@@ -125,7 +125,6 @@ export function drawPlayers(c, s, now, rp, scale) {
     q.x += dx * 0.5; q.y += dy * 0.5;
     q.walk += Math.hypot(dx, dy) > 0.01 ? 0.5 : -q.walk * 0.3;
     const x = cx(q.x), y = cy(q.y), r = T * 0.4, bob = Math.abs(Math.sin(q.walk)) * 3;
-    if (p.inv > 0 && p.shield === 0 && (p.inv >> 1) & 1) c.globalAlpha = 0.45;
     c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(x, y + T * 0.34, T * 0.34, 5, 0, 0, TAU); c.fill();
     c.fillStyle = p.color; // corp mic + picioare
     const sw = Math.sin(q.walk * 2) * 4;
@@ -134,11 +133,6 @@ export function drawPlayers(c, s, now, rp, scale) {
     c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.stroke();
     const img = avatarImg(p, Math.round(r), scale), sz = img.width / scale;
     c.drawImage(img, x - sz / 2, y - T * 0.2 - sz / 2 - bob, sz, sz);
-    if (p.shield > 0) { // bula scutului
-      c.fillStyle = `rgba(120,230,255,${0.22 + 0.08 * Math.sin(now * 6)})`; circle(c, x, y - 2 - bob / 2, T * 0.56);
-      c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y - 2 - bob / 2, T * 0.56, 0, TAU); c.stroke();
-      c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(x - T * 0.24, y - T * 0.32, 5, 3, -0.7, 0, TAU); c.fill();
-    }
     if (p.cu) { // „Ciudățel”: aură mov care pulsează și spirala deasupra capului
       const left = Math.max(0, p.ce - s.tick), pulse = 0.5 + 0.5 * Math.sin(now * 10);
       c.fillStyle = `rgba(150,60,220,${0.2 + 0.18 * pulse})`; circle(c, x, y - 2 - bob / 2, T * 0.58);

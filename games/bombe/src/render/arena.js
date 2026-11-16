@@ -2,7 +2,7 @@
 import { W, H, WALL, CRATE, BUSH, idx } from '../logic/rules.js';
 import { drawSpr, hasFrame } from '../../../bobo/src/atlas.js';
 
-export const T = 38;   // mărimea unei plăci în unități logice
+export const T = 32;   // mărimea unei plăci în unități logice
 export const OY = 48;  // loc pentru bara de sus
 
 function sprOr(c, name, x, y, fallback) {

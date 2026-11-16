@@ -27,7 +27,7 @@ export function createFx(particles) {
       else if (e.e === 'pickup') {
         sfx('pickup'); const x = e.x * T, y = e.y * T;
         particles.sparkle(x, y, 8); particles.text(x, y - 18, LABEL[e.kind], COLOR[e.kind]);
-      } else if (e.e === 'shield') { sfx('shield'); particles.sparkle(e.x * T, e.y * T, 10); particles.text(e.x * T, e.y * T - 20, 'Scut!', '#7ee9ff'); }
+      } else if (e.e === 'respawn') { sfx('pickup'); particles.sparkle(e.x * T, e.y * T, 10); particles.text(e.x * T, e.y * T - 24, 'Înapoi!', '#7be08a'); }
       else if (e.e === 'hit') {
         sfx('hit'); shake = Math.max(shake, 10);
         const p = s.players.find((q) => q.id === e.id);
@@ -37,7 +37,6 @@ export function createFx(particles) {
       else if (e.e === 'curse') { sfx('hit'); particles.sparkle(e.x * T, e.y * T, 8); particles.text(e.x * T, e.y * T - 20, 'Ciudățel!', '#d28cff'); }
       else if (e.e === 'tele') { sfx('tele'); const [x, y] = at(e); particles.sparkle(x, y, 8); }
       else if (e.e === 'block') { sfx('block'); shake = Math.max(shake, 3); const [x, y] = at(e); particles.dust(x, y, 3); }
-      else if (e.e === 'round') sfx('round');
       else if (e.e === 'match') sfx('match');
       else if (e.e === 'count') sfx('beep');
       else if (e.e === 'go') sfx('go');

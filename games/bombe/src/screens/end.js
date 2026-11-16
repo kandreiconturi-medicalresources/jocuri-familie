@@ -17,9 +17,9 @@ export function createEnd(app) {
   const s = makeScreen([title, board, btns]);
   s.fill = (play) => {
     const st = play.state, w = st.players.find((p) => p.id === st.matchWinner);
-    title.textContent = w ? `🏆 ${w.name} a câștigat meciul!` : 'Meci terminat!';
-    board.replaceChildren(...st.players.slice().sort((a, b) => b.score - a.score).map((p) =>
-      playerCard(p, p.id === st.matchWinner ? 'win' : '', h('span', { class: 'st' }, '★ ' + p.score), h('small', null, `💣 ${p.bestB} bombe · 🔥 rază ${p.bestR}`))));
+    title.textContent = w ? `🏆 ${w.name} a câștigat meciul!` : 'Egalitate! Meci terminat.';
+    board.replaceChildren(...st.players.slice().sort((a, b) => b.lives - a.lives).map((p) =>
+      playerCard(p, p.id === st.matchWinner ? 'win' : '', h('span', { class: 'st' }, p.lives > 0 ? '♥'.repeat(p.lives) : 'Ieșit'), h('small', null, `💣 ${p.bestB} bombe · 🔥 rază ${p.bestR}`))));
     const canRematch = !app.net || play.isHost;
     btns.replaceChildren(
       canRematch ? btn('🔁 Revanșă', () => app.rematch()) : h('p', { class: 'sub' }, 'Așteptăm gazda…'),

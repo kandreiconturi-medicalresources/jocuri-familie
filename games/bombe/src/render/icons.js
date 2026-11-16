@@ -2,7 +2,7 @@
 const TAU = Math.PI * 2;
 
 export const BADGE = ['', '#555', '#ff7a1a', '#3a8dff', '#3fbf5a', '#31c6e8', '#e0559b', '#8a5cf0', '#7a2fb0'];
-export const BONUS_NAME = ['', 'Încă o bombă', 'Flacără mai mare', 'Viteză', 'Șut: împingi bombele', 'Scut', 'Mănușă: aruncă bomba (butonul 2)', 'Telecomandă: bombele explodează la butonul 2', 'Ciudățel (rar, 10 s): se pasează prin atingere'];
+export const BONUS_NAME = ['', 'Încă o bombă', 'Flacără mai mare', 'Viteză', '', '', 'Mănușă: aruncă bomba (butonul 2)', 'Telecomandă: bombele explodează la butonul 2', 'Ciudățel (rar, 10 s): se pasează prin atingere'];
 
 const disc = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
 
@@ -37,6 +37,7 @@ export function drawBonusIcon(c, k, r) {
 /** Legenda pentru ecranul „Cum se joacă”: un canvas mic pentru fiecare bonus + numele lui. */
 export function bonusLegend(h) {
   return h('div', { class: 'legend' }, BONUS_NAME.slice(1).map((name, i) => {
+    if (!name) return null;
     const cv = h('canvas', { width: 64, height: 64, style: { width: '32px', height: '32px' } });
     const c = cv.getContext('2d'); c.translate(32, 32); drawBonusIcon(c, i + 1, 24);
     return h('div', { class: 'lg' }, cv, h('span', null, name));

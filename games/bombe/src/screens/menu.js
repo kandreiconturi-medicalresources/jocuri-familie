@@ -1,4 +1,4 @@
-// Meniul principal și ecranul de alegeri (jucători, boți, arenă, runde, mod blând).
+// Meniul principal și ecranul de alegeri (jucători, boți, arenă, vieți).
 import { h } from '../../../../shared/ui/dom.js';
 import { serverInfo } from '../../../../shared/engine/profiles.js';
 import { ARENAS } from '../logic/arenas.js';
@@ -30,10 +30,8 @@ export function createMenu(app) {
       optRow('Boți sunt', [['easy', 'Ușori'], ['mid', 'Medii'], ['hard', 'Grei']], st.level, (v) => { st.level = v; paint(); }),
       h('div', { class: 'row' }, h('span', { class: 'lab' }, 'Arena'), btn('◀', () => step(-1), 'alt sm'),
         h('span', { class: 'val' }, a.name, h('small', null, a.desc)), btn('▶', () => step(1), 'alt sm')),
-      optRow('Runde', [[1, '1'], [3, '3'], [5, '5']], st.rounds, (v) => { st.rounds = v; paint(); }),
-      optRow('Mod blând', [[true, 'Pornit'], [false, 'Oprit']], st.gentle, (v) => { st.gentle = v; st.kickAll = v; paint(); }),
-      optRow('Toți pot șuta', [[true, 'Da'], [false, 'Doar cu bonus']], st.kickAll, (v) => { st.kickAll = v; paint(); }),
-      h('p', { class: 'sub', style: { fontSize: '14px', margin: '0 0 8px' } }, st.gentle ? 'Ai un scut la început, bombele tale nu te rănesc, iar bonusul „Ciudățel” lipsește.' : 'Mod pentru cei mari: o singură atingere și ieși!'),
+      optRow('Vieți', [[1, '1'], [3, '3'], [5, '5']], st.lives, (v) => { st.lives = v; paint(); }),
+      h('p', { class: 'sub', style: { fontSize: '14px', margin: '0 0 8px' } }, 'Reguli clasice: bombele tale te rănesc și pe tine. Fiecare pierde viețile pe rând, iar ultimul rămas câștigă!'),
       h('div', { class: 'btns', style: { marginBottom: 0 } }, btn('← Înapoi', () => app.go('title'), 'alt sm'),
         btn('💥 Start!', () => { saveSetup(st); app.startLocal(localConfig(st)); })));
   }

@@ -14,7 +14,7 @@ const BLOCKED = { time: 'limit', disabled: 'disabled' };
 
 export function createLobby(app) {
   let rooms = null, room = null, view = 'menu', inGame = false;
-  const opt = { bots: 0, level: 'easy', arena: 0, rounds: 3, gentle: true, kickAll: true };
+  const opt = { bots: 0, level: 'easy', arena: 0, lives: 3 };
   const err = h('p', { class: 'err' });
   const body = h('div');
   const s = makeScreen([h('h2', null, '🌐 Joacă în rețea'), err, body]);
@@ -66,7 +66,7 @@ export function createLobby(app) {
     const humans = list().slice(0, 4).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, color: p.color }));
     if (humans.length + opt.bots < 2) return;
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
-    const cfg = { arenaId: opt.arena, players: addBots(humans, Math.min(opt.bots, 4 - humans.length), opt.level, seed), seed, rules: { rounds: opt.rounds, gentle: opt.gentle, kickAll: opt.kickAll } };
+    const cfg = { arenaId: opt.arena, players: addBots(humans, Math.min(opt.bots, 4 - humans.length), opt.level, seed), seed, rules: { lives: opt.lives } };
     rooms.send({ k: 'start', cfg });
     begin(cfg);
   }
@@ -91,9 +91,7 @@ export function createLobby(app) {
       optRow('Boți', [0, 1, 2, 3].filter((n) => n <= 4 - pl.length).map((n) => [n, String(n)]), opt.bots, set('bots')),
       optRow('Boți sunt', [['easy', 'Ușori'], ['mid', 'Medii'], ['hard', 'Grei']], opt.level, set('level')),
       h('div', { class: 'row' }, btn('◀', () => step(-1), 'alt sm'), h('span', { class: 'val' }, a.name), btn('▶', () => step(1), 'alt sm')),
-      optRow('Runde', [[1, '1'], [3, '3'], [5, '5']], opt.rounds, set('rounds')),
-      optRow('Mod blând', [[true, 'Pornit'], [false, 'Oprit']], opt.gentle, (v) => { opt.gentle = v; opt.kickAll = v; render(); }),
-      optRow('Toți pot șuta', [[true, 'Da'], [false, 'Doar cu bonus']], opt.kickAll, set('kickAll')))
+      optRow('Vieți', [[1, '1'], [3, '3'], [5, '5']], opt.lives, set('lives')))
       : h('p', { class: 'sub' }, 'Așteptăm gazda să pornească jocul…');
     const can = pl.length + opt.bots >= 2;
     return h('div', null, h('p', { class: 'sub', style: { margin: 0 } }, 'Codul camerei'),

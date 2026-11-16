@@ -1,6 +1,6 @@
 // Puterile jucătorilor: bombe (una, în linie), aruncare, telecomandă, bonusuri, „Ciudățel” și bonusurile lăsate la eliminare.
 import {
-  W, H, DIRS, FUSE, HIT_R, FLIGHT, THROW, CURSE_T, MAX_SPEED, MAX_BOMBS, MAX_RANGE, MAX_SHIELD, EMPTY, WALL, CRATE, idx, bombAt, lavaAt,
+  W, H, DIRS, FUSE, HIT_R, FLIGHT, THROW, CURSE_T, MAX_SPEED, MAX_BOMBS, MAX_RANGE, DROP_MAX, EMPTY, WALL, CRATE, idx, bombAt, lavaAt,
 } from './rules.js';
 
 export const bombFree = (s, x, y) => {
@@ -61,11 +61,9 @@ export function pickup(s, p, ev) {
   if (k === 1) p.maxBombs = Math.min(MAX_BOMBS, p.maxBombs + 1);
   else if (k === 2) p.range = Math.min(MAX_RANGE, p.range + 1);
   else if (k === 3) p.spd = Math.min(MAX_SPEED, p.spd + 1);
-  else if (k === 4) p.kick = true;
-  else if (k === 5) p.shield = Math.min(MAX_SHIELD, p.shield + 1);
   else if (k === 6) p.glove = true;
   else if (k === 7) p.remote = true;
-  else if (k === 8 && !s.rules.gentle) { p.cu = s.rng.int(1, 3); p.ce = s.tick + CURSE_T; }
+  else if (k === 8) { p.cu = s.rng.int(1, 3); p.ce = s.tick + CURSE_T; }
   p.bestB = Math.max(p.bestB, p.maxBombs); p.bestR = Math.max(p.bestR, p.range);
   ev.push({ e: 'pickup', id: p.id, kind: k, x: p.x, y: p.y });
 }
@@ -83,16 +81,17 @@ export function curses(s, ev) {
   }
 }
 
-/** Un jucător eliminat își împrăștie bonusurile pe arenă (pe celule goale, departe de flăcări). */
+/** Cine pierde o viață își lasă pe arenă cel mult DROP_MAX din bonusurile adunate (celule goale, departe de flăcări). */
 export function dropBonuses(s, p) {
   const items = [];
   for (let i = 1; i < p.maxBombs; i++) items.push(1);
   for (let i = 2; i < p.range; i++) items.push(2);
   for (let i = 0; i < p.spd; i++) items.push(3);
-  if (p.kick && !s.rules.kickAll) items.push(4);
   if (p.glove) items.push(6);
   if (p.remote) items.push(7);
-  for (const k of items.slice(0, 10)) {
+  const chosen = [];
+  while (items.length && chosen.length < DROP_MAX) chosen.push(items.splice(s.rng.int(0, items.length - 1), 1)[0]);
+  for (const k of chosen) {
     for (let t = 0; t < 40; t++) {
       const x = s.rng.int(1, W - 2), y = s.rng.int(1, H - 2), i = idx(x, y);
       if (s.grid[i] !== EMPTY || s.pick[i] || bombAt(s, x, y) || lavaAt(s, x, y) || s.flames.some((f) => f.i === i)) continue;

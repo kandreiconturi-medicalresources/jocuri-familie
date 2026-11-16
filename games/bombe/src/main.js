@@ -43,7 +43,7 @@ app.go = (name) => {
 function newDemo() {
   const seed = (Math.random() * 1e9) >>> 0;
   const players = addBots([], 4, 'hard', seed).map((p, i) => ({ ...p, id: 'd' + i }));
-  demo = createMatch({ arenaId: seed % 8, players, seed, rules: { gentle: true, rounds: 1 } });
+  demo = createMatch({ arenaId: seed % 8, players, seed, rules: { lives: 3 } });
   scene.reset();
 }
 
