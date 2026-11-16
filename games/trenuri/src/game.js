@@ -17,6 +17,7 @@ import { openSaves } from './ui/saves.js';
 import { createNetPlay } from './net/play.js';
 import { createExpertUi } from './ui/exHub.js';
 import { showOver } from './ui/exOver.js';
+import { createExtras } from './ui/extras.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -36,6 +37,9 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     sell: (id) => exec({ type: 'sellTrain', trainId: id }),
     orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
     upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
+    pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }),
+    route: (id, route) => exec({ type: 'setRoute', trainId: id, route }),
+    show: (x, y) => extras.show(x, y),
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
@@ -53,6 +57,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
     expert: () => ex.show(),
+    todo: () => extras.todo(), catalog: () => extras.catalog(), trains: () => extras.trains(),
     menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({
@@ -60,6 +65,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     canAfford: (c) => s.sandbox || myCo().cash >= c,
     follow: (id) => { follow = { id, until: clock + 5 }; },
   });
+  const extras = createExtras({ stage, uiRoot, panels, camera, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }) });
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -76,10 +82,12 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     root: uiRoot, hud, helper, camera, state: () => s, setTool: (id) => tools.setTool(id),
     onDone: () => { prefs.set('tutorialDone', true); mode = 'normal'; }, onSkip: () => { prefs.set('tutorialDone', true); mode = 'normal'; },
   });
-  const pickTile = (p) => {
-    const x = Math.floor(p.fx), y = Math.floor(p.fz);
+  const pickTile = (p, clamp = false) => { // clamp: în tragere, pointerul în afara hărții dă placa de pe margine
+    let x = Math.floor(p.fx), y = Math.floor(p.fz);
+    if (clamp) { x = Math.max(0, Math.min(s.w - 1, x)); y = Math.max(0, Math.min(s.h - 1, y)); }
     return x < 0 || y < 0 || x >= s.w || y >= s.h ? null : { x, y, fx: p.fx, fz: p.fz };
   };
+  addEventListener('keydown', (e) => { if (e.target.tagName !== 'INPUT' && s && !orbit && tools.key(e)) e.preventDefault(); });
   bindPointer(canvas, camera, pickTile, {
     groundAt: (x, z) => (view ? view.ground.at(x, z) : 0),
     wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit) tools.tap(t); }, hover: (t) => { if (!orbit) tools.hover(t); },
@@ -154,6 +162,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       uiRoot.classList.toggle('demo', demo);
       helper.show(!demo); hud.setGoal(null);
       if (!resync) { panels.close(); tools.setTool('track'); }
+      extras.enable(!demo);
       hud.setLayer(false); lastNews = s.news[s.news.length - 1];
       for (const e of hud.el) e.classList.toggle('hidden', demo); // după setTool, ca mesajul lui să nu apară în meniu
       if (!demo) { if (!keep) setSpeed(1); hud.setDate(s.date); hud.setMoney(myCo().cash, s.sandbox); }
@@ -203,7 +212,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
         while (simAcc >= 1 && n++ < 8) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
         if (simAcc > 1) simAcc = 0;
       }
-      if (!orbit) { trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
+      if (!orbit) { extras.update(dt); trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
     },
     render(dt) {
       if (!s) return;
@@ -213,6 +222,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       }
       stage.setFog(camera.cam.dist * 1.15, camera.cam.dist * 3.2);
       view.frame(np.active ? np.alpha : speed ? simAcc : 1, dt, clock);
+      extras.frame();
       const c = myCo().cash;
       hud.setMoney(c, s.sandbox);
       if (c > lastCash + 50 && !orbit) sfx('cash');

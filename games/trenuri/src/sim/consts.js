@@ -45,4 +45,7 @@ export const UPGRADES = [
   { key: 'mail', name: 'Oficiu poștal', icon: '✉️', cost: 2000, text: 'Apare mai multă poștă.', glb: 'suburban/building-type-r', dx: 0.9, dz: 0.7, s: 0.45 },
   { key: 'hotel', name: 'Hotel', icon: '🏨', cost: 3500, text: 'Vin mai mulți pasageri.', glb: 'commercial/building-d', dx: -0.9, dz: -0.8, s: 0.45 },
   { key: 'depot', name: 'Depozit', icon: '🏚️', cost: 2500, text: 'Marfa se strică mai încet.', glb: 'industrial/building-d', dx: 0.9, dz: -0.8, s: 0.4 },
+  { key: 'shop', name: 'Atelier de întreținere', icon: '🔧', cost: 4000, text: 'Repară trenurile care opresc aici: fiabilitatea revine.', glb: 'industrial/building-h', dx: 0, dz: 1.15, s: 0.4 },
 ];
+export const WORKSHOP = 4; // indicele atelierului în UPGRADES
+export const REL_FLOOR = { simple: 70, expert: 30 }; // fiabilitatea minimă după uzură

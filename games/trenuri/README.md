@@ -35,7 +35,7 @@ Numele orașelor și ale gărilor sunt românești, inventate, generate cu seed.
 
 ## Comenzi (singura cale prin care jucătorul schimbă starea)
 `applyCommand(state, { type, by /*companyId*/, ... }) → { ok, err?, cost? }`. Validează tot: bani, teren, proprietar.
-- `buildTrack {path:[[x,y],...]}`, `removeTrack {x,y}`;
+- `buildTrack {path:[[x,y],...]}`, `removeTrack {x,y}`; `pauseTrain {trainId}` / `resumeTrain {trainId}` (în `ALLOWED` pentru rețea);
 - `buildStation {x,y,size,dir}`, `removeStation {id}`;
 - `buyTrain {model, stationId}`, `setRoute {trainId, route}`, `sellTrain {trainId}`;
 - `setSpeed` (doar gazda, în afara simulării).
@@ -114,3 +114,16 @@ Se alege la „Joc nou” (🎓 Mod expert + 0–3 concurenți AI, cu nivel) sau
 - **Obiective:** măsura `nw` (valoare netă); variante expert pentru „Cărbune pentru oțelărie” și „Marea rețea” (`carbune-x`, `retea-x`: 2 AI, un an în plus, medalii proprii, deblocate cu bronz la scenariul de bază).
 - **UI:** butonul 💼 din bara de sus (doar în expert): Finanțe, Bursă, Raport, Clasament; ⓘ pe fiecare termen (tooltip + notă pentru atingere). Fișiere `ui/ex*.js`, `ui/expert.css`.
 - **Teste:** `tests/trenuri-expert.test.js` (determinism cu 3 AI la 20.000 de pași + serializare la mijloc, AI cu profit, împrumuturi și dobândă, preț după profit, bursă și preluare, dividende, faliment și revenire, scenarii expert) și `tests/trenuri-expert-net.test.js` (lockstep cu 3 jucători + 2 AI, intrare în timpul jocului, desincronizare reparată).
+
+## Îmbunătățiri după feedback
+Format de date: **neschimbat** (biții din `track`, `state`); câmpuri noi pe tren: `rel` (fiabilitate curentă 0–100, lipsă = a modelului), `paused`; `UPGRADES` are încă o intrare (indice 4 = `WORKSHOP`), iar `st.up` are acum 5 poziții (la salvările vechi lipsa e tratată ca 0).
+
+1. **„Industria nu produce / nu trimite”.** Cauza: trenul cumpărat din bară avea implicit vagoane de pasageri și poștă (`CAR_SETS[0]`), care nu pot duce petrol sau cărbune; marfa de la sondă rămânea în gară, iar rafinăria stătea la 0 fără nicio explicație. Lanțul în sine merge (test cu tren automat sondă → rafinărie → oraș; combustibilul îl cer doar metropolele). Reparat:
+   - `buyTrain` fără `kinds` dar cu `route` alege vagoanele potrivite (`suggestKinds` în `sim/advice.js`); în bară prima opțiune e „🤖 Vagoane potrivite”.
+   - Panoul industriei spune ce lipsește, cea mai apropiată sursă și ce să faci, cu „📍 Arată pe hartă” (`industryAdvice`); panoul trenului spune de ce stă gol (`trainAdvice`: „Nu are vagoane de cisternă”, „Gara nu are marfă”, fără rută, fără drum, pauză, stricat).
+2. **Șine cu mouse-ul** (`input/trackTool.js`, `parallelTool.js`): atingeri sau tragere punct cu punct, previzualizare, „Gata”, „Anulează ultimul” (Enter / Backspace / Esc). Pornit dintr-o placă de șină existentă = ramificație (macaz, plăci cu 3+ legături, evidențiate cyan). „Nu refolosi șina” = `planTrack(..., { reuse: false })`. „Șină paralelă” (`sim/parallel.js`): alegi două puncte, jocul dublează porțiunea la o placă distanță, cu macazuri la capete (`parallelPlan`). `input/pointer.js` ține ultima placă bună, trage pe marginea hărții când pointerul iese și nu pierde punctele puse la gest întrerupt. Semnalizare: la plecare trenul ocolește plăcile ocupate sau pe care vine alt tren, iar din mers se mută pe linia liberă (`reroute`), deci linia dublă cu macazuri lasă două trenuri opuse să treacă fără așteptare.
+3. **Marcaje și „De făcut”** (`render/markers.js` DOM peste canvas, `sim/todo.js` pură, `ui/extras.js`): ❗ tren fără rută/drum, 📦 marfă într-o gară fără tren, 🏭 industrie nouă fără gară, 🎯 obiectiv de scenariu, 🏙️ oraș care cere marfă. Atingere = camera merge acolo și se deschide panoul. Butonul 📌 din bara de sus arată lista și numărul.
+4. **Catalog** (📋 în bara de jos, `ui/catalog.js`): Șine (normală, paralelă, demolare), Gări (preț, rază), Îmbunătățiri, Trenuri (viteză, putere, preț, fiabilitate; viitoarele gri cu anul). Ce nu-ți permiți e gri, cu motivul.
+5. **Pauză:** `pauseTrain` / `resumeTrain` prin `applyCommand` (merg în rețea). Trenul în mers își termină drumul și stă în gara următoare (nu blochează linia). Buton în panoul trenului și în lista 🚆 Trenuri (stare, profit, vârstă, fiabilitate).
+6. **Uzură și atelier** (`sim/wear.js`): fiabilitatea scade lunar (simplu: 1 punct pe trimestru, minim 70; expert: 2–4 puncte pe lună, minim 30); cu cât e mai mică, cu atât penele sunt mai dese și mai lungi. Îmbunătățirea de gară „Atelier de întreținere” repară trenul care oprește acolo; în panoul trenului „Trece pe la atelier” pune gara cu atelier în rută. Explicație în UI: „Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.”
+7. **Teste:** `tests/trenuri-fix.test.js` (lanț sondă → rafinărie → oraș, explicații, ramificație + macaz, linie dublă fără așteptare, `reuse:false`, pauză determinist și în lockstep cu 3 noduri, uzură + atelier, lista „De făcut”).

@@ -7,6 +7,7 @@ import { produceMonthly, spoilMonthly } from './industry.js';
 import { monthlyEvents } from './events.js';
 import { isEx, payMonthly } from './expert/finance.js';
 import { expertMonthly } from './expert/index.js';
+import { wearMonthly } from './wear.js';
 
 export function spawnCargo(s) {
   for (const st of s.stations) {
@@ -39,6 +40,7 @@ export function monthly(s) {
   monthlyEvents(s);
   produceMonthly(s);
   spoilMonthly(s);
+  wearMonthly(s);
   for (const c of s.cities) growCity(s, c);
   for (const co of s.companies) {
     if (co.dead) { co.month = 0; continue; }

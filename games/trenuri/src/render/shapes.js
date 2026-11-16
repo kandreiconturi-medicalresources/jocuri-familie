@@ -20,19 +20,6 @@ export function boxes(parts) {
   return geo;
 }
 
-/** Segment de șină de lungime 1 pe axa Z, cu pat de piatră, traverse și două șine. */
-export function railSegment() {
-  const parts = [{ w: 0.36, h: 0.05, d: 1.02, y: 0.025, color: '#9a8c7c' }];
-  for (let i = 0; i < 6; i++) parts.push({ w: 0.34, h: 0.03, d: 0.07, y: 0.065, z: -0.4 + i * 0.16, color: '#7a5233' });
-  parts.push({ w: 0.035, h: 0.04, d: 1.02, x: -0.1, y: 0.1, color: '#d6dae0' }, { w: 0.035, h: 0.04, d: 1.02, x: 0.1, y: 0.1, color: '#d6dae0' });
-  return boxes(parts);
-}
-export const railNode = () => boxes([{ w: 0.36, h: 0.05, d: 0.36, y: 0.025, color: '#9a8c7c' }, { w: 0.3, h: 0.03, d: 0.3, y: 0.065, color: '#7a5233' }]);
-export const bridgeDeck = () => boxes([
-  { w: 0.62, h: 0.08, d: 0.62, y: -0.04, color: '#b08a5a' },
-  ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => ({ w: 0.07, h: 0.4, d: 0.07, x: a * 0.26, y: -0.24, z: b * 0.26, color: '#8c6a40' })),
-]);
-
 /** Clădire de gară pe mărime: 0 haltă, 1 gară, 2 terminal. Axa lungă = Z (de-a lungul șinei). */
 export function stationShape(size, color) {
   const parts = [{ w: 0.5, h: 0.08, d: 0.9 + size * 0.1, x: 0.38, y: 0.04, color: '#cfc7b8' }];

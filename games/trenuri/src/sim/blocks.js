@@ -17,3 +17,6 @@ export function rebuildBlocks(s) {
   for (const st of s.stations) s.stm[st.y * s.w + st.x] = 1;
   for (const t of s.trains) mark(s, t, 1);
 }
+
+/** Câte legături are o placă de șină (0–8): 3 sau mai multe = macaz. */
+export function linkCount(t) { let c = 0; for (let d = 0; d < 8; d++) c += (t >> d) & 1; return c; }

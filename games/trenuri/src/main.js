@@ -3,6 +3,7 @@ import '../../../shared/ui/theme.css';
 import './ui/style.css';
 import './ui/menus.css';
 import './ui/expert.css';
+import './ui/extras.css';
 import { startLoop } from '../../../shared/engine/loop.js';
 import { perf } from '../../../shared/engine/perf.js';
 import { needLandscape } from '../../../shared/engine/screen.js';

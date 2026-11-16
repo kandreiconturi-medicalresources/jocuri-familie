@@ -10,6 +10,13 @@ export const TOOLS = [
   { id: 'demolish', e: '🧹', t: 'Demolare', hint: 'Atinge o șină sau o gară ca să o ștergi.' },
   { id: 'info', e: 'ℹ️', t: 'Info', hint: 'Atinge un oraș, o gară sau un tren ca să afli mai multe.' },
 ];
+/** Unelte fără buton în bară: se aleg din catalog sau din opțiunile uneltei Șină. */
+const EXTRA = [
+  { id: 'parallel', hint: 'Atinge începutul și sfârșitul unei șine: o dublez cu o a doua șină, la o placă distanță.' },
+  { id: 'upgrade', hint: 'Alege o îmbunătățire, apoi atinge gara care o primește.' },
+];
+/** Butoane care deschid panouri (nu sunt unelte). */
+const PANELS = [{ id: 'catalog', e: '📋', t: 'Catalog' }, { id: 'trains', e: '🚆', t: 'Trenuri' }];
 const MONTHS = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const lei = (n) => (n < 0 ? '-' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' lei';
 
@@ -19,22 +26,26 @@ export function createHud(root, ev) {
   const speeds = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => h('button', { class: 'rb', 'aria-label': 'Viteză ' + t, onclick: () => ev.speed(v) }, t));
   const layerBtn = h('button', { class: 'rb', title: 'Mărfuri', 'aria-label': 'Mărfuri', onclick: () => ev.layer() }, '📦');
   const exBtn = h('button', { class: 'rb hidden', title: 'Mod expert: finanțe, bursă, raport', 'aria-label': 'Mod expert', onclick: () => ev.expert() }, '💼');
+  const todoBtn = h('button', { class: 'rb todo', title: 'De făcut', 'aria-label': 'De făcut', onclick: () => ev.todo() }, '📌');
   const menuBtn = h('button', { class: 'rb', title: 'Meniu', 'aria-label': 'Meniu', onclick: () => ev.menu() }, '☰');
   const bar = h('div', { class: 'tbar' }, info, goal, h('div', { class: 'sp' }), speeds,
-    layerBtn, exBtn,
+    layerBtn, exBtn, todoBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
     menuBtn);
   const hint = h('div', { class: 'hint hidden' });
   const sub = h('div', { class: 'sub' });
   const tools = TOOLS.map((t) => h('button', { class: 'tool', 'aria-label': t.t, onclick: () => ev.tool(t.id) }, h('span', { class: 'e' }, t.e), t.t));
-  const toolbar = h('div', { class: 'toolbar' }, tools);
+  const panelBtns = PANELS.map((t) => h('button', { class: 'tool', 'aria-label': t.t, onclick: () => ev[t.id]() }, h('span', { class: 'e' }, t.e), t.t));
+  const toolbar = h('div', { class: 'toolbar' }, tools, panelBtns);
   root.append(bar, hint, sub, toolbar);
 
   let hintTimer = 0, lastMoney = null;
   const api = {
     el: [bar, hint, sub, toolbar],
     /** Elemente pe care tutorialul le evidențiază. */
-    btn: { track: tools[0], station: tools[1], train: tools[2], money: info, menu: menuBtn },
+    btn: { track: tools[0], station: tools[1], train: tools[2], money: info, menu: menuBtn, todo: todoBtn },
+    /** Numărul de lucruri de făcut, pe butonul 📌. */
+    setTodo(n) { todoBtn.dataset.n = n ? String(n) : ''; todoBtn.classList.toggle('has', n > 0); },
     /** Chip de obiectiv (doar în scenarii): text sau null. */
     setGoal(text) { goal.classList.toggle('hidden', !text); if (text) goal.textContent = text; },
     setMoney(c, sandbox) {
@@ -49,7 +60,7 @@ export function createHud(root, ev) {
     setSpeed(v) { speeds.forEach((b, i) => b.classList.toggle('on', [0, 1, 2, 4][i] === v)); },
     setTool(id) {
       tools.forEach((b, i) => b.classList.toggle('on', TOOLS[i].id === id));
-      api.hint(TOOLS.find((t) => t.id === id).hint, false, 6000);
+      api.hint([...TOOLS, ...EXTRA].find((t) => t.id === id).hint, false, 6000);
     },
     hint(text, warn = false, ms = 3500) {
       hint.textContent = text; hint.classList.remove('hidden'); hint.classList.toggle('warn', !!warn);
@@ -64,9 +75,9 @@ export function createHud(root, ev) {
       api.setSub(STATION_NAMES.map((n, i) => ({ label: n, small: lei(STATION_COST[i]), on: size === i, fn: () => onPick(i) })));
     },
     trainOpts(model, cars, year, onModel, onCars) {
-      const price = (m, set) => m.price + CAR_SETS[set].length * CAR_PRICE;
+      const price = (m, set) => m.price + (set < 0 ? 4 : CAR_SETS[set].length) * CAR_PRICE;
       const ms = availableModels(year).map((m) => ({ label: m.name, small: lei(price(m, cars)), on: model === m.id, fn: () => onModel(m.id) }));
-      const cs = CAR_SETS.map((set, i) => ({ label: i ? CAR_TYPES[set[0]].icon + ' ' + CAR_TYPES[set[0]].name : '👥✉️ Pasageri', cls: 'car', on: cars === i, fn: () => onCars(i) }));
+      const cs = [{ label: '🤖 Vagoane potrivite', small: 'după marfa gărilor', cls: 'car', on: cars < 0, fn: () => onCars(-1) }, ...CAR_SETS.map((set, i) => ({ label: i ? CAR_TYPES[set[0]].icon + ' ' + CAR_TYPES[set[0]].name : '👥✉️ Pasageri', cls: 'car', on: cars === i, fn: () => onCars(i) }))];
       api.setSub([...ms, ...cs]);
     },
   };

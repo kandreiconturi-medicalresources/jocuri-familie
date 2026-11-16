@@ -11,3 +11,7 @@ export * from './scenarios/index.js';
 export { viewer } from './viewer.js';
 export { companyValue, standings, createNetWorld } from './value.js';
 export * from './expert/index.js';
+export { industryAdvice, trainAdvice, suggestKinds, routeGoods, nearestSource } from './advice.js';
+export { relOf, ageMonths, wearMonthly } from './wear.js';
+export { parallelPlan, trackSection, switches, links } from './parallel.js';
+export { computeTodos } from './todo.js';

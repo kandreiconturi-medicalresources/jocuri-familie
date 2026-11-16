@@ -1,0 +1,39 @@
+/* Marcaje pe hartă, „De făcut”, catalog, lista de trenuri, explicații */
+.mk-layer { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+.mk { position: absolute; left: 0; top: 0; width: 46px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto; touch-action: manipulation; will-change: transform; }
+.mk-i { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 3px; border-radius: 50%; background: #fff; border: 3px solid #5a2ba0; font-size: 22px; line-height: 1; box-shadow: 0 3px 0 rgba(0,0,0,.28); animation: mk-bob 1.1s ease-in-out infinite alternate; position: relative; }
+.mk-i::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid currentColor; opacity: 0; animation: mk-ring 1.8s ease-out infinite; }
+.mk-train .mk-i { border-color: #d62839; color: #d62839; background: #ffe3e6; }
+.mk-cargo .mk-i { border-color: #d98a00; color: #d98a00; background: #fff2cc; }
+.mk-industry .mk-i { border-color: #5a2ba0; color: #5a2ba0; background: #efe6ff; }
+.mk-goal .mk-i { border-color: #2e8b3e; color: #2e8b3e; background: #e1f8e4; }
+.mk-city .mk-i { border-color: #1f7ac4; color: #1f7ac4; background: #e0f1ff; }
+.mk-ping .mk-i { border-color: #d62839; color: #d62839; }
+@keyframes mk-bob { from { transform: translateY(0); } to { transform: translateY(-9px); } }
+@keyframes mk-ring { 0% { transform: scale(.85); opacity: .7; } 100% { transform: scale(1.5); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mk-i, .mk-i::after { animation: none; } }
+
+.rb.todo { position: relative; }
+.rb.todo.has::after { content: attr(data-n); position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: #d62839; color: #fff; font: 800 12px/20px var(--font); box-sizing: border-box; text-align: center; }
+.rb.todo.has { animation: mk-bob .8s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .rb.todo.has { animation: none; } }
+
+.card.wide { width: min(430px, 72vw); }
+.card .why { margin: 6px 0; padding: 7px 10px; border-radius: 12px; background: #fff1d6; border: 2px solid #f0b34a; font-weight: 700; }
+.card .why.ok { background: #e1f8e4; border-color: #6cc47a; }
+.card .why .opt { margin-top: 6px; }
+.card .note { margin-top: 8px; padding: 6px 10px; border-radius: 12px; background: #eef6ff; font-size: 13px; font-weight: 600; }
+.card .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+.card .tab { padding: 4px 10px; font-size: 13px; }
+.card .cat, .card .todo-row { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 6px; text-align: left; }
+.card .cat .ci, .card .todo-row .ci { font-size: 24px; flex: none; }
+.card .cat .cn, .card .todo-row .cn { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.card .cat em { font-style: normal; font-weight: 800; color: #2e7d32; }
+.card .cat.dis { background: #e4e1ea; color: #8a8497; border-color: #b8b2c6; box-shadow: none; cursor: not-allowed; }
+.card .cat.dis em { color: #8a8497; }
+.card .cat .cw { color: #b3262f; font-weight: 800; }
+.card .trow { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.card .trow .tmain { flex: 1; min-height: 48px; text-align: left; padding: 4px 10px; border-radius: 14px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; font: 700 14px/1.2 var(--font); cursor: pointer; display: flex; flex-direction: column; }
+.card .trow .tmain small { font-weight: 600; font-size: 12px; }
+.tbar .chip.goal { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .tbar { gap: 4px; } .chip { padding: 0 8px; font-size: 16px; } .tool { width: 60px; } .toolbar { gap: 5px; } }

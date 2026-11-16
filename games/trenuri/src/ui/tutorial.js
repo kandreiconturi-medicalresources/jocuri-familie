@@ -5,7 +5,7 @@ import { T_PRESENT } from '../sim/consts.js';
 /** Pașii: text, ce evidențiem (cheie în hud.btn sau 'map'), unealta aleasă și condiția de terminare. */
 export const STEPS = [
   { text: 'Mută harta: trage cu degetul pe ecran. Cu două degete poți apropia și roti.', hi: 'map', tool: 'info', done: (c) => c.moved() },
-  { text: 'Apasă 🛤️ Șină. Trage cu degetul de la un oraș la altul, apoi apasă „Construiește”.', hi: 'track', tool: 'track', done: (c) => c.rail() >= 6 },
+  { text: 'Apasă 🛤️ Șină. Trage cu degetul de la un oraș la altul (sau atinge punct cu punct), apoi apasă „Gata, construiește”.', hi: 'track', tool: 'track', done: (c) => c.rail() >= 6 },
   { text: 'Apasă 🚉 Gară și atinge câte un loc la fiecare capăt al șinei. Ai nevoie de 2 gări!', hi: 'station', tool: 'station', done: (c) => c.s().stations.length >= 2 },
   { text: 'Apasă 🚂 Tren. Atinge o gară, apoi cealaltă: acolo ajunge trenul.', hi: 'train', tool: 'train', done: (c) => c.s().trains.some((t) => t.route.length >= 2) },
   { text: 'Uite-l cum pleacă! Urmărește banii 💰: cresc când trenul duce oameni.', hi: 'money', tool: 'info', done: (c) => c.s().trains.some((t) => t.money > 0) || c.moneyTapped },

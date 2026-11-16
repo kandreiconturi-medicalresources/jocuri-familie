@@ -54,6 +54,8 @@ export function hashState(s) {
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
+    if (t.paused) h = num(h, 77);
+    if (t.rel !== undefined) h = num(h, t.rel);
     for (const b of t.load) h = num(num(num(h, b.c), b.n), b.from);
     for (const r of t.route) h = num(h, r);
   }

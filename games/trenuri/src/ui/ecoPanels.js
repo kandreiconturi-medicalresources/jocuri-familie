@@ -3,6 +3,7 @@ import { h } from '../../../../shared/ui/dom.js';
 import { CITY_LEVELS, UPGRADES, STATION_NAMES } from '../sim/consts.js';
 import { GOODS, INDUSTRIES, CITY_GOODS, NG, wantOf } from '../sim/goods.js';
 import { near } from '../sim/industry.js';
+import { industryAdvice } from '../sim/advice.js';
 import { lei } from './hud.js';
 
 const LEVEL = ['Sat', 'Oraș', 'Metropolă'];
@@ -21,8 +22,10 @@ export function createEcoPanels(card, ev) {
         h('div', null, 'Adu-i ce cere și orașul crește mai repede!'));
     },
     industry(s, o) {
-      const t = INDUSTRIES[o.type], hasSt = s.stations.some((st) => near(st, o));
+      const t = INDUSTRIES[o.type], hasSt = s.stations.some((st) => near(st, o)), adv = industryAdvice(s, o);
       open(h('h3', null, `${t.icon} ${o.name}`),
+        h('div', { class: adv.ok ? 'why ok' : 'why' }, adv.lines.map((l) => h('div', null, l)),
+          adv.goto && ev.show ? h('button', { class: 'opt', onclick: () => ev.show(adv.goto.x, adv.goto.y) }, '📍 Arată pe hartă', h('small', null, adv.goto.name)) : null),
         t.out >= 0 ? h('div', null, 'Produce: ', chip(t.out), ' ' + GOODS[t.out].name) : h('div', null, 'Nu produce marfă, dar are nevoie de combustibil ca să meargă.'),
         t.in.length ? h('div', null, 'Vrea: ', t.in.map((g) => chip(g))) : h('div', null, 'Nu are nevoie de nimic: produce singură.'),
         ...t.in.map((g) => goodRow(g, o.in[g], ' în stoc')),
@@ -38,7 +41,7 @@ export function createEcoPanels(card, ev) {
       open(h('h3', null, '🚉 ' + st.name), h('div', null, STATION_NAMES[st.size]), row('👥 Pasageri care așteaptă', st.waiting.pass), row('✉️ Poștă', st.waiting.mail),
         ...goods, row('Trenuri aici', trains.length),
         ind.length ? h('div', null, 'Industrii în rază: ', ind.map((o) => INDUSTRIES[o.type].icon + ' ' + o.name).join(', ')) : null,
-        h('div', null, h('b', null, 'Îmbunătățiri')),
+        h('div', null, h('b', null, 'Îmbunătățiri')), h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'),
         UPGRADES.map((u, k) => st.up[k]
           ? h('div', { class: 'upg done' }, `${u.icon} ${u.name} ✅`)
           : h('button', { class: 'opt upg', onclick: () => { if (ev.upgrade(st.id, k)) api.station(s, st); } }, `${u.icon} ${u.name} · ${lei(u.cost)}`, h('small', null, u.text))));

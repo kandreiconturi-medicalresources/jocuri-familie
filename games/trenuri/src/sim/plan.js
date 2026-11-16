@@ -40,7 +40,9 @@ export function pathCost(s, path, by) {
 }
 
 /** Cel mai ieftin traseu între două plăci: { path:[[x,y],...], cost } sau null. */
-export function planTrack(s, from, to, by = 0) {
+/** opts.reuse=false: nu trece peste șină existentă (linie dublă); opts.prefer: Set de plăci preferate (restul costă mai mult). */
+export function planTrack(s, from, to, by = 0, opts = null) {
+  const reuse = !opts || opts.reuse !== false, prefer = opts && opts.prefer;
   const w = s.w, h = s.h, n = w * h;
   if (!from || !to) return null;
   const a = from[1] * w + from[0], b = to[1] * w + to[0];
@@ -56,8 +58,11 @@ export function planTrack(s, from, to, by = 0) {
     for (let d = 0; d < 8; d++) {
       const nx = cx + DX[d], ny = cy + DY[d];
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      const ni = ny * w + nx, tc = tileCost(s, cur, ni, by);
+      const ni = ny * w + nx;
+      if (!reuse && ni !== b && (s.track[ni] & T_PRESENT)) continue;
+      let tc = tileCost(s, cur, ni, by);
       if (tc < 0) continue;
+      if (prefer && ni !== b && !prefer.has(ni)) tc += COST.tile * 4;
       const ng = g[cur] + (((tc + COST.link) * LEN[d]) >> 8) + 1;
       if (g[ni] >= 0 && g[ni] <= ng) continue;
       g[ni] = ng; prev[ni] = cur;

@@ -4,6 +4,7 @@ import { pathCost } from './plan.js';
 import { addNews } from './news.js';
 import { mark } from './blocks.js';
 import { CAR_TYPES, NG } from './goods.js';
+import { suggestKinds } from './advice.js';
 import { EXPERT_COMMANDS, initCompany } from './expert/index.js';
 
 const fail = (err) => ({ ok: false, err });
@@ -82,7 +83,7 @@ function buildStation(s, cmd, c) {
   const cityId = nearCity(s, x, y), city = cityId >= 0 ? s.cities[cityId] : null;
   const same = city ? s.stations.filter((st) => st.cityId === cityId).length : 0;
   const name = city ? `${STATION_NAMES[size]} ${city.name}${same ? ' ' + (same + 1) : ''}` : `${STATION_NAMES[size]} ${s.stations.length + 1}`;
-  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: [0, 0, 0, 0] };
+  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: UPGRADES.map(() => 0) };
   s.stations.push(st);
   s.stm[i] = 1;
   s.dirty.track = s.dirty.stations = s.dirty.forest = true;
@@ -111,13 +112,14 @@ function buyTrain(s, cmd, c) {
   if (m.year > s.date.y) return fail('epoca');
   if (!st || st.owner !== c.id) return fail('gara');
   let kinds = cmd.kinds;
+  if (kinds === undefined && cmd.cars === undefined && Array.isArray(cmd.route) && cmd.route.length > 1) kinds = suggestKinds(s, cmd.route, m.power); // vagoane potrivite pentru marfa rutei
   if (kinds === undefined) kinds = Array.from({ length: Math.max(1, Math.min(MAX_CARS, cmd.cars === undefined ? 3 : cmd.cars | 0)) }, (_, i) => (i % 3 === 2 ? 1 : 0));
   if (!Array.isArray(kinds) || kinds.length < 1 || kinds.length > MAX_CARS || kinds.some((k) => !Number.isInteger(k) || k < 0 || k >= CAR_TYPES.length)) return fail('vagoane');
   const route = cmd.route === undefined ? [st.id] : cmd.route; // opțional: ruta se dă odată cu cumpărarea (în rețea nu aștepți id-ul)
   if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route[0] !== st.id || route.some((id) => !s.stations.some((q) => q.id === id && q.owner === c.id))) return fail('gara');
   const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, noteT: -9999, born: s.date.y * 12 + s.date.m };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m };
   s.trains.push(tr);
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
@@ -157,6 +159,14 @@ function setRoute(s, cmd, c) {
   return { ok: true, cost: 0 };
 }
 
+function pauseTrain(s, cmd, c) {
+  const tr = s.trains.find((q) => q.id === cmd.trainId);
+  if (!tr) return fail('inexistent');
+  if (tr.owner !== c.id) return fail('proprietar');
+  tr.paused = cmd.type === 'pauseTrain' ? 1 : 0; // trenul în mers termină drumul și stă în gara următoare
+  return { ok: true, cost: 0 };
+}
+
 function sellTrain(s, cmd, c) {
   const k = s.trains.findIndex((t) => t.id === cmd.trainId);
   if (k < 0) return fail('inexistent');
@@ -182,7 +192,7 @@ function joinCompany(s, cmd) {
   return { ok: true, cost: 0 };
 }
 
-const TABLE = { joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders };
+const TABLE = { joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

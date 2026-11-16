@@ -1,6 +1,7 @@
 // Industrii și îmbunătățiri de gară: modele Kenney instanțiate lângă plăcile lor.
 import { Group } from 'three';
 import { addInstances } from './props.js';
+import { createFields } from './fields.js';
 import { INDUSTRIES, IND_MODELS } from '../sim/goods.js';
 import { UPGRADES } from '../sim/consts.js';
 
@@ -16,6 +17,7 @@ export function createIndustries(s, g) {
     }
   }
   for (const [model, list] of by) addInstances(root, model, list);
+  root.add(createFields(s, g));
   return root;
 }
 
