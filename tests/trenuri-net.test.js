@@ -208,7 +208,8 @@ test('gazda încarcă o salvare: toți primesc lumea nouă și rămân sincroniz
   old.net = { mode: 'coop', pl: {} };
   const t0 = old.tick;
   host.load(old, ['b', 'c']);
-  await hub.run(8);
+  // așteaptă condiția, nu un număr fix de pași (pe runner-ele lente transferul durează mai mult)
+  await until(hub, () => nodes.every((n) => !n.syncing));
   assert.ok(nodes.every((n) => !n.syncing));
   assert.ok(nodes.every((n) => n.world.tick < tickAfter && n.world.tick >= t0));
   await hub.run(20);
