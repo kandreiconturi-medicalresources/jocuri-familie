@@ -44,11 +44,15 @@ export function openPlanner(env, preset = {}) {
       cache = {}; env.hud.hint(`Planul pentru primul oraș rămâne deoparte. Acum: ${o.name}.`, false, 5000); draw();
     },
     run() {
-      const plan = ctx.plan(), r = runPlan(plan, env.exec);
-      cache = {}; memo = null;
-      p = { ...p, result: r, snap: r.ok ? plan : null };
-      if (r.ok) env.hud.hint('Gata! Trenul tău pleacă.', false, 5000);
-      draw();
+      if (p.busy) return;
+      const plan = ctx.plan(), done = (r) => {
+        cache = {}; memo = null;
+        p = { ...p, busy: false, result: r, snap: r.ok ? plan : null };
+        if (r.ok) env.hud.hint('Gata! Trenul tău pleacă.', false, 5000);
+        if (!closed) draw();
+      };
+      const r = runPlan(plan, env.execWait || env.exec); // în rețea: promisiune, până confirmă gazda
+      if (r && typeof r.then === 'function') { p = { ...p, busy: true, result: null }; draw(); r.then(done); } else done(r);
     },
     finish() {
       if (p.queue.length) { const [next, ...rest] = p.queue; p = { ...next, queue: rest, result: null, snap: null, entry: p.entry }; cache = {}; memo = null; draw(); } else api.close();

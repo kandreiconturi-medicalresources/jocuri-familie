@@ -12,12 +12,13 @@ import { STATION_COMMANDS } from './stations.js';
 import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
 import { validOrders, cleanOrders } from './orders.js';
+import { executePlan } from './execPlan.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
-  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.',
+  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
 };
 
@@ -194,7 +195,8 @@ function joinCompany(s, cmd) {
   return { ok: true, cost: 0 };
 }
 
-const TABLE = { ...DEPOT_COMMANDS, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
+const TABLE = { ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

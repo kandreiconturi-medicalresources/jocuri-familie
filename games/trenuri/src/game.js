@@ -35,6 +35,13 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
     return r;
   };
+  const waits = []; // „Fă tot” în rețea: promisiunea se închide când gazda aplică comanda și răspunde
+  const execWait = (cmd) => {
+    const r = exec(cmd);
+    if (!np.active || !r.ok) return r;
+    return new Promise((res) => { const w = { res, t: setTimeout(() => { waits.splice(waits.indexOf(w), 1); res({ ok: false, err: 'timp' }); }, 20000) }; waits.push(w); });
+  };
+  const gotResult = (e, r) => { if (e.cmd.type !== 'executePlan') return; const w = waits.shift(); if (w) { clearTimeout(w.t); w.res(r); } };
   const panels = createPanels(uiRoot, {
     sell: (id) => exec({ type: 'sellTrain', trainId: id }),
     orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
@@ -72,11 +79,11 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     follow: (id) => { follow = { id, until: clock + 5 }; },
     assist: { open: () => extras.assistOpen(), tap: (t) => extras.assistTap(t) },
   });
-  const extras = createExtras({ stage, uiRoot, panels, camera, helper, exec, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
+  const extras = createExtras({ stage, uiRoot, panels, camera, helper, exec, execWait, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
   mountExtraTools(hud, tools);
   mountMobileControls(uiRoot, camera);
   const np = createNetPlay({
-    root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, setSpeedUi: (v) => setSpeed(v),
+    root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
   });
   function openSavesMenu() {

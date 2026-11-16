@@ -51,11 +51,11 @@ export function summaryStep(c) {
     const r = c.p.result;
     out.push(h('div', { class: 'pl-res' + (r.ok ? ' ok' : ' bad') }, h('b', null, r.ok ? '🎉 Gata! Trenul pleacă.' : '⚠️ Ceva n-a mers:'),
       r.steps.map((q) => h('div', null, (q.ok ? '✅ ' : q.skipped ? '⏭️ ' : '❌ ') + q.text + (q.err ? ` — ${q.err}` : q.skipped ? ' (nefăcut)' : '')))));
-    if (!r.ok) out.push(h('div', { class: 'note' }, 'Ce s-a făcut până aici rămâne. Poți apăsa din nou „Fă tot”: se va continua cu ce a rămas.'));
+    if (!r.ok) out.push(h('div', { class: 'note' }, 'Nu s-a schimbat nimic: banii și harta sunt ca înainte. Repară ce scrie mai sus și apasă din nou „Fă tot”.'));
   }
   const done = c.p.result && c.p.result.ok;
   out.push(done ? h('button', { class: 'opt go pl-next', onclick: () => c.finish() }, c.p.queue.length ? `➜ Următorul plan (${c.p.queue.length})` : '👍 Închide')
-    : h('button', { class: 'opt go pl-next pl-stick', disabled: poor || bad ? true : null, onclick: () => c.run() }, poor ? '💸 Nu ai destui bani' : '✅ Fă tot', poor ? null : h('small', null, money(pl.total))));
+    : h('button', { class: 'opt go pl-next pl-stick', disabled: poor || bad || c.p.busy ? true : null, onclick: () => c.run() }, c.p.busy ? '⏳ Se aplică…' : poor ? '💸 Nu ai destui bani' : '✅ Fă tot', poor || c.p.busy ? null : h('small', null, money(pl.total))));
   if (c.p.queue.length && !done) out.push(h('div', { class: 'note' }, `📋 Mai ai ${c.p.queue.length} plan pus deoparte: vine după acesta.`));
   return out;
 }

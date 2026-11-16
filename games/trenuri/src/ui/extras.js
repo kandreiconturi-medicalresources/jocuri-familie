@@ -58,7 +58,7 @@ export function createExtras(ctx) {
       if (pl) pl.close();
       if (wz) wz.close();
       ctx.panels.card.close();
-      pl = openPlanner({ root: ctx.uiRoot, state: ctx.state, tools: ctx.tools, hud: ctx.hud, exec: ctx.exec, marks, show: (x, y) => api.show(x, y), frame: (x, y, d) => ctx.camera.focus(x + 0.5, y + 0.5, d), overlay: () => (ctx.view() ? ctx.view().overlay : null), onClose: () => { pl = null; } }, preset);
+      pl = openPlanner({ root: ctx.uiRoot, state: ctx.state, tools: ctx.tools, hud: ctx.hud, exec: ctx.exec, execWait: ctx.execWait, marks, show: (x, y) => api.show(x, y), frame: (x, y, d) => ctx.camera.focus(x + 0.5, y + 0.5, d), overlay: () => (ctx.view() ? ctx.view().overlay : null), onClose: () => { pl = null; } }, preset);
       pl.resume();
     },
     assistOpen: () => !!wz || !!pl,

@@ -28,7 +28,7 @@ export function createNetPlay(hooks) {
       you = o.you;
       sess = createNetSession({
         ...o,
-        onApplied: (e, r) => { if (e.pl !== you) return; if (r.ok) hooks.sfx('build'); else { hooks.sfx('nope'); hooks.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } },
+        onApplied: (e, r) => { if (e.pl !== you) return; if (hooks.onResult) hooks.onResult(e, r); if (r.ok) hooks.sfx('build'); else { hooks.sfx('nope'); hooks.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } },
         onWorld: (w) => { viewer.co = coFor(w) || 0; hooks.setWorld(w, { kind: 'net', keep: true, resync: true }); },
         onSpeed: (v) => hooks.setSpeedUi(v),
       });
