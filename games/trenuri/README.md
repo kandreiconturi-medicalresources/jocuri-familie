@@ -237,3 +237,11 @@ Flux ghidat în 6 pași, pentru cine n-a mai jucat tycoon: 1 **Ce cere orașul**
 - În gară (`state 2`) se aplică imediat; din mers se ține în `t.nk` (intră în `hashState` doar când există) și se aplică în `arrive`, după descărcare și înainte de încărcare. Marfa care nu mai încape rămâne în gară; ordinele manuale pierd mărfurile fără vagon.
 - UI: „🚃 Schimbă vagoanele” în panoul trenului: atingi un vagon ca să-l scoți, ➕ din paletă, „🤖 Potrivite pentru rută” (`suggestKinds`), avertisment peste puterea locomotivei, cost sau bani înapoi.
 - Teste: `tests/trenuri-cars.test.js`.
+
+### 7.0b Terminal mare (`sim/terminal.js`, `render/terminal.js`)
+- `buildStation { size: 2, big: true, dir? }` (15.000 lei, `BIG_COST`): pe lângă placa gării ocupă o **curte de 4×5 plăci** (`yardTiles`: de-a lungul liniei −2…+2, spre curte 1…4, `dir` ∈ 0/2/4/6 = partea curții). `autoDir` o pune perpendicular pe șina care trece deja prin placă; curtea cere teren uscat, liber (fără clădiri, drumuri, șine), cu diferență de înălțime ≤ 1, altfel `loc`/`cladire`/`panta`/`harta`. Logic rămâne o gară pe o placă, deci rutele, rezervările și rețeaua nu se schimbă.
+- Câmpuri: `st.big = 1`, `st.dir`; curtea intră în stratul derivat `occ` (`markYards` din `deriveLayers`), deci nimic nu se mai construiește acolo; demolarea o eliberează. În `hashState` doar când `big` există.
+- Pornește cu **4 peroane** (`platforms`), până la 6 (`maxPlatforms`). **Service:** trenul care oprește e reparat complet (`terminalService`). **Macara:** oprirea durează jumătate (`DWELL >> 1`).
+- Randare: platformă de pietriș, scară de macaze din linia principală, linii terminale cu opritoare, peroane cu copertine, clădire de capăt cu ceas, hală de service cu linia ei, curte de containere cu macara portal animată (mai repede când e un tren în terminal). Trenurile oprite (în afară de primul) stau pe liniile curții (`render/trains.js`, `bays`).
+- UI: „Terminal mare” în bara Gară și în Catalog; previzualizarea arată curtea verde/roșu, iar 🔄 / R o rotește (auto → E → S → V → N). Panoul gării: linii ocupate, service, macara.
+- Teste: `tests/trenuri-terminal.test.js`.

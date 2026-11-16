@@ -1,5 +1,6 @@
 // Interfața de joc: bara de sus (bani, dată, viteză), bara de unelte, opțiuni, mesaj scurt.
 import { h } from '../../../../shared/ui/dom.js';
+import { BIG_COST } from '../sim/terminal.js';
 import { STATION_NAMES, STATION_COST, availableModels, CAR_PRICE } from '../sim/consts.js';
 import { CAR_SETS, CAR_TYPES } from '../sim/goods.js';
 
@@ -71,8 +72,10 @@ export function createHud(root, ev) {
     setSub(items) {
       sub.replaceChildren(...items.map((o) => h('button', { class: 'opt ' + (o.on ? 'on ' : '') + (o.cls || ''), onclick: o.fn }, o.label, o.small ? h('small', null, o.small) : null)));
     },
-    stationOpts(size, onPick) {
-      api.setSub(STATION_NAMES.map((n, i) => ({ label: n, small: lei(STATION_COST[i]), on: size === i, fn: () => onPick(i) })));
+    stationOpts(size, onPick, onTurn) {
+      const opts = STATION_NAMES.map((n, i) => ({ label: i === 2 ? 'Terminal mare' : n, small: lei(i === 2 ? BIG_COST : STATION_COST[i]), on: size === i, fn: () => onPick(i) }));
+      if (size === 2 && onTurn) opts.push({ label: '🔄 Rotește', small: 'curtea (R)', fn: onTurn });
+      api.setSub(opts);
     },
     trainOpts(model, cars, year, onModel, onCars) {
       const price = (m, set) => m.price + (set < 0 ? 4 : CAR_SETS[set].length) * CAR_PRICE;

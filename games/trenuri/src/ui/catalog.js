@@ -1,5 +1,6 @@
 // Catalogul de construcții: categorii (Șine, Gări, Îmbunătățiri, Trenuri). Ce nu poți cumpăra apare gri, cu motivul.
 import { h } from '../../../../shared/ui/dom.js';
+import { BIG_COST } from '../sim/terminal.js';
 import { DEPOT, STATION_NAMES, STATION_COST, STATION_RADIUS, UPGRADES, MODELS, COST, CAR_PRICE } from '../sim/consts.js';
 import { lei } from './hud.js';
 import { viewer } from '../sim/viewer.js';
@@ -24,7 +25,7 @@ export function openCatalog(card, s, tools) {
       entry({ icon: '🛤️🛤️', name: 'Șină paralelă', info: 'Dublează o șină la o placă distanță: linie dublă, trenurile aleg linia liberă.', on: st.tool === 'parallel', pick: go({ tool: 'parallel' }) }),
       entry({ icon: '🧹', name: 'Demolare', info: 'Șterge o placă de șină sau o gară (gratis).', on: st.tool === 'demolish', pick: go({ tool: 'demolish' }) }),
     ],
-    () => STATION_NAMES.map((n, i) => entry({ icon: '🚉', name: n, info: `Raza ${STATION_RADIUS[i]} plăci: adună oameni și marfă din jur.`, price: STATION_COST[i], why: need(STATION_COST[i]), on: st.tool === 'station' && st.size === i, pick: go({ tool: 'station', size: i }) })),
+    () => STATION_NAMES.map((n, i) => entry({ icon: i === 2 ? '🏛️' : '🚉', name: i === 2 ? 'Terminal mare' : n, info: i === 2 ? `Raza ${STATION_RADIUS[i]} plăci, 4–6 linii terminale, service care repară trenurile și macara care încarcă de două ori mai repede. Ocupă 4×5 plăci.` : `Raza ${STATION_RADIUS[i]} plăci: adună oameni și marfă din jur.`, price: i === 2 ? BIG_COST : STATION_COST[i], why: need(i === 2 ? BIG_COST : STATION_COST[i]), on: st.tool === 'station' && st.size === i, pick: go({ tool: 'station', size: i }) })),
     () => [
       ...UPGRADES.map((u, k) => entry({ icon: u.icon, name: u.name, info: u.text, price: u.cost, why: !s.stations.length ? 'Construiește mai întâi o gară.' : need(u.cost), on: st.tool === 'upgrade' && st.up === k, pick: go({ tool: 'upgrade', up: k }) })),
       h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'),

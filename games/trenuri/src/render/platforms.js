@@ -17,7 +17,7 @@ export function createPlatforms(s, g) {
   const root = new Group(), B = new Builder();
   for (const st of s.stations) {
     const n = platformsOf(st);
-    if (n < 2) continue;
+    if (n < 2 || st.big) continue; // terminalul mare își desenează singur liniile (render/terminal.js)
     const f = stationFrame(s, st), y0 = g.tileY(st.x, st.y), cx = st.x + 0.5, cz = st.y + 0.5;
     for (let k = 1; k < n; k++) {
       const o = -k * STEP; // spre partea opusă clădirii

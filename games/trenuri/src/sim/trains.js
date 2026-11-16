@@ -6,6 +6,7 @@ import { roll } from './rand.js';
 import { mark, blocked, linkCount } from './blocks.js';
 import { unload, load } from './cargo.js';
 import { applyCars } from './consist.js';
+import { terminalService } from './terminal.js';
 import { relOf, repairTicks, serviceAt } from './wear.js';
 import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from './reserve.js';
 import { accelEvery, slopeVmax } from './physics.js';
@@ -97,6 +98,10 @@ function arrive(s, t) {
   t.speed = 0; t.state = 2; t.wait = DWELL; t.hold = 0;
   holdOnlyStation(s, t);
   if (!st) return;
+  if (st.big) { // macaraua încarcă mai repede, service-ul repară
+    t.wait = DWELL >> 1;
+    if (terminalService(t)) addNews(s, '🔧', `Trenul ${t.id} a fost reparat în service la ${st.name}.`);
+  }
   serviceAt(s, t, st);
   const earned = unload(s, t, st);
   if (t.nk) applyCars(s, t, st); // vagoanele cerute din mers se schimbă aici

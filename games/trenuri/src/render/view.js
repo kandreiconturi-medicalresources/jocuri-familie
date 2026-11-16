@@ -15,6 +15,7 @@ import { createLinks } from './links.js';
 import { createPlatforms, createSwitches } from './platforms.js';
 import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
+import { createTerminals } from './terminal.js';
 import { dirtyChunks } from '../sim/terraform.js';
 import { createOverlay } from './overlay.js';
 import { createGhost } from './ghost.js';
@@ -32,7 +33,7 @@ function shade(obj) {
 const electric = (m) => m.key === 'electric' || m.key === 'glont';
 
 export function createView(stage, s) {
-  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null };
+  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null, terminals: null };
   const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), ghost = createGhost(s, g, stage), links = createLinks(s, g);
   const clouds = createClouds(s, g, stage.camera), signals = createSignals(s, g);
   let depots = null, platK = '', platT = 0;
@@ -58,7 +59,7 @@ export function createView(stage, s) {
     if (d.forest) { swap('forest', () => createForest(s, g, q)); d.forest = false; }
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
     if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }
-    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g)); d.stations = false; }
+    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g)); swap('terminals', () => createTerminals(s, g, colorOf)); d.stations = false; }
     if (d.industries) { swap('industries', () => createIndustries(s, g)); d.industries = false; d.forest = true; if (links.visible) links.rebuild(); }
     if (q >= 2 && powered.size !== lastPowered) { swap('power', () => createCatenary(s, g, powered)); lastPowered = powered.size; }
     if (q < 2 && dyn.power) { root.remove(dyn.power); dyn.power = null; lastPowered = -1; }
@@ -83,6 +84,7 @@ export function createView(stage, s) {
       ghost.frame(t);
       if (!depots && Array.isArray(s.depots)) { depots = createDepots(s, g, colorOf); if (depots) { shade(depots.root); root.add(depots.root); } }
       if (depots) depots.update(t);
+      if (dyn.terminals) dyn.terminals.userData.update(t);
       terrain.tick(t, stage.night);
       clouds.root.visible = perf.quality() >= 2;
       if (clouds.root.visible) clouds.update(dt, stage.night);

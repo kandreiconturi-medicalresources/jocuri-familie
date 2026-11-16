@@ -49,8 +49,10 @@ export function createEcoPanels(card, ev) {
       const goods = [];
       for (let g = 2; g < NG; g++) if (st.cargo[g] > 0) goods.push(goodRow(g, st.cargo[g]));
       const ind = s.industries.filter((o) => near(st, o));
-      open(h('h3', null, '🚉 ' + st.name), h('div', null, STATION_NAMES[st.size]), row('👥 Pasageri care așteaptă', st.waiting.pass), row('✉️ Poștă', st.waiting.mail),
+      open(h('h3', null, '🚉 ' + st.name), h('div', null, st.big ? 'Terminal mare' : STATION_NAMES[st.size]), row('👥 Pasageri care așteaptă', st.waiting.pass), row('✉️ Poștă', st.waiting.mail),
         ...goods, row('Trenuri aici', trains.length),
+        st.big ? [row('🛤️ Linii terminale', `${s.trains.filter((t) => t.state === 2 && t.to === st.id).length} ocupate din ${st.platforms}`),
+          h('div', { class: 'note' }, '🔧 Service: trenul care oprește aici e reparat complet. 🏗️ Macaraua încarcă și descarcă de două ori mai repede. Mai multe linii (până la 6): 🧰 Mai mult → ⬆️ Gară mai mare.')] : null,
         ind.length ? h('div', null, 'Industrii în rază: ', ind.map((o) => INDUSTRIES[o.type].icon + ' ' + o.name).join(', ')) : null,
         h('div', null, h('b', null, 'Îmbunătățiri')), h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'),
         UPGRADES.map((u, k) => st.up[k]
