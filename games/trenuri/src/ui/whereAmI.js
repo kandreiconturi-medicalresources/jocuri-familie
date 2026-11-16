@@ -47,6 +47,7 @@ export function openWhereAmI(card, s, ev) {
   const todo = [...basics(s).map((b) => ({ icon: b.icon, text: b.text, x: b.go ? b.go.x : 0, y: b.go ? b.go.y : 0, go: !!b.go, action: b.action })),
     ...todos.map((t) => ({ icon: t.icon, text: t.text, x: t.x, y: t.y, go: true }))];
   open(...head,
+    ev.plan ? h('button', { class: 'opt go', onclick: () => { card.close(); ev.plan(); } }, '🧭 Ajută-mă să fac o rută bună') : null,
     h('div', null, h('b', null, 'Ce să faci acum')),
     todo.length ? todo.map((t) => h('div', { class: 'news wh-do' }, h('span', null, t.icon + ' ' + t.text), t.go ? showBtn(t) : null,
       t.action === 'buy' ? h('button', { class: 'opt go', onclick: () => { card.close(); ev.buy(); } }, '🚂 Cumpără tren') : null))

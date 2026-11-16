@@ -1,0 +1,37 @@
+/* Planificatorul de rută: carduri mari, texte scurte, cifre rotunde */
+.card .pl-card, .pl-card { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border-radius: 18px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; }
+.pl-card.ok { border-color: #2f9e44; background: #effbf1; }
+.pl-big { font-size: 40px; line-height: 1; min-width: 46px; text-align: center; }
+.pl-txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; font-size: 13px; font-weight: 700; }
+.pl-txt b { font-size: 16px; }
+.pl-card .opt { margin: 0; min-height: 52px; max-width: 120px; font-size: 13px; }
+.pl-opt { margin-top: 8px; padding: 8px 10px; border-radius: 18px; border: 3px solid #c9b8ee; background: #fff; color: #3a1a6a; }
+.pl-opt.best { border-color: #f0a500; background: #fff8dc; }
+.pl-star { font-weight: 800; font-size: 15px; color: #8a4a00; margin-bottom: 4px; }
+.pl-star small { display: block; font-weight: 700; font-size: 12px; color: #5a4a88; }
+.pl-row { display: flex; align-items: center; gap: 10px; }
+.pl-title { font-weight: 800; font-size: 16px; margin: 6px 0; }
+.pl-line { display: flex; gap: 8px; margin-top: 5px; font-size: 13px; font-weight: 700; }
+.pl-line.ok { color: #1f7a33; } .pl-line.bad { color: #b3202f; }
+.pl-sum, .pl-sec, .pl-res { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding: 8px 10px; border-radius: 14px; background: #f3effb; font-size: 13px; }
+.pl-sum small { font-weight: 600; }
+.pl-sec b { font-size: 14px; }
+.pl-sec.tot { background: #fff1c2; }
+.pl-res.ok { background: #dcf7e1; } .pl-res.bad { background: #ffe0e3; }
+.pl-warn { background: #fff0d6 !important; color: #8a4a00; }
+.pl-yes { color: #1f7a33; } .pl-no { color: #b3202f; }
+.pl-big-text { margin-top: 8px; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.pl-big-text b { font-size: 20px; color: #5a2ba0; }
+.pl-sub { margin-top: 8px; font-weight: 800; font-size: 13px; }
+.asst .pl-next { width: 100%; min-height: 54px; margin-top: 10px; font-size: 16px; }
+.asst.pl .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+@media (max-width: 700px) { .asst.pl { width: min(330px, 56vw); } .toolbar { gap: 4px; } .tool { width: 62px; font-size: 10px; } }
+@media (max-height: 480px) {
+  .asst.pl { top: 56px; max-height: calc(100% - 124px); padding: 6px 10px; }
+  .asst.pl .wz-steps span:not(.on) { display: none; }
+  .asst.pl h3 { font-size: 14px; }
+  .asst.pl .rb { width: 36px; height: 36px; min-width: 36px; font-size: 16px; }
+  .pl-big { font-size: 30px; min-width: 36px; }
+  .pl-card .opt { min-height: 44px; }
+}
+.pl-stick { position: sticky; bottom: 0; box-shadow: 0 -8px 8px -4px #fff; }

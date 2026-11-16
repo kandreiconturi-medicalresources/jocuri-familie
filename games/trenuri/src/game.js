@@ -45,6 +45,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     rescue: (id) => exec({ type: 'rescueTrain', trainId: id }),
     show: (x, y) => extras.show(x, y),
     makeRoute: (preset) => extras.buy(preset),
+    plan: (preset) => extras.planner(preset),
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
@@ -62,7 +63,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
     expert: () => ex.show(),
-    todo: () => extras.todo(), catalog: () => extras.catalog(), trains: () => extras.trains(),
+    todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
     menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({

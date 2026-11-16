@@ -5,6 +5,7 @@ import './ui/menus.css';
 import './ui/expert.css';
 import './ui/extras.css';
 import './ui/wizard.css';
+import './ui/planner.css';
 import { startLoop } from '../../../shared/engine/loop.js';
 import { perf } from '../../../shared/engine/perf.js';
 import { needLandscape } from '../../../shared/engine/screen.js';

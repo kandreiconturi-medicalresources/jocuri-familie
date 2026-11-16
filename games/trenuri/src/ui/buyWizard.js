@@ -27,7 +27,7 @@ export function proposal(s, g) {
 }
 export const nm = (o) => (o.type !== undefined ? INDUSTRIES[o.type].icon : '🏙️') + ' ' + o.name;
 
-function big(icon, title, sub, { on, dis, click, extra } = {}) {
+export function big(icon, title, sub, { on, dis, click, extra } = {}) {
   return h('button', { class: 'wz-card' + (on ? ' on' : '') + (dis ? ' dis' : ''), 'aria-disabled': dis ? 'true' : null, onclick: () => { if (!dis) click(); } },
     h('span', { class: 'wz-i' }, icon), h('span', { class: 'wz-t' }, h('b', null, title), h('small', null, sub), extra || null));
 }

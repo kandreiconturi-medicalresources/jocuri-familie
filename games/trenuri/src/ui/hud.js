@@ -16,7 +16,7 @@ const EXTRA = [
   { id: 'upgrade', hint: 'Alege o îmbunătățire, apoi atinge gara care o primește.' },
 ];
 /** Butoane care deschid panouri (nu sunt unelte). */
-const PANELS = [{ id: 'catalog', e: '📋', t: 'Catalog' }, { id: 'trains', e: '🚆', t: 'Trenuri' }];
+const PANELS = [{ id: 'planner', e: '🧭', t: 'Planificator' }, { id: 'catalog', e: '📋', t: 'Catalog' }, { id: 'trains', e: '🚆', t: 'Trenuri' }];
 const MONTHS = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const lei = (n) => (n < 0 ? '-' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' lei';
 

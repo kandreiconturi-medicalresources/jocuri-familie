@@ -6,6 +6,7 @@ import { near } from '../sim/industry.js';
 import { industryAdvice } from '../sim/advice.js';
 import { lei } from './hud.js';
 import { destSection, supplySection } from './destList.js';
+import { cityCards } from './plannerCards.js';
 import { PROD } from '../sim/consts.js';
 
 const LEVEL = ['Sat', 'Oraș', 'Metropolă'];
@@ -18,10 +19,10 @@ export function createEcoPanels(card, ev) {
       const newer = c.level < 2 ? CITY_GOODS[c.level + 1].filter((g) => !CITY_GOODS[c.level].includes(g)) : [];
       const el = open(h('h3', null, '🏘️ ' + c.name), row('Tip', LEVEL[c.level]), row('Locuitori', c.pop), row('Case', c.buildings.length),
         h('div', null, next ? `Mai are nevoie de ${next - c.pop} locuitori ca să crească.` : 'E cel mai mare oraș posibil!'),
-        h('div', null, h('b', null, 'Ce vrea orașul luna asta')),
-        list.map((g) => goodRow(g, `${c.got[g]} din ${wantOf(c, g)}`, c.got[g] >= wantOf(c, g) ? ' ✅' : '')),
-        h('div', null, h('b', null, 'Cine îl poate aproviziona')),
-        ...CITY_GOODS[c.level].flatMap((g) => [h('div', null, chip(g), ' ' + GOODS[g].name + ` · cere ${wantOf(c, g)}/lună`), supplySection(s, ev, c, g, 2)]),
+        h('div', null, h('b', null, 'Ce cere orașul luna asta')),
+        list.filter((g) => g < 2 || !ev.plan).map((g) => goodRow(g, `${c.got[g]} din ${wantOf(c, g)}`, c.got[g] >= wantOf(c, g) ? ' ✅' : '')),
+        ev.plan ? cityCards(s, c, (g) => ev.plan({ city: c, g })) : h('div', null, h('b', null, 'Cine îl poate aproviziona')),
+        ...(ev.plan ? [] : CITY_GOODS[c.level]).flatMap((g) => [h('div', null, chip(g), ' ' + GOODS[g].name + ` · cere ${wantOf(c, g)}/lună`), supplySection(s, ev, c, g, 2)]),
         newer.length ? h('div', null, 'Când crește, va vrea și: ', newer.map((g) => chip(g))) : null,
         h('div', null, 'Adu-i ce cere și orașul crește mai repede!'));
       el.classList.add('wide');
@@ -38,6 +39,7 @@ export function createEcoPanels(card, ev) {
         t.out >= 0 ? goodRow(t.out, o.out[t.out], ' gata de dus') : null,
         row('A făcut în total', o.made),
         h('div', null, hasSt ? '🚉 O gară e aproape: marfa poate pleca.' : '🚉 Pune o gară lângă ea ca să ia marfa.'),
+        t.out >= 0 && ev.plan ? h('button', { class: 'opt go', onclick: () => ev.plan({ industry: o, g: t.out }) }, '🧭 Unde o duc?', h('small', null, 'Planificatorul alege cel mai bun oraș')) : null,
         t.out >= 0 ? [h('h4', null, `Spre ce poate duce ${GOODS[t.out].name.toLowerCase()} (cel mai bun profit întâi)`), destSection(s, ev, o, t.out)] : null,
         t.in.length ? [h('h4', null, 'Cine o poate aproviza'), ...t.in.flatMap((g) => [h('div', null, chip(g), ' ' + GOODS[g].name), supplySection(s, ev, o, g)])] : null);
       el.classList.add('wide');
