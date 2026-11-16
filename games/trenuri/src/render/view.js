@@ -17,6 +17,7 @@ import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
 import { dirtyChunks } from '../sim/terraform.js';
 import { createOverlay } from './overlay.js';
+import { createGhost } from './ghost.js';
 import { perf } from '../../../../shared/engine/perf.js';
 
 /** Aplică steagurile de umbre ale calității curente pe un strat nou (userData.cast / recv / blob). */
@@ -32,10 +33,10 @@ const electric = (m) => m.key === 'electric' || m.key === 'glont';
 
 export function createView(stage, s) {
   const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null };
-  const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), links = createLinks(s, g);
+  const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), ghost = createGhost(s, g, stage), links = createLinks(s, g);
   const clouds = createClouds(s, g, stage.camera), signals = createSignals(s, g);
   let depots = null, platK = '', platT = 0;
-  root.add(terrain.root, trains.root, signals.root, overlay.mesh, links.mesh);
+  root.add(terrain.root, trains.root, signals.root, overlay.mesh, links.mesh, ghost.root);
   stage.scene.add(root, clouds.root);
   shade(root);
   const colorOf = (id) => (s.companies[id] ? s.companies[id].color : '#ff6b6b');
@@ -71,7 +72,7 @@ export function createView(stage, s) {
   const off = perf.onChange(() => { s.dirty.forest = true; s.dirty.track = true; });
 
   return {
-    ground: g, trains, overlay, links, refresh,
+    ground: g, trains, overlay, ghost, links, refresh,
     frame(alpha, dt, t) {
       stage.frame(t);
       if (t - scanT > 1.5) { scanT = t; scanPower(); }
@@ -79,12 +80,13 @@ export function createView(stage, s) {
       refresh();
       trains.update(alpha, dt, stage.night);
       signals.update(dt);
+      ghost.frame(t);
       if (!depots && Array.isArray(s.depots)) { depots = createDepots(s, g, colorOf); if (depots) { shade(depots.root); root.add(depots.root); } }
       if (depots) depots.update(t);
       terrain.tick(t, stage.night);
       clouds.root.visible = perf.quality() >= 2;
       if (clouds.root.visible) clouds.update(dt, stage.night);
     },
-    dispose() { off(); stage.scene.remove(root, clouds.root); root.traverse((o) => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); },
+    dispose() { off(); ghost.dispose(); stage.scene.remove(root, clouds.root); root.traverse((o) => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); },
   };
 }

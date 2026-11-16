@@ -7,6 +7,7 @@ import { trainAdvice } from '../sim/advice.js';
 import { relOf, ageMonths } from '../sim/wear.js';
 import { lei } from './hud.js';
 import { trainKind } from './trainKind.js';
+import { dropControls } from './dropRow.js';
 
 /** Mărfurile pe care le poate duce un tren (după vagoanele lui). */
 export const carriable = (t) => GOODS.map((_, g) => g).filter((g) => t.kinds.includes(CAR_OF[g]));
@@ -23,11 +24,14 @@ export function createTrainPanel(card, ev) {
         h('div', { class: 'chips' }, carriable(t).map((g) => {
           const on = t.orders[i] && t.orders[i].load && t.orders[i].load.includes(g);
           return h('button', { class: 'gchip btn' + (on ? ' on' : ''), style: { background: GOODS[g].color }, title: GOODS[g].name, onclick: () => {
-            const o = t.orders.map((x) => ({ load: x.load ? x.load.slice() : [], unload: x.unload })), l = o[i].load, k = l.indexOf(g);
+            const o = t.orders.map((x) => ({ load: x.load ? x.load.slice() : [], unload: x.unload, drop: x.drop })), l = o[i].load, k = l.indexOf(g);
             if (k >= 0) l.splice(k, 1); else l.push(g);
             ev.orders(t.id, o); again();
           } }, GOODS[g].icon);
-        })))),
+        })),
+        t.kinds.some((k) => k >= 2) ? [h('div', null, 'Descarcă:'), dropControls(t.orders[i] ? t.orders[i].drop : null, (drop) => {
+          ev.orders(t.id, t.orders.map((x, k) => ({ load: x.load, unload: x.unload, drop: k === i ? drop : x.drop }))); again();
+        }, true)] : null)),
     ];
   }
 

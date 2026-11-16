@@ -4,6 +4,7 @@ import { GOODS, CAR_TYPES, CAR_OF, INDUSTRIES, wantOf } from './goods.js';
 import { near } from './industry.js';
 import { addNews } from './news.js';
 import { recordIncome } from './expert/report.js';
+import { dropAmount } from './drops.js';
 
 /** Distanță în linie dreaptă în plăci (aproximare întreagă a diagonalei). */
 export function tileDist(a, b) {
@@ -21,6 +22,23 @@ export function accepts(s, st, g) {
   return s.cities.some((c) => cityNear(st, c) && wantOf(c, g) > 0) || s.industries.some((o) => INDUSTRIES[o.type].in.includes(g) && near(st, o));
 }
 
+/** Cine ia marfa g la gara st: cel mai apropiat oraș care o vrea, altfel industria cu stocul cel mai mic. */
+function targetOf(s, st, g) {
+  let c = null;
+  for (const q of s.cities) if (cityNear(st, q) && wantOf(q, g) > 0 && (!c || tileDist(st, q) < tileDist(st, c))) c = q;
+  if (c) return { c };
+  let best = null;
+  for (const o of s.industries) if (INDUSTRIES[o.type].in.includes(g) && near(st, o) && (!best || o.in[g] < best.in[g])) best = o;
+  return best ? { o: best } : null;
+}
+
+/** Cât mai cere gara st din marfa g luna asta (orașul: cererea minus ce a primit; industria: loc în stoc; pasageri și poștă: oricât). */
+export function roomAt(s, st, g) {
+  if (g < 2) return 1e9;
+  const t = targetOf(s, st, g);
+  return !t ? 0 : t.c ? Math.max(0, wantOf(t.c, g) - t.c.got[g]) : Math.max(0, STOCK_CAP - t.o.in[g]);
+}
+
 /** Predă marfa unui oraș sau unei industrii din raza gării. Întoarce true dacă a fost cerută. */
 export function deliver(s, st, g, n) {
   if (g < 2) {
@@ -28,13 +46,10 @@ export function deliver(s, st, g, n) {
     if (c) c.got[g] += n;
     return true;
   }
-  let c = null;
-  for (const q of s.cities) if (cityNear(st, q) && wantOf(q, g) > 0 && (!c || tileDist(st, q) < tileDist(st, c))) c = q; // cel mai apropiat oraș care o vrea
-  if (c) { c.got[g] += n; return true; }
-  let best = null;
-  for (const o of s.industries) if (INDUSTRIES[o.type].in.includes(g) && near(st, o) && (!best || o.in[g] < best.in[g])) best = o;
-  if (best) { best.in[g] = Math.min(STOCK_CAP, best.in[g] + n); return true; }
-  return false;
+  const t = targetOf(s, st, g);
+  if (!t) return false;
+  if (t.c) t.c.got[g] += n; else t.o.in[g] = Math.min(STOCK_CAP, t.o.in[g] + n);
+  return true;
 }
 
 export function freeSpace(t, k) {
@@ -50,22 +65,38 @@ function laterAccepts(s, t, st, g) {
   return t.route.some((id) => { const q = s.stations.find((r) => r.id === id); return q && q !== st && accepts(s, q, g); });
 }
 
+/** Cât se descarcă din blocul b la gara st: regula veche (tot sau nimic) sau, cu ordine „drop”, descărcarea parțială. */
+function amountOf(s, t, st, ord, b, left) {
+  if (b.from === st.id) return 0;
+  if (!ord || !ord.drop) {
+    const keep = ord && ord.unload && ord.unload.length ? !ord.unload.includes(b.c) : !accepts(s, st, b.c) && laterAccepts(s, t, st, b.c);
+    return keep ? 0 : b.n;
+  }
+  if (ord.unload && ord.unload.length && !ord.unload.includes(b.c)) return 0;
+  const cap = CAR_TYPES[CAR_OF[b.c]].cap;
+  const k = dropAmount(ord.drop, b.n, { room: roomAt(s, st, b.c), later: laterAccepts(s, t, st, b.c), cap });
+  if (ord.drop.m !== 'cars') return k;
+  if (left[b.c] === undefined) left[b.c] = ord.drop.v * cap; // vagoanele cerute se împart între blocurile aceleiași mărfi
+  const q = Math.min(k, left[b.c]); left[b.c] -= q;
+  return q;
+}
+
 export function unload(s, t, st) {
-  const co = s.companies[t.owner], ord = t.orders && t.orders[t.at];
+  const co = s.companies[t.owner], ord = t.orders && t.orders[t.at], left = {};
   let earned = 0, dumped = 0;
   const keep = [];
   for (const b of t.load) {
-    if (b.from === st.id) { keep.push(b); continue; }
-    const want = accepts(s, st, b.c);
-    if (ord && ord.unload && ord.unload.length ? !ord.unload.includes(b.c) : !want && laterAccepts(s, t, st, b.c)) { keep.push(b); continue; }
+    const k = amountOf(s, t, st, ord, b, left);
+    if (k <= 0) { keep.push(b); continue; }
+    if (k < b.n) keep.push({ ...b, n: b.n - k });
     const src = s.stations.find((q) => q.id === b.from);
     const dist = src ? Math.max(1, tileDist(src, st)) : 1;
     const elapsed = s.tick - b.t, ref = ((dist * 256) / 40) | 0;
     const ratio = ((elapsed * 100) / Math.max(1, ref)) | 0;
     const bonus = ratio <= 100 ? 150 : ratio <= 200 ? 125 : ratio <= 400 ? 100 : 70;
-    const ok = deliver(s, st, b.c, b.n);
-    if (ok) s.stats.del[b.c] += b.n;
-    const pay = ((b.n * dist * GOODS[b.c].rate * bonus) / 100) | 0;
+    const ok = deliver(s, st, b.c, k);
+    if (ok) s.stats.del[b.c] += k;
+    const pay = ((k * dist * GOODS[b.c].rate * bonus) / 100) | 0;
     const v = ok ? pay : ((pay * LOW_PAY) / 100) | 0;
     earned += v;
     if (co.rep) recordIncome(co, t, b.c, v);

@@ -11,6 +11,7 @@ import { TERRAIN_COMMANDS, applyLevels, layPath, markTerrain } from './terraform
 import { STATION_COMMANDS } from './stations.js';
 import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
+import { validOrders, cleanOrders } from './orders.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
@@ -115,9 +116,10 @@ function buyTrain(s, cmd, c) {
   if (!Array.isArray(kinds) || kinds.length < 1 || kinds.length > MAX_CARS || kinds.some((k) => !Number.isInteger(k) || k < 0 || k >= CAR_TYPES.length)) return fail('vagoane');
   const route = cmd.route === undefined ? [st.id] : cmd.route; // opțional: ruta se dă odată cu cumpărarea (în rețea nu aștepți id-ul)
   if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route[0] !== st.id || route.some((id) => !s.stations.some((q) => q.id === id && q.owner === c.id))) return fail('gara');
+  if (cmd.orders !== undefined && !validOrders(cmd.orders)) return fail('drum'); // ordinele (ex. descărcare parțială) se dau odată cu cumpărarea
   const cost = m.price + kinds.length * CAR_PRICE;
   if (!spend(s, c, cost)) return fail('bani');
-  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: null, at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m, rv: [], rl: 0, redAt: 0 };
+  const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: cleanOrders(cmd.orders === undefined ? null : cmd.orders), at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m, rv: [], rl: 0, redAt: 0 };
   s.trains.push(tr);
   hold(s, tr, st.y * s.w + st.x); // trenul stă pe un peron
   s.dirty.trains = true;
@@ -140,9 +142,8 @@ function setOrders(s, cmd, c) {
   const tr = s.trains.find((q) => q.id === cmd.trainId);
   if (!tr) return fail('inexistent');
   if (tr.owner !== c.id) return fail('proprietar');
-  const o = cmd.orders, good = (l) => l == null || (Array.isArray(l) && l.every((g) => Number.isInteger(g) && g >= 0 && g < NG));
-  if (o !== null && !(Array.isArray(o) && o.length <= 8 && o.every((x) => x && good(x.load) && good(x.unload)))) return fail('drum');
-  tr.orders = o ? o.map((x) => ({ load: x.load ? x.load.slice() : null, unload: x.unload ? x.unload.slice() : null })) : null;
+  if (cmd.orders === undefined || !validOrders(cmd.orders)) return fail('drum');
+  tr.orders = cleanOrders(cmd.orders);
   return { ok: true, cost: 0 };
 }
 

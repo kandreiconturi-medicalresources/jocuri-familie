@@ -63,7 +63,7 @@ export function planTrack(s, from, to, by = 0, opts = null) {
 }
 
 function search(s, from, to, by, opts, lvl) {
-  const reuse = !opts || opts.reuse !== false, prefer = opts && opts.prefer;
+  const reuse = !opts || opts.reuse !== false, prefer = opts && opts.prefer, win = opts && opts.win; // win: [x0,y0,x1,y1] = fereastra în care se caută (ocolire locală)
   const w = s.w, h = s.h, n = w * h;
   if (!from || !to) return null;
   const a = from[1] * w + from[0], b = to[1] * w + to[0];
@@ -79,6 +79,7 @@ function search(s, from, to, by, opts, lvl) {
     for (let d = 0; d < 8; d++) {
       const nx = cx + DX[d], ny = cy + DY[d];
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      if (win && (nx < win[0] || ny < win[1] || nx > win[2] || ny > win[3])) continue;
       const ni = ny * w + nx;
       if (!reuse && ni !== b && (s.track[ni] & T_PRESENT)) continue;
       let tc = tileCost(s, cur, ni, by, lvl);

@@ -19,6 +19,7 @@ import { createExpertUi } from './ui/exHub.js';
 import { showOver } from './ui/exOver.js';
 import { createExtras } from './ui/extras.js';
 import { mountExtraTools } from './ui/tools-extra.js';
+import { mountMobileControls } from './ui/mobileControls.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -43,6 +44,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     depot: (id) => exec({ type: 'sendToDepot', trainId: id }),
     rescue: (id) => exec({ type: 'rescueTrain', trainId: id }),
     show: (x, y) => extras.show(x, y),
+    makeRoute: (preset) => extras.buy(preset),
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
@@ -67,9 +69,11 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     state: () => s, view: () => view, hud, panels, exec, errText: (k) => ERR_TEXT[k],
     canAfford: (c) => s.sandbox || myCo().cash >= c,
     follow: (id) => { follow = { id, until: clock + 5 }; },
+    assist: { open: () => extras.assistOpen(), tap: (t) => extras.assistTap(t) },
   });
-  const extras = createExtras({ stage, uiRoot, panels, camera, helper, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
+  const extras = createExtras({ stage, uiRoot, panels, camera, helper, exec, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
   mountExtraTools(hud, tools);
+  mountMobileControls(uiRoot, camera);
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -95,7 +99,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   bindPointer(canvas, camera, pickTile, {
     groundAt: (x, z) => (view ? view.ground.at(x, z) : 0),
     wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit) tools.tap(t); }, hover: (t) => { if (!orbit) tools.hover(t); },
-    dragStart: (t) => tools.dragStart(t), dragMove: (t) => tools.dragMove(t), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
+    dragStart: (t) => tools.dragStart(t), dragMove: (t, m) => tools.dragMove(t, m), dragFlush: () => tools.dragFlush(), dragAbort: () => tools.dragAbort(), touchMode: () => tools.touchMode(), isAnchor: (t) => tools.isAnchor(t), holdRing: (t) => tools.holdRing(t), rightClick: () => !orbit && tools.rightClick(), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
   });
   // tap în afara panoului (pe hartă) închide cardul deschis
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });

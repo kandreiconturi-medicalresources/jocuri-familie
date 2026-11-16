@@ -2,6 +2,7 @@
 import { computeTodos } from '../sim/index.js';
 import { viewer } from '../sim/viewer.js';
 import { createMarkers } from '../render/markers.js';
+import { createRouteMarks } from '../render/routeMarks.js';
 import { openTodo } from './todo.js';
 import { openCatalog } from './catalog.js';
 import { openTrainList } from './trainList.js';
@@ -13,7 +14,8 @@ import { createTrainLabels } from './trainLabels.js';
 export function createExtras(ctx) {
   const markers = createMarkers(ctx.uiRoot, { camera: ctx.stage.camera, groundAt: (x, z) => (ctx.view() ? ctx.view().ground.at(x, z) : 0), onPick: (it) => go(it) });
   const labels = createTrainLabels(ctx.uiRoot, { camera: ctx.stage.camera, state: ctx.state, view: ctx.view, zoom: () => ctx.camera.cam.dist });
-  let items = [], t = 0, on = false;
+  const marks = createRouteMarks(ctx.uiRoot, { camera: ctx.stage.camera, groundAt: (x, z) => (ctx.view() ? ctx.view().ground.at(x, z) : 0) });
+  let items = [], t = 0, on = false, wz = null; // wz: asistentul de cumpărare (deschis cât timp îl ții)
 
   function focus(x, y) { const c = ctx.camera; c.focus(x + 0.5, y + 0.5, Math.min(c.cam.dist, 22)); }
   /** Camera merge la locul din listă și se deschide panoul potrivit. */
@@ -36,12 +38,21 @@ export function createExtras(ctx) {
   const api = {
     markers,
     /** Pornit doar în joc (nu în demo). */
-    enable(b) { on = b; markers.show(b); labels.show(b); markers.clear(); items = []; ctx.hud.setTodo(0); t = 0.9; },
-    update(dt) { t += dt; if (t >= 1) { t = 0; refresh(); } },
-    frame(dt = 0.016) { markers.frame(); labels.frame(dt); },
+    enable(b) { on = b; if (wz) wz.close(); markers.show(b); labels.show(b); markers.clear(); items = []; ctx.hud.setTodo(0); t = 0.9; },
+    update(dt) { if (wz) wz.update(); t += dt; if (t >= 1) { t = 0; refresh(); } },
+    frame(dt = 0.016) { markers.frame(); marks.frame(); labels.frame(dt); },
     /** Pe conductor: „Unde am rămas”. */
     conductor() { openWhereAmI(ctx.panels.card, ctx.state(), { show: (x, y) => api.show(x, y), buy: () => api.buy(), last: ctx.helper ? ctx.helper.last : '' }); },
-    buy() { openBuyWizard(ctx.panels.card, ctx.state(), ctx.tools, api, ctx.hud); },
+    /** Asistentul de cumpărare: deschis deja = îl arată iar, cu selecția intactă; cu `preset` ({ good, stops }) începe o rută nouă. */
+    buy(preset) {
+      if (wz && !preset) { wz.resume(); return; }
+      if (wz) wz.close();
+      wz = openBuyWizard({ root: ctx.uiRoot, state: ctx.state, tools: ctx.tools, hud: ctx.hud, exec: ctx.exec, marks, show: (x, y) => api.show(x, y), onClose: () => { wz = null; } }, preset);
+      if (preset) wz.resume(); // abia acum `wz` există, ca bara de jos să știe că asistentul e deschis
+    },
+    assistOpen: () => !!wz,
+    /** Atingere pe hartă cât asistentul e deschis și unealta e Tren (altfel selecția nu se atinge). */
+    assistTap: (tile) => (wz ? wz.tap(tile) : false),
     log(cmd) { logStep(cmd, ctx.state().date); },
     todo() { refresh(); openTodo(ctx.panels.card, items, go); },
     catalog() { openCatalog(ctx.panels.card, ctx.state(), ctx.tools); },

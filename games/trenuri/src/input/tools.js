@@ -3,6 +3,7 @@ import { STATION_RADIUS, CAR_SETS, availableModels, UPGRADES, suggestKinds, MODE
 import { CAR_TYPES } from '../sim/goods.js';
 import { lei } from '../ui/hud.js';
 import { createTrackTool } from './trackTool.js';
+import { anchorNear } from './touchGate.js';
 import { createParallelTool } from './parallelTool.js';
 import { createExtraTools, EXTRA_TOOLS } from './extraTools.js';
 
@@ -13,7 +14,7 @@ export function createTools(ctx) {
   let from = null;
   const S = () => ctx.state(), hud = () => ctx.hud, ov = () => ctx.view().overlay;
   const stationAt = (x, y) => S().stations.find((st) => st.x === x && st.y === y);
-  const env = { S, hud, ov, exec: (c) => ctx.exec(c), canAfford: ctx.canAfford, errText: ctx.errText, tool: () => o.tool, bar: () => subBar(), switchTool: (id) => api.setTool(id) };
+  const env = { S, hud, ov, ghost: () => { const v = ctx.view(); return v && v.ghost; }, exec: (c) => ctx.exec(c), canAfford: ctx.canAfford, errText: ctx.errText, tool: () => o.tool, bar: () => subBar(), switchTool: (id) => api.setTool(id) };
   const track = createTrackTool(env), par = createParallelTool(env), extra = createExtraTools(env);
 
   function paint() {
@@ -28,6 +29,7 @@ export function createTools(ctx) {
     const h = hud();
     if (o.tool === 'station') h.stationOpts(o.size, (i) => { o.size = i; subBar(); });
     else if (o.tool === 'train') {
+      if (ctx.assist && ctx.assist.open()) { h.setSub([]); return; } // cu asistentul deschis, alegerile sunt în el
       const av = availableModels(S().date.y);
       if (!av.some((m) => m.id === o.model)) o.model = av[av.length - 1].id;
       h.trainOpts(o.model, o.cars, S().date.y, (i) => { o.model = i; subBar(); }, (i) => { o.cars = i; subBar(); });
@@ -53,6 +55,7 @@ export function createTools(ctx) {
       const r = ctx.exec({ type: 'buildUpgrade', stationId: st.id, kind: o.up });
       if (r.ok) hud().hint(`${UPGRADES[o.up].icon} ${UPGRADES[o.up].name} la ${st.name}!`, false, 4000);
     } else if (o.tool === 'train') {
+      if (ctx.assist && ctx.assist.tap(t)) return; // asistentul de cumpărare își alege gările pe hartă
       const st = stationAt(t.x, t.y);
       if (!st) { hud().hint('Atinge o gară (🚉).', true); return; }
       if (!from) { from = st.id; paint(); hud().hint('Bine! Acum atinge gara unde ajunge trenul.', false, 5000); return; }
@@ -92,10 +95,17 @@ export function createTools(ctx) {
     },
     /** Alegeri din catalog: { tool, size?, model?, up? }. */
     choose(c) { Object.assign(o, c); api.setTool(c.tool); },
-    wantsDrag: () => o.tool === 'track',
+    wantsDrag: () => o.tool === 'track' && track.wantsDrag(),
     tap,
     dragStart(t) { if (o.tool === 'track') track.dragStart(t); },
-    dragMove(t) { if (o.tool === 'track') track.dragMove(t); },
+    dragMove(t, m) { if (o.tool === 'track') track.dragMove(t, m); },
+    dragFlush() { if (o.tool === 'track') track.dragFlush(); },
+    dragAbort() { if (o.tool === 'track') track.dragAbort(); },
+    touchMode: () => track.touchMode(),
+    isAnchor: (t) => anchorNear(S(), t.fx, t.fz),
+    holdRing(t) { const v = ctx.view(); if (v && v.ghost) v.ghost.ring(0, t); },
+    /** Clic dreapta în timpul trasării: anulează. true = consumat. */
+    rightClick() { return o.tool === 'track' && track.rightClick(); },
     dragEnd(t, moved) { if (o.tool === 'track') track.dragEnd(t, moved); },
     dragCancel() { if (o.tool === 'track') track.dragCancel(); },
     key(e) { return o.tool === 'track' ? track.key(e.key) : false; },
