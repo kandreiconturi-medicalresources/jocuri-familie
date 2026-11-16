@@ -55,6 +55,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     show: (x, y) => extras.show(x, y),
     makeRoute: (preset) => extras.buy(preset),
     plan: (preset) => extras.planner(preset),
+    buyIndustry: (id) => exec({ type: 'buyIndustry', id }).ok,
+    me: () => viewer.co,
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
@@ -71,7 +73,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (on) panels.layer(s); else panels.close();
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
-    expert: () => ex.show(), islands: () => isl.open(),
+    expert: () => ex.show(), islands: () => isl.open(), bank: () => isl.bank(),
     todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
     menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });

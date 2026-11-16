@@ -7,6 +7,8 @@ import { markIslands } from './islands.js';
 import { initMarket, marketMonthly } from './market.js';
 import { foundAiPorts, restockAi } from './ports.js';
 import { addNews } from './news.js';
+import { bankMonthly } from './bank.js';
+import { leadersMonthly } from './leaders.js';
 
 /** Înainte de deriveLayers: insulele primesc stăpâni (companiile în ordine), apoi se adaugă AI-urile (până la 8 companii). */
 export function setupIslands(s, gen, ai) {
@@ -19,6 +21,7 @@ export function setupIslands(s, gen, ai) {
   s.islands = gen.islands;
   s.islands.forEach((q, k) => { q.owner = k < s.companies.length ? k : -1; });
   s.ships = [];
+  for (const co of s.companies) if (!co.tr) co.tr = []; // 7.4: banca și în modul simplu
   markIslands(s);
 }
 
@@ -27,6 +30,7 @@ export function finishIslands(s) {
   foundAiPorts(s);
   restockAi(s, PROD * 4);
   initMarket(s);
+  leadersMonthly(s); // doar notează starea de pornire
   const me = s.islands.find((q) => q.owner === 0);
   if (me) addNews(s, '🏝️', `Insula ta e ${me.name}. Nu are toate resursele: deschide 🗺️ Insulele ca să vezi ce-ți lipsește și de unde îl aduci cu vaporul.`);
 }
@@ -38,6 +42,8 @@ export function islandMonthly(s) {
     const co = s.companies[sh.owner];
     if (co && !s.sandbox) co.cash -= SHIP_MODELS[sh.model].maint;
   }
+  bankMonthly(s);
   if (s.mode !== 'expert') for (const co of s.companies) if (co.ai && !co.dead) aiMonth(s, co); // în expert le rulează expertMonthly
+  leadersMonthly(s);
   if (s.date.m === 1 && s.companies.length > 1) addNews(s, '🏆', 'Un an nou pe insule! Vezi clasamentul în 🗺️ Insulele.');
 }

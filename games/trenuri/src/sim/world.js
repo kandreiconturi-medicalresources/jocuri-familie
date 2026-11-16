@@ -101,7 +101,7 @@ function unb64(str, Type) {
   for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
   return new Type(u.buffer);
 }
-const BIG = ['height', 'water', 'forest', 'track'];
+const BIG = ['height', 'water', 'forest', 'track', 'land'];
 const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc', 'isl', 'seaC'];
 
 /** Obiect JSON simplu (poate merge în localStorage). */
@@ -118,6 +118,7 @@ export function deserialize(o) {
   const s = JSON.parse(JSON.stringify(o));
   s.height = unb64(o.height, Uint8Array); s.water = unb64(o.water, Uint8Array); s.forest = unb64(o.forest, Uint8Array);
   s.track = unb64(o.track, Uint16Array);
+  if (o.land) s.land = unb64(o.land, Uint8Array);
   if (!s.stats) s.stats = newStats();
   s.dirty = { track: true, forest: true, cities: true, stations: true, industries: true, terrain: true, signals: true };
   if (!s.signals) { s.signals = []; s.sigId = 1; }

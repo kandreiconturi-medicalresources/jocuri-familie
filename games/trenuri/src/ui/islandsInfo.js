@@ -39,6 +39,6 @@ export function openIslandsInfo(ctx) {
     ports.length ? ports.map((p) => h('button', { class: 'opt', onclick: () => ctx.port(p) }, '⚓ ' + p.name)) : h('div', { class: 'news' }, 'Niciun port încă: primul nu cere materiale.'),
     h('div', { class: 'rowb' }, h('button', { class: 'opt go', onclick: () => ctx.portTool() }, '⚓ Construiește port'), ports.length ? h('button', { class: 'opt', onclick: () => ctx.shipWizard() }, '🚢 Vapor nou') : null),
     others.length ? [h('div', null, h('b', null, 'Porturi unde poți face comerț')), others.map((p) => h('button', { class: 'opt', onclick: () => ctx.port(p) }, `⚓ ${p.name} · ${s.companies[p.owner].name}`))] : null,
-    s.companies.length > 1 ? [h('div', null, h('b', null, '🏆 Clasament (valoarea companiei)')),
-      standings(s).map((c, i) => h('div', { class: 'row' + (c.id === me ? ' me' : '') }, h('span', null, (MEDAL[i] || i + 1 + '.') + ' ', h('i', { class: 'dot', style: { background: c.color } }), ' ' + c.name), h('b', null, lei(c.value))))] : null);
+    [h('div', null, h('b', null, '🏆 Clasament (valoarea netă: bani − datorii + gări, trenuri, vapoare, poduri, terenuri)')),
+      standings(s).map((c, i) => h('div', { class: 'row' + (c.id === me ? ' me' : '') }, h('span', null, (MEDAL[i] || i + 1 + '.') + ' ', h('i', { class: 'dot', style: { background: c.color } }), ' ' + c.name), h('b', null, lei(c.value))))]);
 }

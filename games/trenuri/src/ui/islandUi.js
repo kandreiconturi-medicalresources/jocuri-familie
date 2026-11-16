@@ -3,6 +3,7 @@ import { h } from '../../../../shared/ui/dom.js';
 import { openIslandsInfo } from './islandsInfo.js';
 import { openPortPanel, openShipPanel } from './portPanel.js';
 import { openShipWizard } from './shipWizard.js';
+import { openBankPanel } from './bankPanel.js';
 import { shipXY } from '../render/ships.js';
 
 /** ctx = { card, state(), me(), exec(cmd), hud, tools, show(x,y) } */
@@ -13,6 +14,7 @@ export function createIslandUi(ctx) {
     port: (st) => openPortPanel({ ...c, wizard: (p) => api.wizard(p), ship: (sh) => api.ship(sh) }, st),
     ship: (sh) => openShipPanel({ ...c, wizard: (p) => api.wizard(p) }, sh),
     wizard: (preset) => openShipWizard(c, preset),
+    bank: () => openBankPanel(c),
     /** Vaporul de lângă punctul atins (fx, fz în plăci), dacă există. */
     shipNear(s, fx, fz) {
       let best = null, bd = 1.2;

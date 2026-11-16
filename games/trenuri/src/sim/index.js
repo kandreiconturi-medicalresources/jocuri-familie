@@ -31,3 +31,6 @@ export { portCap, dockOf, coastSpot } from './ports.js';
 export { seaPath } from './seaPath.js';
 export { cleanShipRoute } from './ships.js';
 export { shipLoad, shipFree } from './shipTrade.js';
+export { bridgeInfo, bridgeShape, bridgeCost, bridgeSteel } from './bigBridge.js';
+export { landValue, landPrice, landWorth, parcelInfo, industryPrice, parcelsW, parcelId, tileOwner } from './land.js';
+export { repayAmount } from './bank.js';

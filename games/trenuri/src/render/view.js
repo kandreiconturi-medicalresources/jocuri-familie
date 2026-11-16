@@ -17,6 +17,7 @@ import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
 import { createTerminals } from './terminal.js';
 import { createSea } from './ships.js';
+import { createLand } from './land.js';
 import { dirtyChunks } from '../sim/terraform.js';
 import { createOverlay } from './overlay.js';
 import { createGhost } from './ghost.js';
@@ -63,6 +64,7 @@ export function createView(stage, s) {
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
     if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }
     if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g)); swap('terminals', () => createTerminals(s, g, colorOf)); d.stations = false; }
+    if (s.islands && (d.land || (s.land && !dyn.land))) { swap('land', () => createLand(s, g, colorOf)); d.land = false; } // parcele cumpărate (7.4)
     if (d.industries) { swap('industries', () => createIndustries(s, g)); d.industries = false; d.forest = true; if (links.visible) links.rebuild(); }
     if (q >= 2 && powered.size !== lastPowered) { swap('power', () => createCatenary(s, g, powered)); lastPowered = powered.size; }
     if (q < 2 && dyn.power) { root.remove(dyn.power); dyn.power = null; lastPowered = -1; }

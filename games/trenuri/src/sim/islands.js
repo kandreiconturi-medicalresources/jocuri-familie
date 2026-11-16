@@ -1,6 +1,8 @@
 // Lumea cu insule (etapa 7.1–7.2): stratul derivat al insulelor, cine pe ce insulă poate construi,
 // materialele de construcție din porturi și hash-ul câmpurilor noi. Codul rulează doar când există `s.islands`.
-import { MATS, SHIP_MODELS } from './consts.js';
+import { MATS, SHIP_MODELS, BRIDGE } from './consts.js';
+import { tileOwner } from './landBase.js';
+import { bridgeShape, bridgeSteel } from './bigBridge.js';
 import { GOODS } from './goods.js';
 import { goodsOf } from './islandGen.js';
 import { addNews } from './news.js';
@@ -16,10 +18,17 @@ export const islandOfCo = (s, id) => (s.islands ? s.islands.findIndex((q) => q.o
 /** Ce mărfuri se pot face pe insula k cu industriile ei (array NG de true/false). */
 export const islandGoods = (s, k) => goodsOf(s.industries.filter((o) => islandAt(s, o.x, o.y) === k).map((o) => o.type));
 
-/** Se poate construi aici? Pe mare și pe insulele fără stăpân da; pe insula altei companii nu. */
+/** Se poate construi aici? Pe mare și pe insulele fără stăpân da; pe insula altei companii doar pe parcela cumpărată (7.4). */
 export function canBuild(s, c, x, y) {
   const k = islandAt(s, x, y);
-  return k < 0 || s.islands[k].owner < 0 || s.islands[k].owner === c.id;
+  return k < 0 || s.islands[k].owner < 0 || tileOwner(s, x, y) === c.id;
+}
+
+/** Capătul unui pod mare pe insula altuia: pe teren propriu sau lângă portul acelei insule (în raza de o placă). */
+function bridgeEndOk(s, c, x, y) {
+  if (canBuild(s, c, x, y)) return true;
+  const k = islandAt(s, x, y);
+  return s.stations.some((q) => q.port && islandAt(s, q.x, q.y) === k && Math.max(Math.abs(q.x - x), Math.abs(q.y - y)) <= 1);
 }
 
 function rectOk(s, c, x0, y0, x1, y1) {
@@ -35,6 +44,7 @@ function placeOk(s, cmd, c) {
   switch (cmd.type) {
     case 'buildTrack': return !Array.isArray(cmd.path) || cmd.path.every((p) => !Array.isArray(p) || canBuild(s, c, p[0], p[1]));
     case 'buildStation': case 'buildDepot': case 'placeSignal': case 'buildPort': return canBuild(s, c, cmd.x, cmd.y);
+    case 'buildBridge': { const sh = bridgeShape(s, cmd); return !sh || (bridgeEndOk(s, c, sh.path[0][0], sh.path[0][1]) && bridgeEndOk(s, c, sh.path[sh.n + 1][0], sh.path[sh.n + 1][1])); }
     case 'levelTerrain': case 'clearArea': case 'buildTunnel': return rectOk(s, c, cmd.x0, cmd.y0, cmd.x1, cmd.y1);
     default: return true;
   }
@@ -48,6 +58,7 @@ export function matNeed(s, cmd, c) {
   if (cmd.type === 'buyShip') { const m = SHIP_MODELS[cmd.model]; return m && s.ships.some((q) => q.owner === c.id) ? m.mat : null; }
   if (cmd.type === 'buildStation' && cmd.big && (cmd.size | 0) === 2) return MATS.big;
   if (cmd.type === 'upgradeStation') return MATS.up;
+  if (cmd.type === 'buildBridge') { const sh = bridgeShape(s, cmd); return sh ? [[BRIDGE.steel, bridgeSteel(sh.n)]] : null; }
   return null;
 }
 export function matHave(s, id, g) { let n = 0; for (const p of portsOf(s, id)) n += p.cargo[g]; return n; }
@@ -95,6 +106,13 @@ const ACT = { load: 1, sell: 2, swap: 3 };
 /** Hash-ul câmpurilor din modul cu insule: proprietari, piața, vapoarele. `num` vine din world.js. */
 export function hashIslands(s, h, num) {
   for (const q of s.islands) h = num(h, q.owner + 1);
+  if (s.land) for (let i = 0; i < s.land.length; i++) h = num(h, s.land[i]);
+  for (const o of s.industries) if (o.buyer !== undefined) h = num(h, o.id * 16 + o.buyer + 1);
+  for (const c of s.companies) {
+    h = num(h, (c.ar | 0) + (c.th | 0) * 64);
+    if (s.mode !== 'expert' && c.tr) { h = num(h, c.tr.length); for (const t of c.tr) h = num(num(h, t.p), t.r); }
+  }
+  h = num(h, s.leader === undefined ? -1 : s.leader);
   for (const row of s.market) for (const p of row) h = num(h, p);
   for (const sh of s.ships) {
     h = num(num(num(num(h, sh.id), sh.owner * 16 + sh.model), sh.seg), sh.pos);

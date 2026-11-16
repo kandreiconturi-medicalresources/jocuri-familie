@@ -18,15 +18,19 @@ import { executePlan } from './execPlan.js';
 import { islandApply, claimIsland } from './islands.js';
 import { PORT_COMMANDS } from './ports.js';
 import { SHIP_COMMANDS } from './ships.js';
+import { BRIDGE_COMMANDS } from './bigBridge.js';
+import { LAND_COMMANDS } from './land.js';
+import { BANK_COMMANDS } from './bank.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
-  bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
+  bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung (cel mult 30 de plăci pentru podul mare).', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
   loc: 'Terminalul mare are nevoie de loc liber și plat lângă gară (4×5 plăci) și de o linie dreaptă.',
-  insula: 'Insula asta e a altei companii: aici nu poți construi. Fă comerț cu ea prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
+  insula: 'Insula asta e a altei companii: aici nu poți construi. Cumpără teren 🏠 sau fă comerț prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
+  pod: 'Podul mare e o linie dreaptă (orizontală, verticală sau în diagonală), de pe uscat pe uscat, cu cel puțin o placă de apă între capete.', ocupat: 'Pe parcela asta sunt gări sau depouri ale altcuiva: nu se poate vinde.',
   port: 'Portul se pune pe insula ta, pe o placă de uscat chiar lângă apă.', vapor: 'Ruta vaporului nu e bună: alege porturi la care se ajunge pe apă.',
 };
 
@@ -203,6 +207,7 @@ function joinCompany(s, cmd) {
   const id = s.companies.length;
   s.companies.push({ id, name: String(cmd.name || 'Jucător').slice(0, 20), color: String(cmd.color || '#8fd3ff').slice(0, 9), cash: START_CASH, loan: 0, history: [], month: 0, record: 0 });
   if (s.mode === 'expert') initCompany(s.companies[id]);
+  else if (s.islands) s.companies[id].tr = []; // 7.4: banca și în modul simplu
   n.pl[cmd.pl] = id;
   if (s.islands) claimIsland(s, id);
   addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
@@ -210,7 +215,7 @@ function joinCompany(s, cmd) {
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

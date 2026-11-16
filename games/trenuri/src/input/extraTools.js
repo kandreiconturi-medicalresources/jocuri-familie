@@ -1,5 +1,6 @@
 // Unelte 6.6: 🚦 semnal, ⛏️ nivelare/defrișare, 🕳️ tunel, ⬆️ peroane la gară. Totul trece prin ctx.exec(comandă).
-import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, PORT, T_PRESENT, DX, DY, opp } from '../sim/index.js';
+import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, PORT, BRIDGE, T_PRESENT, DX, DY, opp, bridgeInfo, bridgeCost, bridgeSteel, matMissing, missingText, parcelInfo } from '../sim/index.js';
+import { viewer } from '../sim/viewer.js';
 import { lei } from '../ui/hud.js';
 
 const GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', BLUE = '#8fd3ff';
@@ -9,6 +10,8 @@ export const EXTRA_TOOLS = [
   { id: 'tunnel', e: '🕳️', t: 'Tunel', hint: 'Atinge două plăci de aceeași înălțime, de o parte și de alta a dealului (cel mult 6 plăci între ele).' },
   { id: 'depot', e: '🏭', t: 'Depou', hint: 'Atinge capătul unei linii (o șină cu o singură legătură): acolo se repară trenurile și pleacă remorcile.' },
   { id: 'platform', e: '⬆️', t: 'Gară mai mare', hint: 'Atinge o gară ca să-i adaugi un peron: încap mai multe trenuri deodată.' },
+  { id: 'bridge', e: '🌉', t: 'Pod mare', hint: 'Atinge un capăt pe uscat, apoi capătul de pe țărmul celălalt: linie dreaptă sau diagonală, până la 30 de plăci de apă.' },
+  { id: 'land', e: '🏠', t: 'Cumpără teren', island: true, hint: 'Atinge o parcelă (4×4 plăci) de pe insula altuia ca să o cumperi: apoi poți construi pe ea.' },
   { id: 'port', e: '⚓', t: 'Port', island: true, hint: 'Atinge o placă de pe coasta insulei tale, chiar lângă apă: acolo acostează vapoarele.' },
 ];
 
@@ -34,6 +37,7 @@ export function createExtraTools(c) {
   function paint(id) {
     if (id === 'level' && a) c.ov().set(hov ? tiles(rect(a, hov), (o.mode === 'level' && !levelInfo(hov).plan.ok) ? RED : GREEN) : [{ x: a.x, y: a.y, color: GOLD }]);
     else if (id === 'tunnel' && a) c.ov().set([{ x: a.x, y: a.y, color: GOLD }]);
+    else if (id === 'bridge' && a) bridgePreview();
     else if (id === 'depot') { const m = [], S0 = S(); for (let i = 0; i < S0.track.length; i++) if (depotSpot(S0, i)) m.push({ x: i % S0.w, y: (i / S0.w) | 0, color: GREEN }); for (const d of S0.depots) m.push({ x: d.x, y: d.y, color: GOLD }); c.ov().set(m); }
     else if (id === 'platform') c.ov().set(S().stations.map((st) => ({ x: st.x, y: st.y, color: platformsOf(st) < maxPlatforms(S(), st) ? GREEN : BLUE })));
     else if (id === 'signal') c.ov().set(S().signals.filter((g) => !g.auto).map((g) => ({ x: g.x, y: g.y, color: GOLD })));
@@ -46,6 +50,39 @@ export function createExtraTools(c) {
     if (res.ok) c.hud().hint(`Gata! ${o.mode === 'clear' ? 'Pădurea e tăiată' : 'Terenul e nivelat'} · ${lei(res.cost)}.`, false, 4000);
     a = null; hov = null;
   }
+  const me = () => S().companies[viewer.co] || S().companies[0];
+  /** Plăcile liniei drepte de la `a` la `t` (doar [a] dacă nu e dreaptă sau diagonală). */
+  function lineTiles(p, q) {
+    const dx = Math.sign(q.x - p.x), dy = Math.sign(q.y - p.y), n = Math.max(Math.abs(q.x - p.x), Math.abs(q.y - p.y));
+    if (n < 1 || n > 40 || (dx && dy && Math.abs(q.x - p.x) !== Math.abs(q.y - p.y))) return [[p.x, p.y]];
+    return Array.from({ length: n + 1 }, (_, k) => [p.x + dx * k, p.y + dy * k]);
+  }
+  const bridgeCmd = (p, q) => ({ type: 'buildBridge', x0: p.x, y0: p.y, x1: q.x, y1: q.y });
+  /** Previzualizarea podului: linia verde/roșie și, în mesaj, costul și materialele. */
+  function bridgePreview() {
+    const pts = hov ? lineTiles(a, hov) : [[a.x, a.y]], info = hov ? bridgeInfo(S(), me(), bridgeCmd(a, hov)) : null;
+    c.ov().set(pts.map(([x, y], k) => ({ x, y, color: k === 0 ? GOLD : info && info.ok ? GREEN : RED })));
+    if (!info) return;
+    if (!info.ok) { c.hud().hint(info.err === 'apa' ? 'Prea lung: podul mare ține până la 30 de plăci de apă.' : info.err === 'pod' ? 'Podul merge în linie dreaptă sau în diagonală.' : 'Capetele podului trebuie să fie pe uscat, iar între ele doar apă.', true, 2500); return; }
+    const miss = info.need ? matMissing(S(), me().id, info.need) : [];
+    c.hud().hint(`🌉 Pod de ${info.n} plăci · ${lei(info.cost)}${info.need ? ` · oțel ${bridgeSteel(info.n)} t din port` : ''}${miss.length ? ' — ' + missingText(S(), me(), miss) : ''}`, miss.length > 0, 2500);
+  }
+  function tapBridge(t) {
+    if (!a) { a = t; c.hud().hint('Bine! Atinge capătul de pe țărmul celălalt (linie dreaptă sau diagonală).', false, 5000); paint('bridge'); return; }
+    const res = c.exec(bridgeCmd(a, t));
+    if (res.ok) c.hud().hint(`🌉 Pod gata · ${lei(res.cost)}. Pune câte o gară la capete sau leagă-l cu șină.`, false, 6000);
+    a = null; hov = null;
+  }
+  let lastParcel = '';
+  function parcelPreview(t) {
+    const px = t.x >> 2, py = t.y >> 2, info = parcelInfo(S(), me(), px, py), key = px + ',' + py;
+    const tiles = [];
+    for (let y = py * 4; y < py * 4 + 4 && y < S().h; y++) for (let x = px * 4; x < px * 4 + 4 && x < S().w; x++) tiles.push({ x, y, color: info.ok ? GREEN : info.err === 'exista' ? BLUE : RED });
+    c.ov().set(tiles);
+    if (key === lastParcel) return;
+    lastParcel = key;
+    c.hud().hint(info.ok ? `🏠 Parcelă de ${lei(info.price)} (banii merg la ${S().companies[info.seller].name}). Atinge ca s-o cumperi.` : info.err === 'exista' ? 'Parcela asta e deja a ta.' : info.err === 'ocupat' ? 'Pe parcela asta sunt gările altcuiva.' : 'Aici nu e nimic de cumpărat: marea sau o insulă liberă (acolo construiești gratis).', !info.ok && info.err !== 'exista', 3000);
+  }
   function tapTunnel(t) {
     if (!a) { a = t; c.hud().hint('Bine! Atinge placa de pe partea cealaltă a dealului.', false, 5000); return; }
     const res = c.exec({ type: 'buildTunnel', x0: a.x, y0: a.y, x1: t.x, y1: t.y });
@@ -54,9 +91,11 @@ export function createExtraTools(c) {
   }
   return {
     ids, has: (id) => ids.includes(id),
-    reset() { a = null; hov = null; },
+    reset() { a = null; hov = null; lastParcel = ''; },
     paint,
-    hover(id, t) { if (id === 'level' && a && t) { hov = t; paint(id); } },
+    hover(id, t) {
+      if ((id === 'level' || id === 'bridge') && a && t) { hov = t; paint(id); } else if (id === 'land' && t) parcelPreview(t);
+    },
     tap(id, t) {
       if (!t) return;
       if (id === 'signal') {
@@ -71,6 +110,11 @@ export function createExtraTools(c) {
       } else if (id === 'port') {
         const r = c.exec({ type: 'buildPort', x: t.x, y: t.y });
         if (r.ok) c.hud().hint('⚓ Port nou! Adu marfă cu trenul în depozit, apoi cumpără un 🚢 vapor.', false, 6000);
+      } else if (id === 'bridge') tapBridge(t);
+      else if (id === 'land') {
+        const r = c.exec({ type: 'buyLand', px: t.x >> 2, py: t.y >> 2 });
+        if (r.ok) c.hud().hint(`🏠 Parcela e a ta (${lei(r.cost)}). Acum poți construi pe ea.`, false, 5000);
+        lastParcel = '';
       } else if (id === 'level') tapLevel(t);
       else if (id === 'tunnel') tapTunnel(t);
       else if (id === 'platform') {
@@ -100,6 +144,8 @@ export function createExtraTools(c) {
       }
       if (id === 'depot') return [{ label: '🏭 Depou', small: lei(DEPOT.cost), fn: () => {} }];
       if (id === 'port') return [{ label: '⚓ Port', small: lei(PORT.cost) + ' · depozit ' + PORT.cap + ' t', fn: () => {} }];
+      if (id === 'bridge') return [{ label: '🌉 Pod mare', small: `≤ ${BRIDGE.max} plăci · ${lei(bridgeCost(10))} la 10 plăci`, fn: () => {} }];
+      if (id === 'land') return [{ label: '🏠 Teren', small: 'preț = valoarea × 3', fn: () => {} }];
       if (id === 'tunnel') return [{ label: '🕳️ Tunel', small: `≤ ${TUNNEL.max} plăci · ${lei(TUNNEL.cost)}/placă`, fn: () => {} }];
       return [];
     },

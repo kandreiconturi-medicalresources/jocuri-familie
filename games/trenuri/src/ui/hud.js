@@ -27,11 +27,12 @@ export function createHud(root, ev) {
   const speeds = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => h('button', { class: 'rb', 'aria-label': 'Viteză ' + t, onclick: () => ev.speed(v) }, t));
   const layerBtn = h('button', { class: 'rb', title: 'Mărfuri', 'aria-label': 'Mărfuri', onclick: () => ev.layer() }, '📦');
   const islBtn = h('button', { class: 'rb hidden', title: 'Insulele: resurse, porturi, clasament', 'aria-label': 'Insulele', onclick: () => ev.islands() }, '🗺️');
+  const bankBtn = h('button', { class: 'rb hidden', title: 'Banca: împrumut și rambursare automată', 'aria-label': 'Banca', onclick: () => ev.bank() }, '🏦');
   const exBtn = h('button', { class: 'rb hidden', title: 'Mod expert: finanțe, bursă, raport', 'aria-label': 'Mod expert', onclick: () => ev.expert() }, '💼');
   const todoBtn = h('button', { class: 'rb todo', title: 'De făcut', 'aria-label': 'De făcut', onclick: () => ev.todo() }, '📌');
   const menuBtn = h('button', { class: 'rb', title: 'Meniu', 'aria-label': 'Meniu', onclick: () => ev.menu() }, '☰');
   const bar = h('div', { class: 'tbar' }, info, goal, h('div', { class: 'sp' }), speeds,
-    layerBtn, islBtn, exBtn, todoBtn,
+    layerBtn, islBtn, bankBtn, exBtn, todoBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
     menuBtn);
   const hint = h('div', { class: 'hint hidden' });
@@ -57,7 +58,7 @@ export function createHud(root, ev) {
       money.classList.toggle('bad', c < 0);
     },
     setExpert(on) { exBtn.classList.toggle('hidden', !on); },
-    setIslands(on) { islBtn.classList.toggle('hidden', !on); },
+    setIslands(on) { islBtn.classList.toggle('hidden', !on); bankBtn.classList.toggle('hidden', !on); },
     setLayer(on) { layerBtn.classList.toggle('on', on); },
     setDate(d) { date.textContent = `📅 ${MONTHS[d.m - 1]} ${d.y}`; },
     setSpeed(v) { speeds.forEach((b, i) => b.classList.toggle('on', [0, 1, 2, 4][i] === v)); },

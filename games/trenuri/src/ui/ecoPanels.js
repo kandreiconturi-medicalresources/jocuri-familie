@@ -8,11 +8,21 @@ import { lei } from './hud.js';
 import { destSection, supplySection } from './destList.js';
 import { cityCards } from './plannerCards.js';
 import { PROD } from '../sim/consts.js';
+import { islandAt } from '../sim/islands.js';
+import { industryPrice } from '../sim/land.js';
 
 const LEVEL = ['Sat', 'Oraș', 'Metropolă'];
 
 export function createEcoPanels(card, ev) {
   const { open, row, goodRow, chip } = card;
+  /** „Cumpără industria” (etapa 7.4): industrie de pe insula altuia; marfa ei merge apoi la gările tale. */
+  const buyBtn = (s, o) => {
+    const k = s.islands ? islandAt(s, o.x, o.y) : -1, me = ev.me ? ev.me() : 0;
+    if (k < 0 || s.islands[k].owner < 0 || s.islands[k].owner === me) return o.buyer !== undefined && s.islands && o.buyer === me ? h('div', { class: 'why ok' }, '🏭 E a ta: marfa ei merge la gările tale.') : null;
+    if (o.buyer !== undefined) return h('div', { class: 'why' }, `🏭 A fost cumpărată de ${s.companies[o.buyer].name}.`);
+    const price = industryPrice(o);
+    return h('button', { class: 'opt', onclick: () => { if (ev.buyIndustry && ev.buyIndustry(o.id)) api.industry(s, o); } }, `🏭 Cumpără industria · ${lei(price)}`, h('small', null, 'Primești marfa ei, la gările tale din rază. Banii merg la stăpânul insulei.'));
+  };
   const api = {
     city(s, c) {
       const next = CITY_LEVELS[c.level + 1], list = [0, 1, ...CITY_GOODS[c.level]];
@@ -39,6 +49,7 @@ export function createEcoPanels(card, ev) {
         t.out >= 0 ? goodRow(t.out, o.out[t.out], ' gata de dus') : null,
         row('A făcut în total', o.made),
         h('div', null, hasSt ? '🚉 O gară e aproape: marfa poate pleca.' : '🚉 Pune o gară lângă ea ca să ia marfa.'),
+        buyBtn(s, o),
         t.out >= 0 && ev.plan ? h('button', { class: 'opt go', onclick: () => ev.plan({ industry: o, g: t.out }) }, '🧭 Unde o duc?', h('small', null, 'Planificatorul alege cel mai bun oraș')) : null,
         t.out >= 0 ? [h('h4', null, `Spre ce poate duce ${GOODS[t.out].name.toLowerCase()} (cel mai bun profit întâi)`), destSection(s, ev, o, t.out)] : null,
         t.in.length ? [h('h4', null, 'Cine o poate aproviza'), ...t.in.flatMap((g) => [h('div', null, chip(g), ' ' + GOODS[g].name), supplySection(s, ev, o, g)])] : null);

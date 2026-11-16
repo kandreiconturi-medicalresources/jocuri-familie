@@ -73,3 +73,11 @@ export const SHIP_MODELS = [
 export const PORT = { cost: 12000, cap: 400, capPer: 200, fee: 60, dwell: 40, stops: 6 };
 /** Materiale de construcție în modul cu insule: [marfă, tone]. Primul port și primul vapor nu cer materiale. */
 export const MATS = { port: [[5, 20], [8, 10]], big: [[8, 20], [9, 10]], up: [[5, 10], [8, 5]] };
+
+// Etapa 7.3–7.4: poduri mari, proprietăți, pragurile clasamentului.
+export const T_BIGBR = 0x2000; // placă de pod mare (biții 0x2000 era liber): se desenează cu piloni și grinzi
+/** Pod mare: până la `max` plăci de apă; cost = base·n + sq·n²; oțel (marfa 8) = n/2 tone (cel puțin 2); `val` = valoarea unei plăci în clasament. */
+export const BRIDGE = { max: 30, base: 400, sq: 60, steel: 8, val: 250 };
+/** Parcele 4×4: preț = valoarea terenului × `mult`; industria străină costă `ind` + 10 lei pe tonă produsă (până la 2000 t). */
+export const LAND = { size: 4, mult: 3, ind: 18000 };
+export const THRESHOLDS = [100000, 500000, 1000000];
