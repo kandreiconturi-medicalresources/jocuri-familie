@@ -56,6 +56,9 @@ export function placeIndustries(seed, size, w, h, height, water, forest, cities)
     }
   }
   list.sort((a, b) => a.type - b.type || a.y - b.y || a.x - b.x);
+  const seen = {}, total = {}; // nume identice (aceeași fabrică lângă același oraș): le numerotăm ca să nu pară dubluri
+  for (const o of list) total[o.name] = (total[o.name] || 0) + 1;
+  for (const o of list) if (total[o.name] > 1) { seen[o.name] = (seen[o.name] || 0) + 1; o.name += ' ' + ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][seen[o.name]]; }
   list.forEach((o, i) => { o.id = i; if (INDUSTRIES[o.type].out >= 0 && !INDUSTRIES[o.type].in.length) o.out[INDUSTRIES[o.type].out] = 10; });
   return list;
 }

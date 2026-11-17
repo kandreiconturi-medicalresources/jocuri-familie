@@ -30,7 +30,7 @@ export function createEcoPanels(card, ev) {
       const el = open(h('h3', null, '🏘️ ' + c.name), row('Tip', LEVEL[c.level]), row('Locuitori', c.pop), row('Case', c.buildings.length),
         h('div', null, next ? `Mai are nevoie de ${next - c.pop} locuitori ca să crească.` : 'E cel mai mare oraș posibil!'),
         h('div', null, h('b', null, 'Ce cere orașul luna asta')),
-        list.filter((g) => g < 2 || !ev.plan).map((g) => goodRow(g, `${c.got[g]} din ${wantOf(c, g)}`, c.got[g] >= wantOf(c, g) ? ' ✅' : '')),
+        list.map((g) => goodRow(g, `${c.got[g]} din ${wantOf(c, g)}` + (c.prev ? ` · luna trecută ${c.prev[g]}` : ''), c.got[g] >= wantOf(c, g) ? ' ✅' : '')),
         ev.plan ? cityCards(s, c, (g) => ev.plan({ city: c, g })) : h('div', null, h('b', null, 'Cine îl poate aproviziona')),
         ...(ev.plan ? [] : CITY_GOODS[c.level]).flatMap((g) => [h('div', null, chip(g), ' ' + GOODS[g].name + ` · cere ${wantOf(c, g)}/lună`), supplySection(s, ev, c, g, 2)]),
         newer.length ? h('div', null, 'Când crește, va vrea și: ', newer.map((g) => chip(g))) : null,
@@ -38,7 +38,7 @@ export function createEcoPanels(card, ev) {
       el.classList.add('wide');
     },
     industry(s, o) {
-      const t = INDUSTRIES[o.type], hasSt = s.stations.some((st) => near(st, o)), adv = industryAdvice(s, o);
+      const t = INDUSTRIES[o.type], hasSt = s.stations.some((st) => near(st, o)), atSt = t.out >= 0 ? s.stations.reduce((n, st) => n + (near(st, o) ? st.cargo[t.out] : 0), 0) : 0, adv = industryAdvice(s, o);
       const per = t.in.length ? null : o.boost ? (PROD * 3) >> 1 : PROD;
       const el = open(h('h3', null, `${t.icon} ${o.name}`),
         h('div', { class: adv.ok ? 'why ok' : 'why' }, adv.lines.map((l) => h('div', null, l)),
@@ -46,7 +46,8 @@ export function createEcoPanels(card, ev) {
         t.out >= 0 ? h('div', { class: 'prod' }, 'Produce: ', chip(t.out), ' ' + GOODS[t.out].name, per ? ` · ${per} pe lună` : ' · cât primește (câte 1 din fiecare intrare)') : h('div', null, 'Nu produce marfă, dar are nevoie de combustibil ca să meargă.'),
         t.in.length ? h('div', null, 'Vrea: ', t.in.map((g) => chip(g))) : h('div', null, 'Nu are nevoie de nimic: produce singură.'),
         ...t.in.map((g) => goodRow(g, o.in[g], ' în stoc')),
-        t.out >= 0 ? goodRow(t.out, o.out[t.out], ' gata de dus') : null,
+        t.out >= 0 ? goodRow(t.out, o.out[t.out], ' gata în fabrică') : null,
+        t.out >= 0 && hasSt ? goodRow(t.out, atSt, ' așteaptă în gară') : null,
         row('A făcut în total', o.made),
         h('div', null, hasSt ? '🚉 O gară e aproape: marfa poate pleca.' : '🚉 Pune o gară lângă ea ca să ia marfa.'),
         buyBtn(s, o),

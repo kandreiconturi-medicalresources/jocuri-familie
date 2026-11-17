@@ -41,15 +41,19 @@ export function pickSource(c) {
   const head = to ? `De unde aduci ${GOODS[p.g].icon} ${low(p.g)} pentru ${p.dst.name}?` : `Unde duci ${GOODS[p.g].icon} ${low(p.g)} de la ${p.src.name}?`;
   if (!list.length) return [h('div', { class: 'note' }, head), h('div', { class: 'note' }, to ? `Pe hartă nu produce nimeni ${low(p.g)}.` : `Nimeni nu cere ${low(p.g)} acum.`)];
   const fresh = { track: 'none', model: null, manual: false, looked: false };
-  return [h('div', { class: 'note' }, head + ' Prima e cea mai bună alegere.'), ...list.map((e, i) => {
+  const hasBest = list[0].prod > 0 || !to;
+  const intro = hasBest ? ' Prima e cea mai bună alegere.' : ` Acum nimeni nu produce ${low(p.g)}: fabricile de mai jos au nevoie întâi de materii. Începe cu pasul „întâi adu...”.`;
+  return [h('div', { class: 'note' }, head + intro), ...list.map((e, i) => {
     const pick = () => c.set(to ? { ...fresh, src: e.o, stops: [e.o, p.dst] } : { ...fresh, dst: e.o, stops: [p.src, e.o] }, 3);
-    return h('div', { class: 'pl-opt' + (i === 0 ? ' best' : '') },
-      i === 0 ? h('div', { class: 'pl-star' }, '⭐ Recomandat', h('small', null, cap(e.why) + '.')) : null,
+    const ch = e.chain, first = ch && ch.from ? () => c.chain(ch.g, e.o) : null;
+    return h('div', { class: 'pl-opt' + (i === 0 && hasBest ? ' best' : '') },
+      i === 0 && hasBest ? h('div', { class: 'pl-star' }, '⭐ Recomandat', h('small', null, cap(e.why) + '.')) : null,
       h('div', { class: 'pl-row' }, h('span', { class: 'pl-big' }, icon(e.o)),
         h('div', { class: 'pl-txt' }, h('b', null, e.o.name), h('span', null, `📏 ${e.d} plăci`),
           to ? h('span', null, e.prod ? `📦 face ~${e.prod} t/lună` : '😴 acum nu face nimic (îi lipsesc materiile)') : h('span', null, `📥 cere ~${e.want} t/lună`),
-          h('span', null, railText(e)), h('span', null, `🏗️ construcție ${e.cost ? money(e.cost) : '0 lei'}`), h('span', null, `💰 profit ${money(e.profit)}/lună`))),
-      h('div', { class: 'btns' }, h('button', { class: 'opt go', onclick: pick }, 'Aleg asta'), h('button', { class: 'opt', onclick: () => c.env.show(e.o.x, e.o.y) }, '📍 Arată')));
+          ch ? h('span', { class: 'pl-warn' }, ch.from ? `🔗 Întâi adu ${GOODS[ch.g].icon} ${low(ch.g)} de la ${ch.from.name} (${ch.d} plăci)` : `🔗 Îi lipsește ${low(ch.g)}, dar nimeni nu produce`) : null,
+          h('span', null, railText(e)), h('span', null, `🏗️ construcție ${e.cost ? money(e.cost) : '0 lei'}`), h('span', null, e.prod ? `💰 profit ${money(e.profit)}/lună` : '💰 profit abia după ce primește materii'))),
+      h('div', { class: 'btns' }, first ? h('button', { class: 'opt go', onclick: first }, `🔗 Întâi: ${low(ch.g)}`) : null, h('button', { class: 'opt' + (first ? '' : ' go'), onclick: pick }, first ? 'Aleg totuși asta' : 'Aleg asta'), h('button', { class: 'opt', onclick: () => c.env.show(e.o.x, e.o.y) }, '📍 Arată')));
   })];
 }
 

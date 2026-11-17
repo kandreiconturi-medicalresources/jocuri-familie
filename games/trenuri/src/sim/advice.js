@@ -41,7 +41,7 @@ export function industryAdvice(s, o) {
   let goto = null;
   const hasSt = s.stations.some((st) => near(st, o));
   const missing = t.in.filter((g) => o.in[g] <= 0);
-  if (missing.length) {
+  if (missing.length && !(o.made > 0 && t.out >= 0)) {
     const g = missing[0], src = nearestSource(s, o, g);
     lines.push(`${o.name} are nevoie de ${missing.map(low).join(' și ')}.`);
     if (src) {
@@ -60,11 +60,28 @@ export function industryAdvice(s, o) {
   }
   if (t.out >= 0) {
     if (!hasSt) { lines.push('Produce, dar nicio gară nu e aproape: marfa nu pleacă. Pune o gară lângă ea.'); return { lines, goto: { x: o.x, y: o.y, name: o.name }, ok: false }; }
-    const want = s.industries.find((q) => INDUSTRIES[q.type].in.includes(t.out)), cityWants = s.cities.some((c) => c.level >= 0 && (t.out === 3 || t.out === 5 || t.out === 9 || t.out === 11 || t.out === 13));
-    if (!want && !cityWants) lines.push(`Nimeni nu cere ${low(t.out)} pe hartă.`);
+    const out = outAdvice(s, o);
+    if (out.length) return { lines: out, goto: null, ok: false };
+    if (missing.length) return { lines: [`A prelucrat tot ce a primit (${o.made} în total). Mai adu ${missing.map(low).join(' și ')} ca să lucreze mai departe.`], goto: null, ok: true };
   }
   lines.push(t.in.length ? 'Are tot ce-i trebuie: lucrează.' : 'Produce singură.');
   return { lines, goto: null, ok: true };
+}
+
+/** Marfa gata de dus a unei industrii (cu gară aproape): de ce nu ajunge la nimeni. [] dacă totul e în regulă. */
+export function outAdvice(s, o) {
+  const g = INDUSTRIES[o.type].out, lines = [], sts = s.stations.filter((st) => near(st, o));
+  if (g < 0 || !sts.length) return lines;
+  const stock = sts.reduce((n, st) => n + st.cargo[g], 0), takers = s.stations.filter((q) => !sts.includes(q) && accepts(s, q, g));
+  if (!takers.length) {
+    lines.push(`Nicio gară a ta nu e lângă cineva care cere ${low(g)} (oraș sau fabrică). Pune o gară la un oraș care o vrea.`);
+    return lines;
+  }
+  const trs = s.trains.filter((q) => q.route.some((id) => sts.some((st) => st.id === id)) && q.route.some((id) => takers.some((st) => st.id === id)));
+  if (!trs.length) lines.push(`${stock > 0 ? `${stock} t de ${low(g)} așteaptă în gară, dar ` : ''}niciun tren nu o duce la ${takers[0].name}. Fă o rută între cele două gări!`);
+  else if (!trs.some((q) => q.kinds.includes(CAR_OF[g]))) lines.push(`Trenul ${trs[0].id} nu are vagoane de ${CAR_TYPES[CAR_OF[g]].name.toLowerCase()}, deci nu poate duce ${low(g)}. Schimbă-i vagoanele!`);
+  else if (stock > 0 && trs.every((q) => q.orders && !q.orders.some((x) => x.load && x.load.includes(g)))) lines.push(`Trenul ${trs[0].id} e pe Manual și nu încarcă ${low(g)}. Pune-l pe Automat!`);
+  return lines;
 }
 
 /** De ce un tren nu câștigă acum: [text] (gol dacă merge bine). */
