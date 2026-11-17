@@ -29,22 +29,25 @@ function trimGeo(name, color, loco) {
   return g;
 }
 
+/** Far: sprite luminos + fascicul pe sol (apar noaptea), la înălțimea y și în fața locomotivei la z. */
+export function addHeadlights(gr, y, z) {
+  if (!glowMat) {
+    glowMat = new SpriteMaterial({ map: softTexture(), color: 0xfff0c0, blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0, fog: false });
+    beamMat = new MeshBasicMaterial({ map: softTexture(), color: 0xffe9b0, blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0, side: DoubleSide });
+    beamGeo = new PlaneGeometry(2.6, 7); beamGeo.rotateX(-Math.PI / 2);
+  }
+  const sp = new Sprite(glowMat); sp.position.set(0, y, z); sp.scale.set(2.2, 2.2, 1); sp.userData.light = true; sp.visible = false;
+  const bm = new Mesh(beamGeo, beamMat); bm.position.set(0, 0.07, z + 3.45); bm.userData.light = true; bm.visible = false; bm.renderOrder = 4;
+  gr.add(sp, bm);
+}
+export const bodyMat = () => new MeshLambertMaterial({ vertexColors: true });
+
 /** Grup (scalat) pentru un model; loco = true adaugă far (sprite + fascicul pe sol). */
 export function carGroup(name, color, loco) {
   const gr = new Group(), on = perf.quality() >= 1;
   for (const p of getParts(name)) { const m = new Mesh(p.geo, p.mat); m.userData.cast = true; m.castShadow = on; gr.add(m); }
   gr.add(new Mesh(trimGeo(name, color, loco), stripeMat));
-  if (loco) {
-    const b = box(name);
-    if (!glowMat) {
-      glowMat = new SpriteMaterial({ map: softTexture(), color: 0xfff0c0, blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0, fog: false });
-      beamMat = new MeshBasicMaterial({ map: softTexture(), color: 0xffe9b0, blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0, side: DoubleSide });
-      beamGeo = new PlaneGeometry(2.6, 7); beamGeo.rotateX(-Math.PI / 2);
-    }
-    const sp = new Sprite(glowMat); sp.position.set(0, 0.62, b.z + 0.15); sp.scale.set(2.2, 2.2, 1); sp.userData.light = true; sp.visible = false;
-    const bm = new Mesh(beamGeo, beamMat); bm.position.set(0, 0.07, b.z + 3.6); bm.userData.light = true; bm.visible = false; bm.renderOrder = 4;
-    gr.add(sp, bm);
-  }
+  if (loco) addHeadlights(gr, 0.62, box(name).z + 0.15);
   gr.scale.setScalar(SCALE);
   gr.rotation.order = 'YXZ';
   return gr;

@@ -37,15 +37,4 @@ function startAmbient() {
 export function setAmbient(on) { ambWanted = !!on; if (on) startAmbient(); else stopAmbient(); }
 export function unlock() { unlockAudio(); if (ambWanted) startAmbient(); }
 
-const last = new Map();
-let lastAt = -9;
-/** Fluier la plecare, clopoțel la sosire (după schimbarea stării trenului); cel mult un sunet la 0,6 s. */
-export function trainSounds(s, clock) {
-  for (const t of s.trains) {
-    const p = last.get(t.id);
-    last.set(t.id, t.state);
-    if (p === undefined || p === t.state || clock - lastAt < 0.6) continue;
-    if (t.state === 1) { sfx('whistle'); lastAt = clock; } else if (t.state === 2 && p === 1) { sfx('bell'); lastAt = clock; }
-  }
-}
-export const resetSounds = () => last.clear();
+export { trainSounds, configureTrainSounds, resetTrainSounds as resetSounds } from './audio/trainSounds.js'; // fluier/corn, roți, clinchet (vezi audio/)
