@@ -96,7 +96,7 @@ export function createExtraTools(c) {
     a = null;
   }
   return {
-    ids, has: (id) => ids.includes(id),
+    ids, has: (id) => ids.includes(id), thru,
     reset() { a = null; hov = null; lastParcel = ''; shp.reset(); thru.reset(); },
     paint,
     hover(id, t) {

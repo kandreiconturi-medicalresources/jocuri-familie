@@ -75,7 +75,7 @@ export function bindPointer(canvas, camera, pickTile, h) {
     ptr.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false, btn: e.button });
     if (ptr.size === 2) { clearHold(); pinched = true; stopDrag(true, e.pointerType === 'touch'); pinch = two(); for (const p of ptr.values()) p.moved = true; return; }
     if (ptr.size > 2) return;
-    if (e.pointerType === 'mouse' && e.button !== 0) { if (h.rightClick && h.rightClick()) return; rotMouse = true; return; }
+    if (e.pointerType === 'mouse' && e.button !== 0) { rotMouse = true; return; } // tras = rotire; clic simplu = anulează sau meniu (la ridicare)
     if (h.wantsDrag()) {
       const t = tileOf(e), touch = e.pointerType === 'touch';
       if (!t) return;
@@ -124,7 +124,10 @@ export function bindPointer(canvas, camera, pickTile, h) {
     if (drag) { mods = { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey }; drain(); drag = null; lastPx = null; h.dragEnd(tileOf(e, true) || lastT, p.moved); return; }
     if (rotMouse && ptr.size === 0) {
       rotMouse = false;
-      if (!p.moved && p.btn === 2 && h.context && e.type === 'pointerup') { const t = tileOf(e); if (t) h.context(t, e.clientX, e.clientY); } // clic dreapta fără tragere = meniul
+      if (!p.moved && p.btn === 2 && e.type === 'pointerup') { // clic dreapta fără tragere: întâi anulează ce e în lucru, altfel meniul
+        if (h.rightClick && h.rightClick()) return;
+        const t = tileOf(e); if (t && h.context) h.context(t, e.clientX, e.clientY);
+      }
       return;
     }
     if (!p.moved && e.type === 'pointerup' && p.btn === 0) {
