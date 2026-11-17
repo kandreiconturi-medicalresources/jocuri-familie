@@ -28,7 +28,7 @@ export function createTools(ctx) {
   }
   function subBar() {
     const h = hud();
-    if (o.tool === 'station') h.stationOpts(o.size, (i) => { o.size = i; subBar(); if (i === 2) h.hint('Terminalul mare are linii terminale, service și macara. Are nevoie de 4×5 plăci libere lângă gară (verde = merge). 🔄 sau R îl rotește.', false, 7000); }, turn);
+    if (o.tool === 'station') h.stationOpts(o.size, (i) => { o.size = i; subBar(); if (i === 2) h.hint('Terminalul mare are linii terminale, service și macara. Are nevoie de 4×5 plăci libere lângă gară (verde = merge). 🔄 sau R îl rotește.', false, 7000); }, turn, () => api.setTool('thru'));
     else if (o.tool === 'train') {
       if (ctx.assist && ctx.assist.open()) { h.setSub([]); return; } // cu asistentul deschis, alegerile sunt în el
       const av = availableModels(S().date.y);
