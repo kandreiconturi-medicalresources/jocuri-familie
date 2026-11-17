@@ -68,6 +68,7 @@ export function contextOptions(s, t, hit, me) {
   if (hit.industry || hit.city) {
     out.push(O(hit.industry ? 'infoIndustry' : 'infoCity', 'ℹ️', 'Info'));
     if (hit.city || INDUSTRIES[hit.industry.type].out >= 0) out.push(O('plan', '🧭', 'Planifică ruta'));
+    if (hit.city) out.push(O('thru', '🏙️', 'Gară mare în oraș', '2–10 linii'));
     if (!s.occ[t.y * s.w + t.x]) out.push(...landOptions(s, t, me));
     return out;
   }

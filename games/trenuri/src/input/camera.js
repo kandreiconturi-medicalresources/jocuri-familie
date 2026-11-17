@@ -25,12 +25,12 @@ export function createCamera(stage, size) {
       cam.z += s * dx * k + (-c) * dy * k / Math.sin(cam.pitch);
       apply();
     },
-    rotate(a) { cam.yaw += a; apply(); },
+    rotate(a) { const cl = stage.classic; if (cl && cl.on && cl.turn) { cl.turn(a); return; } cam.yaw += a; apply(); }, // vederea clasică/2D își ține singură unghiul
     zoom(f) { cam.dist *= f; apply(); },
     /** Zoom + rotire + mutare ancorate: punctul de teren de sub (px0,py0) rămâne sub (px1,py1). Fără asta, zoom-ul se face față de centrul ecranului și harta "alunecă" de sub degete. */
     gesture(at, px0, py0, px1, py1, f, da) {
       const p = api.pick(px0, py0, at);
-      cam.dist *= f; cam.yaw += da; apply();
+      cam.dist *= f; if (da) api.rotate(da); apply();
       for (let i = 0; p && i < 3; i++) {
         const q = api.pick(px1, py1, at);
         if (!q) break;

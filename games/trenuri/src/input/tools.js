@@ -120,11 +120,12 @@ export function createTools(ctx) {
     isAnchor: (t) => anchorNear(S(), t.fx, t.fz),
     holdRing(t) { const v = ctx.view(); if (v && v.ghost) v.ghost.ring(0, t); },
     /** Clic dreapta în timpul trasării: anulează. true = consumat. */
-    rightClick() { return o.tool === 'track' && track.rightClick(); },
+    rightClick() { return o.tool === 'thru' ? extra.thru.cancel() : o.tool === 'track' && track.rightClick(); },
     dragEnd(t, moved) { if (o.tool === 'track') track.dragEnd(t, moved); },
     dragCancel() { if (o.tool === 'track') track.dragCancel(); },
     key(e) {
       if (o.tool === 'station' && o.size === 2 && (e.key === 'r' || e.key === 'R')) { turn(); return true; }
+      if (o.tool === 'thru' && extra.thru.armed()) { if (e.key === 'Enter') { extra.thru.build(); return true; } if (e.key === 'Escape') return extra.thru.cancel(); }
       return o.tool === 'track' ? track.key(e.key) : false;
     },
     hover(t) {

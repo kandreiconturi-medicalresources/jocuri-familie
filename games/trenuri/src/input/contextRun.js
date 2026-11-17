@@ -27,7 +27,7 @@ export function createContextRun(env) {
     switch (id) {
       case 'track': tools.startTrack(t); break;
       case 'station': tools.choose({ tool: 'station', size: tools.state.size === 2 ? 1 : tools.state.size }); tools.tap(t); break;
-      case 'thru': tools.setTool('thru'); env.hud && env.hud.hint('🏙️ Alege câte linii (jos), apoi atinge orașul: auriu = locul găsit, atinge din nou ca să construiești.', false, 7000); break;
+      case 'thru': tools.setTool('thru'); tools.tap(t); break; // alege direct locul de lângă placă; rămâne doar ✅ Construiește (sau alt număr de linii)
       case 'terminal': tools.choose({ tool: 'station', size: 2 }); tools.tap(t); break;
       case 'infoTrain': case 'infoShip': case 'infoDepot': case 'infoStation': case 'infoIndustry': case 'infoCity': tools.infoAt(t); break;
       case 'trainFrom': env.extras.buy({ stops: [hit.station.id] }); break;

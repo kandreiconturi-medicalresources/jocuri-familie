@@ -4,7 +4,7 @@ import { MathUtils } from 'three';
 
 const K = 10, LOOKS = { classic: { pitch: 0.62, yaw: Math.PI / 4 }, flat: { pitch: 1.5, yaw: 0 } };
 export function createClassic(camera) {
-  let mode = 'off', step = 0, yaw = Math.PI / 4, pitch = 0.62, goal = yaw, camObj = null, btn = null;
+  let acc = 0, mode = 'off', step = 0, yaw = Math.PI / 4, pitch = 0.62, goal = yaw, camObj = null, btn = null;
   const fov = camera.fov, eff = 2 * Math.atan(Math.tan(MathUtils.degToRad(fov) / 2) / K) * 180 / Math.PI, near = camera.near, far = camera.far;
   const upd = camera.updateProjectionMatrix.bind(camera), look = camera.lookAt.bind(camera);
   const isOn = () => mode !== 'off';
@@ -54,6 +54,12 @@ export function createClassic(camera) {
   let n = 0;
   return {
     get K() { return isOn() ? K : 1; }, get on() { return isOn(); }, get mode() { return mode; }, setMode, bind(c) { camObj = c; },
+    /** Rotire din mouse / degete / Q-E: în vederea clasică merge în pași de 90° (după ce tragi destul), în 2D liber. */
+    turn(a) {
+      if (mode === 'flat') { goal = yaw = yaw + a; apply(); return; }
+      acc += a;
+      if (Math.abs(acc) >= 0.7) { step += acc > 0 ? 1 : -1; acc = 0; goal = Math.PI / 4 + step * Math.PI / 2; }
+    },
     set: (v) => setMode(v ? 'classic' : 'off'), toggle: () => setMode(mode === 'classic' ? 'off' : 'classic'),
     /** O dată pe cadru: rotire animată între unghiuri; butoanele se ascund în meniu (demo). */
     tick() {
