@@ -3,10 +3,12 @@ import { resolveHit, contextOptions } from './contextTool.js';
 import { createContextMenu } from '../ui/contextMenu.js';
 import { INDUSTRIES } from '../sim/goods.js';
 import { viewer } from '../sim/viewer.js';
+import { decorate, KINDS } from './pendingBuild.js';
+import { lei } from '../ui/hud.js';
 
 const TOOL_OF = { port: 'port', depot: 'depot', level: 'level', platform: 'platform', land: 'land' };
 
-/** env: { root, state(), view(), tools, panels, exec(cmd), extras, isl, hud } */
+/** env: { root, state(), view(), tools, panels, exec(cmd), extras, isl, hud, pending } — construcțiile pornesc o „construcție în așteptare” cu bară de confirmare (7.8). */
 export function createContextRun(env) {
   const menu = createContextMenu(env.root), { tools, panels } = env;
   const find = {
@@ -20,6 +22,7 @@ export function createContextRun(env) {
 
   function run(id, t, hit) {
     const s = env.state();
+    if (KINDS.includes(id) && env.pending) { env.pending.start(id, t); return; }
     if (TOOL_OF[id]) { tools.setTool(TOOL_OF[id]); tools.tap(t); return; }
     switch (id) {
       case 'track': tools.startTrack(t); break;
@@ -48,7 +51,7 @@ export function createContextRun(env) {
     open(t, px, py) {
       const s = env.state(), v = env.view();
       if (!s || !v || !t) return false;
-      const hit = resolveHit(s, t, find), opts = contextOptions(s, t, hit, viewer.co);
+      const hit = resolveHit(s, t, find), opts = decorate(s, viewer.co, t, contextOptions(s, t, hit, viewer.co), lei);
       panels.close();
       return menu.open(px, py, titleOf(s, t, hit), opts, (id) => run(id, t, hit));
     },

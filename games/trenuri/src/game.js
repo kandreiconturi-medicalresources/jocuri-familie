@@ -22,6 +22,7 @@ import { mountExtraTools } from './ui/tools-extra.js';
 import { mountMobileControls } from './ui/mobileControls.js';
 import { createIslandUi } from './ui/islandUi.js';
 import { createContextRun } from './input/contextRun.js';
+import { createPendingRun } from './input/pendingRun.js';
 import { createFlatIcons } from './ui/flatIcons.js';
 import { look, setLook, onLook, MODES } from './render/look.js';
 import { simStepCap, renderNeeded } from '../../../shared/engine/pace.js';
@@ -71,7 +72,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const setSpeed = (v) => { speed = v; hud.setSpeed(v); };
   const hud = createHud(uiRoot, {
     speed: (v) => (np.active ? np.setSpeed(v) : setSpeed(v)),
-    tool: (id) => (id === 'train' && s && s.stations.length >= 2 && !tutorial.active ? extras.buy() : tools.setTool(id)),
+    tool: (id) => (pend.cancel(), id === 'train' && s && s.stations.length >= 2 && !tutorial.active ? extras.buy() : tools.setTool(id)),
     news: () => panels.news(s),
     layer: () => {
       const on = !view.links.visible;
@@ -106,7 +107,14 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     if (say) hud.hint(VIEWS[m][1], false, 3500);
   }
   onLook(() => { wokeAt = performance.now(); });
-  const ctxRun = createContextRun({ root: uiRoot, state: () => s, view: () => view, tools, panels, exec, extras, isl, hud });
+  const pend = createPendingRun({ root: uiRoot, state: () => s, view: () => view, tools, hud, exec });
+  const ctxRun = createContextRun({ root: uiRoot, state: () => s, view: () => view, tools, panels, exec, extras, isl, hud, pending: pend });
+  /** „Confirmă construcțiile” (☰): unealta normală cere confirmare înainte să construiască. */
+  const confirmTap = (t) => {
+    if (!prefs.get('confirmBuild') || tutorial.active || mode === 'demo') return false;
+    const k = tools.state.tool, kind = k === 'station' ? (tools.state.size === 2 ? 'terminal' : 'station') : ['depot', 'port', 'land'].includes(k) ? k : null;
+    return !!kind && pend.start(kind, t);
+  };
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -128,11 +136,11 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     if (clamp) { x = Math.max(0, Math.min(s.w - 1, x)); y = Math.max(0, Math.min(s.h - 1, y)); }
     return x < 0 || y < 0 || x >= s.w || y >= s.h ? null : { x, y, fx: p.fx, fz: p.fz };
   };
-  addEventListener('keydown', (e) => { if (e.target.tagName !== 'INPUT' && s && !orbit && tools.key(e)) e.preventDefault(); });
+  addEventListener('keydown', (e) => { if (e.target.tagName !== 'INPUT' && s && !orbit && (pend.key(e) || tools.key(e))) e.preventDefault(); });
   bindPointer(canvas, camera, pickTile, {
     groundAt: (x, z) => (view ? view.ground.at(x, z) : 0),
-    wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit && !ctxRun.swallow()) tools.tap(t); }, context: (t, x, y) => { if (!orbit) ctxRun.open(t, x, y); }, hover: (t) => { if (!orbit) tools.hover(t); },
-    dragStart: (t) => tools.dragStart(t), dragMove: (t, m) => tools.dragMove(t, m), dragFlush: () => tools.dragFlush(), dragAbort: () => tools.dragAbort(), touchMode: () => tools.touchMode(), isAnchor: (t) => tools.isAnchor(t), holdRing: (t) => tools.holdRing(t), rightClick: () => !orbit && tools.rightClick(), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
+    wantsDrag: () => !orbit && !pend.active() && tools.wantsDrag(), tap: (t) => { if (orbit || ctxRun.swallow()) return; if (pend.active()) pend.tap(t); else if (!confirmTap(t)) tools.tap(t); }, context: (t, x, y) => { if (!orbit) ctxRun.open(t, x, y); }, hover: (t) => { if (orbit) return; if (pend.active()) pend.hover(t); else tools.hover(t); },
+    dragStart: (t) => tools.dragStart(t), dragMove: (t, m) => tools.dragMove(t, m), dragFlush: () => tools.dragFlush(), dragAbort: () => tools.dragAbort(), touchMode: () => tools.touchMode(), isAnchor: (t) => tools.isAnchor(t), holdRing: (t) => tools.holdRing(t), rightClick: () => !orbit && (pend.cancel() || tools.rightClick()), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
   });
   // tap în afara panoului (pe hartă) închide cardul deschis
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
@@ -193,6 +201,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     camera, get state() { return s; }, get view() { return view; }, hud, helper, prefs, get mode() { return mode; },
     setWorld(state, { demo = false, kind = 'normal', keep = false, resync = false } = {}) {
       if (!keep) np.stop();
+      pend.cancel();
       if (view) view.dispose();
       if (endUi) { endUi.close(); endUi = null; }
       tutorial.stop(true);

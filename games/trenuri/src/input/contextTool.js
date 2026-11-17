@@ -21,6 +21,8 @@ export function resolveHit(s, t, find) {
 
 const O = (id, icon, label, sub) => ({ id, icon, label, sub: sub || '' });
 
+const coastal = (s, t) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const x = t.x + dx, y = t.y + dy; return x >= 0 && y >= 0 && x < s.w && y < s.h && s.water[y * s.w + x]; });
+
 /** Opțiunile de pe teren liber (și lângă oraș/industrie, pe plăci neocupate). */
 function landOptions(s, t, me) {
   const i = t.y * s.w + t.x, out = [];
@@ -28,6 +30,8 @@ function landOptions(s, t, me) {
   out.push(O('track', '🛤️', 'Șină de aici'), O('station', '🚉', 'Gară'), O('terminal', '🏛️', 'Terminal mare'));
   if (s.islands && dockOf(s, t.x, t.y) >= 0 && tileOwner(s, t.x, t.y) === me) out.push(O('port', '⚓', 'Port'));
   if (depotSpot(s, i)) out.push(O('depot', '🏭', 'Depou', 'capăt de linie'));
+  if (s.track[i] & 0x4000) out.push(O('signal', '🚦', 'Semnal')); // T_PRESENT
+  if (coastal(s, t)) out.push(O('bridge', '🌉', 'Pod mare', 'de pe mal'));
   out.push(O('level', '⛏️', 'Nivelare'));
   if (s.islands) { const p = parcelInfo(s, { id: me }, t.x >> 2, t.y >> 2); if (p.ok) out.push(O('land', '🏠', 'Cumpără teren')); }
   return out;

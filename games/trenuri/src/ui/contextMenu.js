@@ -4,15 +4,16 @@ import { h } from '../../../../shared/ui/dom.js';
 export function createContextMenu(root) {
   let el = null, off = null, outAt = -1e9;
   const close = () => { if (!el) return; el.remove(); el = null; if (off) { off(); off = null; } };
-  /** options: [{ id, icon, label, sub?, danger? }] · onPick(id). Butoanele „Vinde” cer o a doua atingere. */
+  /** options: [{ id, icon, label, sub?, danger?, off? }] (off = motivul pentru care nu merge) · onPick(id). Butoanele „Vinde” cer o a doua atingere. */
   function open(x, y, title, options, onPick) {
     close();
     if (!options.length) return false;
     const btns = options.map((o) => {
-      const b = h('button', { class: 'cm-b' + (o.danger ? ' no' : ''), type: 'button' }, h('span', { class: 'cm-i' }, o.icon), h('span', { class: 'cm-t' }, o.label), o.sub ? h('small', null, o.sub) : null);
+      const b = h('button', { class: 'cm-b' + (o.danger ? ' no' : '') + (o.off ? ' off' : ''), type: 'button', title: o.off || '', 'aria-disabled': o.off ? 'true' : null }, h('span', { class: 'cm-i' }, o.icon), h('span', { class: 'cm-t' }, o.label), o.off || o.sub ? h('small', null, o.off || o.sub) : null);
       let armed = false;
       b.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (o.off) return; // nu se poate: motivul e scris pe buton
         if (o.danger && !armed) { armed = true; b.classList.add('arm'); b.querySelector('.cm-t').textContent = 'Sigur?'; setTimeout(() => { armed = false; b.classList.remove('arm'); b.querySelector('.cm-t').textContent = o.label; }, 2500); return; }
         close(); onPick(o.id);
       });
