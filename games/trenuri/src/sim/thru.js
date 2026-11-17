@@ -83,10 +83,14 @@ export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1) {
     const tx = x + f.ax * a, ty = y + f.ay * a;
     if (tx >= 0 && ty >= 0 && tx < w && ty < s.h && (s.track[ty * w + tx] & T_PRESENT)) a < 0 ? lay.unshift([tx, ty]) : lay.push([tx, ty]);
   }
-  const fan = fanPaths(s, x, y, dir, A, rowsOf(n), by >= 0 ? by : (s.track[i0] >> T_OWNER_SHIFT) & 7, h0); // intrări separate la capete
+  const fr = fanPaths(s, x, y, dir, A, rowsOf(n), by >= 0 ? by : (s.track[i0] >> T_OWNER_SHIFT) & 7, h0, { house: (i) => !!houseAt(s, i), center, levelMax: LEVEL_MAX }); // intrări separate la capete
+  const fan = fr.paths, done = new Set(houses);
+  for (const [tx, ty] of fan.flat()) { const i = ty * w + tx; if (s.occ[i] && !done.has(i)) { done.add(i); demolish(i); } } // casele din calea intrărilor se mută
+  const flv = fr.levels.filter(([i]) => !lvl.includes(i)); // pe deal intrările urcă treptat: nivelare plătită
+  for (const [i, hh] of flv) vol += Math.abs(s.height[i] - hh);
   const seen = new Set();
   for (const [tx, ty] of [...lay, ...fan.flat()]) { const i = ty * w + tx; if (!(s.track[i] & T_PRESENT)) seen.add(i); }
-  return { ok: true, houses, pay, dir, n, lvl, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, fan, layCost: seen.size * COST.tile };
+  return { ok: true, houses, pay, dir, n, lvl, flv, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, fan, layCost: seen.size * COST.tile };
 }
 
 /** Prima direcție bună (cele mai puține case dărâmate), după linia care trece prin placă. null dacă nu încape. */
@@ -120,9 +124,10 @@ function claim(s, st, p) {
   const gone = new Set(p.houses);
   if (gone.size) for (const c of s.cities) { const n0 = c.buildings.length; c.buildings = c.buildings.filter((b) => !gone.has(b[1] * s.w + b[0])); if (c.buildings.length !== n0) s.dirty.cities = true; }
   for (const i of gone) s.occ[i] = 0;
-  if (p.lvl && p.lvl.length) {
-    for (const i of p.lvl) s.height[i] = p.h0;
-    const xs = p.lvl.map((i) => i % s.w), ys = p.lvl.map((i) => (i / s.w) | 0);
+  const all = [...(p.lvl || []).map((i) => [i, p.h0]), ...(p.flv || [])];
+  if (all.length) {
+    for (const [i, hh] of all) s.height[i] = hh;
+    const xs = all.map(([i]) => i % s.w), ys = all.map(([i]) => (i / s.w) | 0);
     markTerrain(s, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
   }
   if (p.lay && p.lay.length > 1) layPath(s, p.lay, { id: st.owner });
@@ -168,8 +173,11 @@ export function thruInfo(s, by, x, y, n, dir) {
 /** Cel mai bun loc din jurul plăcii atinse (rază 5): întâi placa însăși, apoi cel mai ieftin, cu preferință pentru aproape. */
 export function thruNear(s, by, x, y, n, R = 5) {
   const here = thruInfo(s, by, x, y, n);
-  if (here.ok) return { ...here, x, y };
   let best = null, bs = Infinity;
+  if (here.ok) { // placa atinsă are un mic avantaj, dar nu dacă în jur e un loc cu mai multe intrări
+    const ci = cityOf(s, x, y), cd = ci >= 0 ? Math.max(Math.abs(s.cities[ci].x - x), Math.abs(s.cities[ci].y - y)) : 9;
+    best = { ...here, x, y }; bs = here.cost + cd * 2500 + (8 - here.fan.length) * 2500 - 1000;
+  }
   for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
     const tx = x + dx, ty = y + dy;
     if ((!dx && !dy) || !inMap(s, tx, ty)) continue;
@@ -178,7 +186,7 @@ export function thruNear(s, by, x, y, n, R = 5) {
     const r = thruInfo(s, by, tx, ty, n);
     if (!r.ok) continue;
     const ci = cityOf(s, tx, ty), cd = ci >= 0 ? Math.max(Math.abs(s.cities[ci].x - tx), Math.abs(s.cities[ci].y - ty)) : 9;
-    const score = r.cost + cd * 2500 + Math.max(Math.abs(dx), Math.abs(dy)) * 300 + (t & T_PRESENT ? 0 : 1500); // cât mai în oraș
+    const score = r.cost + cd * 2500 + Math.max(Math.abs(dx), Math.abs(dy)) * 300 + (t & T_PRESENT ? 0 : 1500) + (8 - (r.fan ? r.fan.length : 0)) * 2500; // cât mai în oraș, cu intrări la ambele capete
     if (score < bs) { bs = score; best = { ...r, x: tx, y: ty }; }
   }
   return best || here;
