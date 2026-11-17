@@ -2,6 +2,12 @@
 
 Joc de strategie original cu trenuri și orașe (gen tycoon feroviar): construiești cale ferată, gări și trenuri, transporți pasageri și mărfuri, iar orașele cresc. Grafică 3D low-poly (Three.js, modele Kenney CC0 în `public/models/trenuri/<kit>/`, cu texturile în `Textures/`). Se joacă pe PC, telefon și tabletă, singur sau în rețea (cooperativ și competitiv). Planul complet al fazei e în `docs/ROADMAP.md` (Faza 6, etapele 6.1–6.5).
 
+## Grafică Ultra (doar PC)
+Comutator „✨ Grafică Ultra (PC)” în ☰ Meniu; activ doar la calitatea 2, fără Modul răcoros, în 3D/clasic, niciodată pe telefon (`ultraOn()` în `render/look.js`). Se oprește singur dacă FPS-ul scade.
+- `render/ultra.js`: post-procesare (GTAO doar pe obiecte solide, bloom, SMAA); scena se desenează în țintă ca pe ecran, ca transparențele să arate la fel.
+- `render/terrainUltra.js`: iarbă/stâncă/nisip amestecate per pixel (atributul `tw`), relief din textură. `render/waterUltra.js`: apă cu valuri, Fresnel, sclipiri, adâncime și spumă.
+- `render/ultraAssets.js`: modelele Ultra se încarcă abia la prima pornire: `cars/` (Car Kit), `cityroads/` (City Kit Roads), specii în plus în `nature/` (Nature Kit). `render/cars.js` (mașini decorative pe drumuri), `render/streets.js` (felinare și semafoare), `forest.js` cu `ultra = true`.
+
 ## Module
 | Folder | Rol |
 |---|---|
