@@ -3,7 +3,7 @@
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3, Euler } from 'three';
 import { MODELS } from '../sim/consts.js';
 import { CAR_TYPES } from '../sim/goods.js';
-import { poseAt, travelled } from './pose.js';
+import { poseAt, travelled, stubPath, cumOf } from './pose.js';
 import { carGroup, setNight } from './trainParts.js';
 import { vehicle } from './trainMeshes.js';
 import { createSmoke } from './smoke.js';
@@ -90,13 +90,13 @@ export function createTrains(s, g, camera) {
         if (!it) continue;
         it.group.visible = t.state !== 3; // la depou sau cuplat la remorcă: nu se vede
         if (t.state === 3) continue;
-        let path = t.path;
+        let path = t.path, stub = false;
         if (path.length < 2) {
           const st = s.stations.find((z) => z.id === t.to);
-          if (st) { if (!it.stub || it.stubId !== st.id) { it.stub = [st.y * s.w + st.x]; it.stubId = st.id; } path = it.stub; }
+          if (st) { path = stubPath(s, st); stub = path.length > 1; }
           else if (!path.length) continue; // remorca stă pe placa depoului: path are o placă
         }
-        const d = it.prev + (it.cur - it.prev) * alpha, moving = it.cur !== it.prev;
+        const d = stub ? cumOf(s, path)[1] : it.prev + (it.cur - it.prev) * alpha, moving = it.cur !== it.prev;
         it.parts.forEach((p, k) => {
           const dd = d - k * CAR_GAP, o = poseAt(s, g, path, dd), yaw = o.yaw, pitch = o.pitch, ox = o.x, oy = o.y, oz = o.z;
           let roll = 0;

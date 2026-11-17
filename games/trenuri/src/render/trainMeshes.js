@@ -1,6 +1,6 @@
 // Trenuri procedurale: o singură geometrie îmbinată per vehicul (locomotivă pe model, vagon pe tip), cu culoarea
 // companiei în livrea; geometriile se memorează după model + culoare. Dacă ceva eșuează, trains.js folosește modelele glb.
-import { Group, Mesh, MeshBasicMaterial, DoubleSide } from 'three';
+import { Group, Mesh, MeshBasicMaterial } from 'three';
 import { Builder } from './geo.js';
 import { MODELS } from '../sim/consts.js';
 import { steam, STEAM } from './locoSteam.js';
@@ -31,7 +31,7 @@ export function vehicle(kind, id, color) {
   try {
     if (kind === 'loco' && !MODELS[id]) return null;
     const v = build(kind, id, color), gr = new Group(), on = perf.quality() >= 1;
-    if (!solid) { solid = bodyMat(); solid.side = DoubleSide; lampMat = new MeshBasicMaterial({ vertexColors: true }); }
+    if (!solid) { solid = bodyMat(); lampMat = new MeshBasicMaterial({ vertexColors: true }); }
     const m = new Mesh(v.geo, solid); m.userData.cast = true; m.castShadow = on; gr.add(m);
     if (v.lamps) gr.add(new Mesh(v.lamps, lampMat));
     if (kind === 'loco') addHeadlights(gr, 0.6, 1.45);

@@ -1,7 +1,7 @@
 // Călători pe peroane (doar vizual, Math.random e permis aici): mulțime în așteptare după pasagerii din gară, oameni care coboară din ușile
 // vagoanelor de pasageri spre clădire / pasaj și oameni care urcă. Geometria peroanelor vine din stationLayout.js (aceeași ca la desenare).
 import { Group, Quaternion, Matrix4, Vector3, Euler, Color } from 'three';
-import { poseAt, travelled } from './pose.js';
+import { poseAt, travelled, stubPath, cumOf } from './pose.js';
 import { layoutOf } from './stationLayout.js';
 import { makePeopleMeshes, CLOTHES, SKINS } from './peopleGeo.js';
 import { look } from './look.js';
@@ -17,8 +17,10 @@ export function createPeople(s, g, camera) {
   root.add(body, skin);
   for (let i = 0; i < MAX; i++) P.push({ on: false });
   let mt = 0, time = 0;
-  const cap = () => (look.mode === 'classic' ? 0 : look.phone || look.cool ? 80 : perf.quality() < 1 ? 40 : MAX);
+  const cap = () => (look.mode === '2d' ? 0 : look.phone || look.cool ? 80 : perf.quality() < 1 ? 40 : MAX);
   const total = () => { let n = 0; for (const p of P) if (p.on) n++; return n; };
+  /** Înălțimea peronului clădirii în dreptul lui u (urmărește treptele terenului, ca la desenare). */
+  const baseY = (p) => { const L = p.L; if (!L.pieces || p.pl !== L.plats[0]) return p.y0; const pc = L.pieces.find((q) => q.i === Math.round(p.u / L.l)); return pc ? g.tileY(pc.x, pc.y) : p.y0; };
   const clamp = (pl, u) => Math.max(pl.u0, Math.min(pl.u1, u));
 
   function make(st, L, pl, u, v, delay) {
@@ -40,7 +42,7 @@ export function createPeople(s, g, camera) {
   /** Poziția (în u, de-a lungul peronului) a vagonului i (0 = primul după locomotivă). */
   function carU(t, st, L, lane, i) {
     if (L.big && lane > 0) return 1.2 - ((i + 1) * CAR_GAP) / 256; // la fel ca în trains.js (bays)
-    const path = t.path.length > 1 ? t.path : [st.y * s.w + st.x], o = poseAt(s, g, path, travelled(s, t) - (i + 1) * CAR_GAP);
+    const moving = t.path.length > 1, path = moving ? t.path : stubPath(s, st), d = moving ? travelled(s, t) : path.length > 1 ? cumOf(s, path)[1] : 0, o = poseAt(s, g, path, d - (i + 1) * CAR_GAP);
     return (o.x - L.ox) * L.ax + (o.z - L.oz) * L.az;
   }
   function arrive(t, st, L) {
@@ -65,17 +67,17 @@ export function createPeople(s, g, camera) {
     }
   }
   function manage() {
-    const c = cap(), cnt = new Map(), cp = camera.position;
+    const c = cap(), cnt = new Map(), cp = camera.position, k = look.mode === '3d' ? 1 : 0.1; // în vederea clasică/2D camera e depărtată de 10 ori, cu FOV mic
     for (const st of s.stations) {
-      const d = Math.hypot(cp.x - st.x - 0.5, cp.y, cp.z - st.y - 0.5);
+      const d = k * Math.hypot(cp.x - st.x - 0.5, cp.y, cp.z - st.y - 0.5);
       if (d < ON_D) near.add(st.id); else if (d > OFF_D) near.delete(st.id);
     }
     for (const p of P) if (p.on) { if (!near.has(p.sid) || c === 0) p.on = false; else if (p.fate === 'idle') cnt.set(p.sid, (cnt.get(p.sid) || 0) + 1); }
     let tot = total();
     for (const st of s.stations) {
       if (!near.has(st.id) || st.port || c === 0) continue;
-      const L = layoutOf(s, st), pass = st.waiting ? st.waiting.pass | 0 : 0, mx = st.big ? 16 : 4 + 2 * L.plats.length;
-      const want = Math.min(mx, pass > 0 ? 1 + ((pass / 6) | 0) : 0), n = cnt.get(st.id) || 0;
+      const L = layoutOf(s, st), pass = st.waiting ? st.waiting.pass | 0 : 0, mx = st.big ? 22 : 6 + 3 * L.plats.length, base = (st.size >= 1 || st.big ? 3 : 1) + 2 * L.plats.length;
+      const want = Math.min(mx, Math.max(base, pass > 0 ? 1 + ((pass / 4) | 0) : 0)), n = cnt.get(st.id) || 0;
       if (n < want && tot < c && rnd() < 0.7) { spawnIdle(st, L); tot++; }
       else if (n > want + 1) { const p = P.find((q) => q.on && q.sid === st.id && q.fate === 'idle'); if (p) goTo(p, [p.pl.exit], 0.22, 'gone'); }
     }
@@ -117,8 +119,8 @@ export function createPeople(s, g, camera) {
         if (p.delay > 0) { p.delay -= dt; continue; }
         const walking = move(p, dt);
         if (p.fade > 0) { p.sc -= dt * 3; if (p.sc <= 0) { p.on = false; continue; } } else if (p.sc < 1) p.sc = Math.min(1, p.sc + dt * 4);
-        const L = p.L, sw = Math.sin(time * 9 + p.ph), s0 = p.sc * p.h;
-        vv.set(L.ox + L.ax * p.u + L.bx * p.v, p.y0 + p.pl.top + (walking ? Math.abs(sw) * 0.007 : 0), L.oz + L.az * p.u + L.bz * p.v);
+        const L = p.L, sw = Math.sin(time * 9 + p.ph), s0 = p.sc * p.h * 1.5;
+        vv.set(L.ox + L.ax * p.u + L.bx * p.v, baseY(p) + p.pl.top + (walking ? Math.abs(sw) * 0.007 : 0), L.oz + L.az * p.u + L.bz * p.v);
         qq.setFromEuler(ee.set(0, p.yaw, walking ? sw * 0.07 : 0));
         m4.compose(vv, qq, ss.set(s0, s0, s0));
         body.setMatrixAt(nb, m4); skin.setMatrixAt(nb, m4);

@@ -1,52 +1,45 @@
-// Gări normale: linii paralele cu peroane insulă între ele (de partea opusă clădirii), copertine, bănci, felinare, ceasuri, intrări în pasaj; plus macazurile (plăci cu >2 legături).
+// Gări normale: peronul clădirii, lung cât plăcile drepte vecine, cu copertine, bănci, felinare, ceasuri; linii suplimentare cu peroane insulă și pasarelă (stationExtras.js); plus macazurile.
 import { Group, Mesh, MeshLambertMaterial } from 'three';
 import { DX, DY, T_PRESENT } from '../sim/consts.js';
 import { Builder } from './geo.js';
-import { platformsOf, stationFrame, STEP, EXT, halfLen, topOf } from './stationLayout.js';
-import { bench, lamp, clock, stairs, canopy } from './stationProps.js';
+import { platformsOf, stationFrame, topOf } from './stationLayout.js';
+import { planOf } from './stationPlan.js';
+import { bench, lamp, clock, canopy } from './stationProps.js';
+import { extras } from './stationExtras.js';
 
 export { platformsOf, stationFrame };
 const lam = new MeshLambertMaterial({ vertexColors: true });
-
-/** Linie suplimentară (decor) la distanța v de axă, cu pat de balast, șine și opritoare la capete. */
-function extraTrack(B, W, y0, hl, v) {
-  const P = (u, dv, y) => { const [x, z] = W(u, v + dv); return [x, y, z]; };
-  B.ribbon([P(-hl, 0, y0), P(hl, 0, y0)], 0.12, -0.03, 0.03, '#9d9385', '#7d7468');
-  for (const r of [-0.06, 0.06]) B.ribbon([P(-hl, r, y0 + 0.07), P(hl, r, y0 + 0.07)], 0.012, 0, 0.03, '#e9edf3', '#8d939b');
-}
+const CONC = '#cfc7b8';
 
 export function createPlatforms(s, g, colorOf = () => '#c04040') {
   const root = new Group(), B = new Builder();
   for (const st of s.stations) {
-    if (st.big || st.port) continue; // terminalul mare își desenează singur liniile (render/terminal.js)
-    const n = platformsOf(st), f = stationFrame(s, st), y0 = g.tileY(st.x, st.y), cx = st.x + 0.5, cz = st.y + 0.5;
-    const W = (u, v) => [cx + f.ax * u + f.bx * v, cz + f.az * u + f.bz * v], hb = halfLen(st), hl = hb + EXT, top = topOf(st), own = colorOf(st.owner);
-    const at = (u, v, h = 0) => { const [x, z] = W(u, v); return [x, y0 + top + h, z]; };
-    const edge = (v) => { const [x, z] = W(0, v); B.obox(x, y0 + top + 0.001, z, f.ax, f.az, hl, 0.008, 0.0025, '#f2c230'); };
-    for (const e of [-1, 1]) { const [x, z] = W(e * (hb + EXT / 2), 0.25); B.obox(x, y0 + (top - 0.1) / 2, z, f.ax, f.az, EXT / 2, 0.12, (top + 0.1) / 2, '#cfc7b8'); } // prelungirea peronului clădirii
-    edge(0.135); // marginea peronului clădirii, spre linie
+    if (st.big || st.port || !(s.track[st.y * s.w + st.x] & T_PRESENT)) continue; // terminalul mare își desenează singur liniile (render/terminal.js)
+    const P = planOf(s, st), y0 = g.tileY(st.x, st.y), top = topOf(st), own = colorOf(st.owner), { ax, az, bx, bz } = P;
+    const W = (u, v) => [P.ox + ax * u + bx * v, P.oz + az * u + bz * v], c = { P, W, ax, az, bx, bz, top };
+    const yAt = (u) => { const pc = P.pieces.find((q) => q.i === Math.round(u / P.l)); return pc ? g.tileY(pc.x, pc.y) : y0; };
+    const at = (u, v) => { const [x, z] = W(u, v); return [x, yAt(u) + top, z]; };
+    for (const pc of P.pieces) { // peronul clădirii, pe plăcile drepte, câte o bucată pe placă (urmărește treptele terenului)
+      const yy = g.tileY(pc.x, pc.y), [mx, mz] = W(pc.i * P.l, 0.255), [ex, ez] = W(pc.i * P.l, 0.135);
+      B.obox(mx, yy + (top - 0.1) / 2, mz, ax, az, P.l / 2, 0.12, (top + 0.1) / 2, CONC);
+      B.obox(ex, yy + top + 0.001, ez, ax, az, P.l / 2, 0.008, 0.0025, '#f2c230');
+    }
     if (st.size >= 1) { // ușă, ceas pe fațadă, copertină la intrare
-      const [dx, dz] = W(0, 0.386), [kx, kz] = W(-0.2 * hb, 0.386);
-      B.obox(dx, y0 + 0.08 + 0.055, dz, f.ax, f.az, 0.04, 0.004, 0.055, '#5a3a22');
-      B.obox(dx, y0 + 0.08 + 0.12, dz, f.ax, f.az, 0.06, 0.012, 0.005, own);
-      B.obox(kx, y0 + 0.27, kz, f.ax, f.az, 0.04, 0.004, 0.04, '#3a3f46'); B.obox(kx, y0 + 0.27, kz, f.ax, f.az, 0.032, 0.006, 0.032, '#f6f3ea');
+      const fv = P.compact ? 0.3 : 0.386, [dx, dz] = W(0, fv), [kx, kz] = W(-0.2, fv);
+      B.obox(dx, y0 + 0.08 + 0.055, dz, ax, az, 0.04, 0.004, 0.055, '#5a3a22');
+      B.obox(dx, y0 + 0.08 + 0.12, dz, ax, az, 0.06, 0.012, 0.005, own);
+      B.obox(kx, y0 + 0.27, kz, ax, az, 0.04, 0.004, 0.04, '#3a3f46'); B.obox(kx, y0 + 0.27, kz, ax, az, 0.032, 0.006, 0.032, '#f6f3ea');
     }
-    const bn = st.size >= 1 ? 2 : 1;
-    for (let i = 0; i < bn; i++) { const [x, z] = at((i ? 1 : -1) * hb * 0.5, 0.215); bench(B, x, y0 + top, z, f.ax, f.az); }
-    for (const e of [-1, 1]) { const [x, z] = at(e * hb * 0.82, 0.15); lamp(B, x, y0 + top, z); }
-    if (st.size >= 1) { const [x, z] = at(hb * 0.18, 0.15); clock(B, x, y0 + top, z, f.ax, f.az); }
-    for (let k = 1; k < n; k++) {
-      const v = -(k - 0.5) * STEP, [mx, mz] = W(0, v);
-      extraTrack(B, W, y0, hl + 0.1, -k * STEP);
-      for (const e of [-1, 1]) { const [x, z] = W(e * (hl + 0.09), -k * STEP); B.obox(x, y0 + 0.1, z, f.ax, f.az, 0.008, 0.09, 0.03, '#d63a2a'); } // opritoare
-      B.obox(mx, y0 + (top - 0.1) / 2, mz, f.ax, f.az, hl, STEP / 2 - 0.13, (top + 0.1) / 2, '#cfc7b8'); // peron insulă
-      for (const e of [-1, 1]) { const [x, z] = W(0, v + e * (STEP / 2 - 0.135)); B.obox(x, y0 + top + 0.001, z, f.ax, f.az, hl, 0.008, 0.0025, '#f2c230'); }
-      const [sx, sz] = W(hl - 0.13, v); stairs(B, sx, y0 + top, sz, f.ax, f.az);
-      const [qx, qz] = at(-hl * 0.15, v); canopy(B, qx, y0 + top, qz, f.ax, f.az, hl * 0.7, 0.16, 0.2, '#c9d3de', own);
-      const [bx, bz] = at(hl * 0.3, v); bench(B, bx, y0 + top, bz, f.ax, f.az);
-      const [lx, lz] = at(-hl * 0.8, v + 0.05); lamp(B, lx, y0 + top, lz);
-      const [kx, kz] = at(-hl * 0.5, v); clock(B, kx, y0 + top, kz, f.ax, f.az);
+    for (const e of [-1, 1]) { // de la clădire spre capete: copertină, bănci, felinare
+      const end = e > 0 ? P.uP : -P.uN, a = 0.58, b = end - 0.2;
+      for (let u = a + 0.15; u + 0.7 < b; u += 1.5) { const [qx, qy, qz] = at(e * (u + 0.35), 0.3); canopy(B, qx, qy, qz, ax, az, 0.35, 0.075, 0.27, '#c9d3de', own); } // adăposturi scurte (lasă trenul la vedere)
+      for (let u = 0.8; u < end - 0.25; u += 1.15) {
+        const [lx, ly, lz] = at(e * u, 0.34); lamp(B, lx, ly, lz);
+        const [x, y, z] = at(e * (u + 0.5), 0.33); bench(B, x, y, z, ax, az);
+      }
     }
+    if (st.size >= 1) { const [x, y, z] = at(0.5, 0.15); clock(B, x, y, z, ax, az); }
+    extras(B, c, y0, own);
   }
   if (!B.empty) { const m = new Mesh(B.geometry(), lam); m.userData.cast = true; m.userData.recv = true; root.add(m); }
   return root;
