@@ -151,6 +151,7 @@ test('gara de trecere cu 10 linii încape în orice oraș (caută locul, pune li
     for (const c of s.cities) {
       const r = thruNear(s, 0, c.x, c.y, 10);
       assert.ok(r.ok, `${seed} ${c.name}: ${r.err}`);
+      assert.ok(r.fan.length >= 4, `${seed} ${c.name}: doar ${r.fan.length} intrări`); // casele se mută, dealul se nivelează treptat
     }
     const c = s.cities[0], r = thruNear(s, 0, c.x, c.y, 10);
     const b = applyCommand(s, { type: 'buildThru', by: 0, x: r.x, y: r.y, n: 10, dir: r.dir });
