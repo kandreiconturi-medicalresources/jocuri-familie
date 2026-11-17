@@ -8,7 +8,7 @@ import { SCENARIOS, AI_LEVELS, TEAMS } from '../sim/index.js';
 const ERRORS = { not_found: 'Nu există nicio cameră cu codul ăsta.', full: 'Camera e plină (maxim 4 jucători).', bad: 'Codul nu e bun.', busy: 'Serverul e ocupat acum. Încearcă iar.' };
 const BLOCKED = { time: 'limit', disabled: 'disabled' };
 const PALETTE = ['#ff6b6b', '#4dabf7', '#ffd23f', '#51cf66', '#e599f7', '#ffa94d'];
-const YEARS = [[1840, '1840'], [1900, '1900'], [1950, '1950']];
+const YEARS = [[1840, '1840'], [1900, '1900'], [1950, '1950'], [1980, '1980'], [2000, '2000'], [2025, '2025']];
 const SIZES = [['S', 'Mică'], ['M', 'Medie'], ['L', 'Mare']];
 
 /** Culori diferite pentru fiecare jucător (două conturi pot avea aceeași culoare de profil). */

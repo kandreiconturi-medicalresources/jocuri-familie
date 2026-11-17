@@ -1,20 +1,21 @@
 // Terminalul mare: curte cu linii terminale (opritoare la capăt), peroane, hală acoperită, clădire de capăt,
 // hală de service și macara portal animată peste curtea de marfă. Coordonate locale: x = spre curte, z = de-a lungul liniei.
-import { Group, Mesh, MeshLambertMaterial, BoxGeometry, MeshBasicMaterial } from 'three';
+import { Group, Mesh, MeshLambertMaterial, BoxGeometry, MeshBasicMaterial, DoubleSide } from 'three';
 import { Builder } from './geo.js';
 import { frameOf } from '../sim/terminal.js';
+import { LANE, LADDER, END, laneC, laneStart, box } from './terminalLayout.js';
+import { hall } from './terminalHall.js';
 
 const lam = new MeshLambertMaterial({ vertexColors: true });
-export const LANE = 0.6, LADDER = 0.75; // distanța dintre linii; panta scării de macaze
-const laneC = (k) => k * LANE, laneStart = (k) => -2.45 + laneC(k) * LADDER, END = 1.7;
+const glass = new MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, side: DoubleSide });
+export { LANE, LADDER, END, laneC, laneStart };
 
 function rails(B, pts) {
   B.ribbon(pts.map((p) => [p[0], 0.05, p[1]]), 0.1, -0.02, 0.03, '#9d9385', '#7d7468');
   for (const o of [-0.06, 0.06]) B.ribbon(pts.map((p) => [p[0], 0.09, p[1]]), 0.012, 0.0, 0.03, '#e9edf3', '#8d939b', o);
 }
-const box = (B, c0, c1, a0, a1, y0, y1, col) => B.obox((c0 + c1) / 2, (y0 + y1) / 2, (a0 + a1) / 2, 0, 1, (a1 - a0) / 2, (c1 - c0) / 2, (y1 - y0) / 2, col);
 
-function yard(B, n, owner) {
+function yard(B, G, n, owner) {
   const last = laneC(n - 1), top = last + 0.3;
   box(B, 0.5, 4.5, -2.5, 2.5, -0.4, 0.04, '#a39a8a'); // platforma curții (ascunde denivelările)
   rails(B, [[0, -2.45], [laneC(n - 1) + 0.0001, laneStart(n - 1)]]); // scara de macaze din linia principală
@@ -26,12 +27,7 @@ function yard(B, n, owner) {
     box(B, pc - 0.17, pc - 0.14, laneStart(k) + 0.25, END - 0.05, 0.1, 0.105, '#f2c230');
     box(B, pc + 0.14, pc + 0.17, laneStart(k) + 0.25, END - 0.05, 0.1, 0.105, '#f2c230');
   }
-  for (let k = 1; k < n; k++) { // copertine peste peroane (liniile rămân la vedere, ca să se vadă trenurile)
-    const pc = laneC(k) - LANE / 2, a0 = Math.max(-0.4, laneStart(k) + 0.35);
-    for (let a = a0 + 0.1; a <= END - 0.1; a += 0.55) box(B, pc - 0.02, pc + 0.02, a - 0.02, a + 0.02, 0.1, 0.5, '#5a6470');
-    box(B, pc - 0.2, pc + 0.2, a0, END - 0.05, 0.5, 0.54, k % 2 ? '#c9d3de' : '#b8c6d6');
-    box(B, pc - 0.21, pc + 0.21, a0, END - 0.05, 0.47, 0.5, owner);
-  }
+  hall(B, G, n, owner); // hala de sticlă cu stâlpi, felinare și bănci (liniile rămân la vedere)
   box(B, 0.32, top, END + 0.1, 2.45, 0.04, 0.5, '#e8d8b8'); // clădirea de capăt (călători), lângă linia principală
   box(B, 0.3, top + 0.02, END + 0.08, 2.47, 0.5, 0.58, owner);
   box(B, (top + 0.3) / 2 - 0.12, (top + 0.3) / 2 + 0.12, END + 0.07, END + 0.09, 0.62, 0.86, '#ffffff'); // ceasul
@@ -51,9 +47,10 @@ function yard(B, n, owner) {
 }
 
 function one(s, g, st, colorOf) {
-  const f = frameOf(st.dir), root = new Group(), B = new Builder(), n = Math.max(1, Math.min(6, st.platforms | 0 || 4));
-  yard(B, n, colorOf(st.owner));
+  const f = frameOf(st.dir), root = new Group(), B = new Builder(), G = new Builder(), n = Math.max(1, Math.min(6, st.platforms | 0 || 4));
+  yard(B, G, n, colorOf(st.owner));
   const body = new Mesh(B.geometry(), lam); body.userData.cast = true; body.userData.recv = true; root.add(body);
+  if (!G.empty) { const gm = new Mesh(G.geometry(), glass); gm.renderOrder = 2; root.add(gm); }
   const bridge = new Mesh(new BoxGeometry(1.76, 0.06, 0.1), new MeshLambertMaterial({ color: '#d99a18' }));
   const trolley = new Mesh(new BoxGeometry(0.16, 0.08, 0.14), new MeshLambertMaterial({ color: '#333' }));
   const cable = new Mesh(new BoxGeometry(0.012, 1, 0.012), new MeshBasicMaterial({ color: '#222' }));

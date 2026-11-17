@@ -6,7 +6,7 @@ import { bindPointer } from './input/pointer.js';
 import { createTools } from './input/tools.js';
 import { createHud } from './ui/hud.js';
 import { createPanels } from './ui/panels.js';
-import { sfx, unlock, trainSounds, resetSounds, setAmbient } from './audio.js';
+import { sfx, unlock, trainSounds, resetSounds, setAmbient, configureTrainSounds } from './audio.js';
 import { createHelper } from './ui/helper.js';
 import { findTip } from './ui/tips.js';
 import { createTutorial } from './ui/tutorial.js';
@@ -137,6 +137,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   // tap în afara panoului (pe hartă) închide cardul deschis
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
   setAmbient(prefs.get('ambient'));
+  configureTrainSounds({ on: prefs.get('trainSnd'), vol: prefs.get('trainVol') });
+  const sndEnv = { cam: camera.cam, pos: (id) => (view ? view.trains.posOf(id) : null), get paused() { return speed <= 0; } };
   setView(look.mode, false);
 
   const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭', '🧱', '⚓'];
@@ -256,7 +258,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
         while (simAcc >= 1 && n++ < cap) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
         if (simAcc > 1) simAcc = 0;
       }
-      if (!orbit) { extras.update(dt); trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
+      if (!orbit) { extras.update(dt); trainSounds(s, clock, sndEnv); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
     },
     /** Atingere sau schimbare din afară: următoarele cadre se desenează. */
     wake() { wokeAt = performance.now(); },

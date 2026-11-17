@@ -4,6 +4,7 @@ import { WATER_Y } from './ground.js';
 import { grassTexture, waterTexture } from './texgen.js';
 import { perf } from '../../../../shared/engine/perf.js';
 import { createFoam } from './foam.js';
+import { createDepth } from './depth.js';
 import { look, shadowsOn } from './look.js';
 
 const CH = 32, UV = 1 / 3.2;
@@ -81,7 +82,8 @@ export function createTerrain(s, g) {
   const glint = new Mesh(water.geometry, new MeshBasicMaterial({ map: tex2, transparent: true, opacity: 0.2, side: DoubleSide, depthWrite: false })); // al doilea strat, alt ritm: sclipiri
   glint.rotation.copy(water.rotation); glint.position.copy(water.position); glint.position.y += 0.004; glint.renderOrder = 2;
   const foam = createFoam(s);
-  root.add(water, glint, foam.mesh);
+  const depth = createDepth(s); // gradient de adâncime: turcoaz la mal, albastru adânc larg
+  root.add(water, depth.mesh, glint, foam.mesh);
   return {
     root,
     /** După nivelare: reface doar bucățile (cx, cy) date. */
@@ -92,14 +94,14 @@ export function createTerrain(s, g) {
         const m = chunk(s, g, cx, cy);
         chunks.set(cy * 1000 + cx, m); root.add(m);
       }
-      if (list.length) foam.rebuild();
+      if (list.length) { foam.rebuild(); depth.rebuild(); }
     },
     tick(t, night = 0) {
       tex.offset.set(t * 0.004, t * 0.0026); tex2.offset.set(-t * 0.0033, t * 0.0021);
       water.position.y = WATER_Y - 0.005 + 0.012 * Math.sin(t * 0.8); glint.position.y = water.position.y + 0.004; // val liniștit
-      glint.visible = !look.cool; foam.tick(t, night);
+      glint.visible = !look.cool; foam.tick(t, night); depth.tick(night);
       wm.color.setRGB(1 - 0.6 * night, 1 - 0.55 * night, 1 - 0.3 * night); glint.material.color.copy(wm.color);
     },
-    dispose() { foam.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
+    dispose() { foam.dispose(); depth.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
   };
 }

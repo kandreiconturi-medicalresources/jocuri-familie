@@ -26,9 +26,14 @@ export const MODELS = [
   { id: 3, key: 'diesel', name: 'Diesel', year: 1930, price: 15000, vmax: 40, power: 5, maint: 180, rel: 96, glb: 'train-diesel-a', smoke: false },
   { id: 4, key: 'electric', name: 'Electric de oraș', year: 1952, price: 21000, vmax: 48, power: 5, maint: 220, rel: 98, glb: 'train-electric-city-a', smoke: false },
   { id: 5, key: 'glont', name: 'Electric rapid', year: 1970, price: 32000, vmax: 64, power: 6, maint: 300, rel: 99, glb: 'train-electric-bullet-a', smoke: false },
+  // epoci noi (după 1970): desenate procedural în render/trainMeshes.js; glb rămâne doar rezervă
+  { id: 6, key: 'intercity', name: 'Intercity electric', year: 1985, price: 42000, vmax: 72, power: 6, maint: 360, rel: 99, glb: 'train-electric-city-b', smoke: false },
+  { id: 7, key: 'tgv', name: 'Tren de mare viteză', year: 1995, price: 58000, vmax: 88, power: 6, maint: 440, rel: 99, glb: 'train-electric-bullet-b', smoke: false },
+  { id: 8, key: 'regio', name: 'Regio modern', year: 2008, price: 64000, vmax: 80, power: 8, maint: 460, rel: 99, glb: 'train-electric-city-a', smoke: false },
+  { id: 9, key: 'hidrogen', name: 'Tren pe hidrogen', year: 2022, price: 84000, vmax: 104, power: 8, maint: 520, rel: 100, glb: 'train-electric-bullet-c', smoke: false },
 ];
 export const availableModels = (year) => MODELS.filter((m) => m.year <= year);
-export const START_YEARS = [1840, 1900, 1950];
+export const START_YEARS = [1840, 1900, 1950, 1980, 2000, 2025];
 export const CAR_PRICE = 500, MAX_CARS = 6;
 
 export const DWELL = 24, RETRY = 40, WAIT_CAP = 240, STOCK_CAP = 250;

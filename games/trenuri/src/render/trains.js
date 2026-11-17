@@ -1,10 +1,11 @@
-// Trenuri: modele din trains/ (mai mari, cu dungă în culoarea companiei, cuplaje, faruri), mișcare interpolată,
+// Trenuri: modele procedurale din trainMeshes.js (glb din trains/ doar rezervă; cu dungă în culoarea companiei, cuplaje, faruri), mișcare interpolată,
 // înclinare în curbe, fum de abur; la calitate 0 umbre „blob”, la ≥1 umbre reale.
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3, Euler } from 'three';
 import { MODELS } from '../sim/consts.js';
 import { CAR_TYPES } from '../sim/goods.js';
 import { poseAt, travelled } from './pose.js';
 import { carGroup, setNight } from './trainParts.js';
+import { vehicle } from './trainMeshes.js';
 import { createSmoke } from './smoke.js';
 import { createCargo, wagonFills } from './cargo.js';
 import { makeBeacon } from './depot.js';
@@ -47,8 +48,8 @@ export function createTrains(s, g, camera) {
       let it = items.get(t.id);
       if (it && it.cars !== t.cars) { root.remove(it.group); items.delete(t.id); it = null; }
       if (!it) {
-        const group = new Group(), c = colorOf(t), parts = [carGroup('trains/' + MODELS[t.model].glb, c, true)];
-        for (let i = 0; i < t.cars; i++) parts.push(carGroup(CAR_MODEL[t.kinds[i]], c, false));
+        const group = new Group(), c = colorOf(t), parts = [vehicle('loco', t.model, c) || carGroup('trains/' + MODELS[t.model].glb, c, true)];
+        for (let i = 0; i < t.cars; i++) parts.push(vehicle('car', t.kinds[i], c) || carGroup(CAR_MODEL[t.kinds[i]], c, false));
         const cargos = t.kinds.slice(0, t.cars).map((k, i) => { const cg = createCargo(k, CAR_MODEL[k], q === 0); parts[i + 1].add(cg.group); return cg; });
         const beacon = t.tow ? makeBeacon() : null;
         if (beacon) parts[0].add(beacon.mesh);
@@ -116,6 +117,8 @@ export function createTrains(s, g, camera) {
       blobs.count = nb; blobs.instanceMatrix.needsUpdate = true;
       smoke.update(dt);
     },
+    /** Poziția în lume a locomotivei (pentru sunet) sau null. */
+    posOf(id) { const it = items.get(id); return it && it.group.visible ? it.parts[0].position : null; },
     pickAt(wx, wz) { // cel mai apropiat tren la ≤1 placă de punctul de lume
       let best = null, bd = 1.2;
       for (const t of s.trains) {

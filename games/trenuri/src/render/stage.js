@@ -1,15 +1,14 @@
 // Scena Three.js: lumină caldă de după-amiază, cer, ceață, umbre (cascadă urmărind vederea), zi/noapte lent, vederea clasică, statistici.
 import { WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight, Fog, Color, PCFShadowMap, ACESFilmicToneMapping, NoToneMapping, Vector3, MathUtils } from 'three';
 import { perf } from '../../../../shared/engine/perf.js';
-import { createSky } from './sky.js';
+import { createSky, SUN_DIR } from './sky.js';
 import { createClassic } from './classic.js';
 import { createStats } from './stats.js';
 import { look, onLook, shadowsOn } from './look.js';
 import { dprCap } from '../../../../shared/engine/pace.js';
 
-const DAY = { sun: new Color(0xffd9a2), hemiSky: new Color(0xd3e6ff), hemiGround: new Color(0xcdae80), fog: new Color(0xe8e6d2) };
+const DAY = { sun: new Color(0xffd29a), hemiSky: new Color(0xd3e6ff), hemiGround: new Color(0xcdae80), fog: new Color(0xe8e6d2) };
 const NIGHT = { sun: new Color(0x6f86c8), hemiSky: new Color(0x3d4c82), hemiGround: new Color(0x2a2f48), fog: new Color(0x465782) };
-const SUN_DIR = new Vector3(-0.55, 0.62, 0.42).normalize();
 
 export function createStage(canvas) {
   const quality = perf.quality();
@@ -28,8 +27,8 @@ export function createStage(canvas) {
 
   function applyQuality() {
     const q = perf.quality(), on = shadowsOn(), size = q >= 2 ? 2048 : 1024;
-    renderer.toneMapping = q >= 2 ? ACESFilmicToneMapping : NoToneMapping;
-    renderer.toneMappingExposure = q >= 2 ? 1.12 : 1;
+    renderer.toneMapping = q >= 1 ? ACESFilmicToneMapping : NoToneMapping; // filmic și pe telefoane (cost neglijabil)
+    renderer.toneMappingExposure = q >= 2 ? 1.12 : q >= 1 ? 1.08 : 1;
     sun.castShadow = on;
     if (on && sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;

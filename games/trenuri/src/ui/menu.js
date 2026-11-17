@@ -35,10 +35,11 @@ export function createMenu(root, { hasSave, medals, firstTime, online, onNet, on
       expert || islands ? (islands ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3]).map((n) => h('button', { class: 'opt sm' + (n === nAi ? ' on' : ''), onclick: () => { nAi = n; paintEx(); } }, n ? n + ' AI' : 'Fără AI')) : null,
       (expert || islands) && nAi ? AI_LEVELS.map((l, i) => h('button', { class: 'opt sm' + (i === lvl ? ' on' : ''), onclick: () => { lvl = i; paintEx(); } }, l.name)) : null].flat().filter(Boolean)); };
     paintEx();
-    const ys = [[1840, 'Începuturile', 'locomotive cu abur'], [1900, 'Epoca aburului', 'abur rapid'], [1950, 'Epoca nouă', 'diesel și electrice']];
+    const ys = [[1840, 'Începuturile', 'locomotive cu abur'], [1900, 'Epoca aburului', 'abur rapid'], [1950, 'Epoca nouă', 'diesel și electrice'],
+      [1980, 'Epoca vitezei', 'intercity electric'], [2000, 'Trenuri moderne', 'mare viteză și regio'], [2025, 'Viitorul', 'trenuri pe hidrogen']];
     const yb = ys.map(([y, t, sub]) => h('button', { class: 'opt' + (y === year ? ' on' : ''), onclick: () => { year = y; yb.forEach((b, i) => b.classList.toggle('on', ys[i][0] === y)); } }, y + ' · ' + t, h('small', null, sub)));
     mount(h('div', { class: 'menu', onclick: back(title) }, h('div', { class: 'mp' },
-      h('h2', null, '🌍 Joc nou'), h('p', null, 'Alege anul'), h('div', { class: 'rowb' }, yb), h('p', null, 'și harta'),
+      h('h2', null, '🌍 Joc nou'), h('p', null, 'Alege anul'), h('div', { class: 'rowb' }, yb.slice(0, 3)), h('div', { class: 'rowb' }, yb.slice(3)), h('p', null, 'și harta'),
       h('div', { class: 'rowb' }, size('S', 'Hartă mică', '6–8 orașe'), size('M', 'Hartă medie', '8–11 orașe'), size('L', 'Hartă mare', '10–14 orașe')),
       exBox, h('button', { class: 'opt', onclick: title }, '⬅️ Înapoi'))));
   }

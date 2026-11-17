@@ -24,6 +24,7 @@ import { createGhost } from './ghost.js';
 import { perf } from '../../../../shared/engine/perf.js';
 import { look, onLook, shadowsOn, rich } from './look.js';
 import { createGulls } from './gulls.js';
+import { createPeople } from './people.js';
 
 /** Aplică steagurile de umbre ale calității curente pe un strat nou (userData.cast / recv / blob). */
 function shade(obj) {
@@ -34,7 +35,7 @@ function shade(obj) {
     if (o.userData.blob) o.visible = !on;
   });
 }
-const electric = (m) => m.key === 'electric' || m.key === 'glont';
+const electric = (m) => ['electric', 'glont', 'intercity', 'tgv', 'regio'].includes(m.key);
 
 export function createView(stage, s) {
   const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null, terminals: null };
@@ -65,7 +66,7 @@ export function createView(stage, s) {
     if (d.forest) { swap('forest', () => createForest(s, g, q, look.cool)); d.forest = false; }
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
     if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }
-    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g)); swap('terminals', () => createTerminals(s, g, colorOf)); d.stations = false; }
+    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g, colorOf)); swap('terminals', () => createTerminals(s, g, colorOf)); d.stations = false; }
     if (s.islands && (d.land || (s.land && !dyn.land))) { swap('land', () => createLand(s, g, colorOf)); d.land = false; } // parcele cumpărate (7.4)
     if (d.industries) { swap('industries', () => createIndustries(s, g)); d.industries = false; d.forest = true; if (links.visible) links.rebuild(); }
     if (rich() && powered.size !== lastPowered) { swap('power', () => createCatenary(s, g, powered)); lastPowered = powered.size; }
@@ -80,6 +81,7 @@ export function createView(stage, s) {
   const redo = () => { s.dirty.forest = true; s.dirty.track = true; };
   const off = perf.onChange(redo), off2 = onLook(() => { redo(); shade(root); });
   const gulls = createGulls(s, stage.camera); root.add(gulls.root);
+  const people = createPeople(s, g, stage.camera); root.add(people.root); shade(people.root);
 
   return {
     ground: g, trains, overlay, ghost, links, refresh,
@@ -98,6 +100,7 @@ export function createView(stage, s) {
       terrain.tick(t, stage.night);
       clouds.root.visible = rich() && look.mode !== '2d';
       gulls.update(t);
+      people.update(dt);
       if (clouds.root.visible) clouds.update(dt, stage.night);
     },
     dispose() { off(); off2(); ghost.dispose(); stage.scene.remove(root, clouds.root); root.traverse((o) => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); },
