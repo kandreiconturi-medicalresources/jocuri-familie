@@ -27,7 +27,9 @@ export function createMenu(root, { hasSave, medals, firstTime, online, onNet, on
 
   function newGame() {
     const opts = () => (expert || islands ? { expert, islands, ai: new Array(nAi).fill(lvl) } : null);
-    const size = (k, t, sub) => h('button', { class: 'opt', onclick: () => onNew(k, year, opts()) }, t, h('small', null, sub));
+    let map = 'S'; // harta doar se alege; jocul pornește din butonul „Începe jocul”
+    const sizes = [['S', 'Hartă mică', '6–8 orașe'], ['M', 'Hartă medie', '8–11 orașe'], ['L', 'Hartă mare', '10–14 orașe']];
+    const sb = sizes.map(([k, t, sub]) => h('button', { class: 'opt' + (k === map ? ' on' : ''), onclick: () => { map = k; sb.forEach((b, i) => b.classList.toggle('on', sizes[i][0] === k)); } }, t, h('small', null, sub)));
     const exBox = h('div', { class: 'rowb' });
     const paintEx = () => { if (!islands && nAi > 3) nAi = 3; exBox.replaceChildren(...[
       h('button', { class: 'opt exopt' + (islands ? ' on' : ''), title: 'O insulă pentru fiecare companie. Resursele lipsă le aduci cu vaporul.', onclick: () => { islands = !islands; paintEx(); } }, islands ? '🏝️ Insule: pornit' : '🏝️ Insule: oprit', h('small', null, 'Porturi, vapoare și comerț între insule')),
@@ -40,8 +42,8 @@ export function createMenu(root, { hasSave, medals, firstTime, online, onNet, on
     const yb = ys.map(([y, t, sub]) => h('button', { class: 'opt' + (y === year ? ' on' : ''), onclick: () => { year = y; yb.forEach((b, i) => b.classList.toggle('on', ys[i][0] === y)); } }, y + ' · ' + t, h('small', null, sub)));
     mount(h('div', { class: 'menu', onclick: back(title) }, h('div', { class: 'mp' },
       h('h2', null, '🌍 Joc nou'), h('p', null, 'Alege anul'), h('div', { class: 'rowb' }, yb.slice(0, 3)), h('div', { class: 'rowb' }, yb.slice(3)), h('p', null, 'și harta'),
-      h('div', { class: 'rowb' }, size('S', 'Hartă mică', '6–8 orașe'), size('M', 'Hartă medie', '8–11 orașe'), size('L', 'Hartă mare', '10–14 orașe')),
-      exBox, h('button', { class: 'opt', onclick: title }, '⬅️ Înapoi'))));
+      h('div', { class: 'rowb' }, sb), exBox,
+      h('div', { class: 'rowb' }, h('button', { class: 'opt go start', onclick: () => onNew(map, year, opts()) }, '▶️ Începe jocul'), h('button', { class: 'opt', onclick: title }, '⬅️ Înapoi')))));
   }
 
   function scenarios() {
