@@ -70,17 +70,26 @@ export function buildPlan(s, req) {
 }
 
 /** Sursele (sau destinațiile, cu fixed = sursa) clasate după efort (cost de construit + distanță): [{ o, d, prod, want, rail, plan, cost, profit, score, why }], prima = recomandată. */
-export function rankOptions(s, { fixed, mode = 'to', g, owner, cash, year, cache = {}, max = 6 }) {
+export function rankOptions(s, { fixed, mode = 'to', g, owner, cash, year, cache = {}, max = 10 }) {
   const list = mode === 'to' ? suppliers(s, fixed, g, owner) : destinations(s, fixed, g, owner).filter((e) => e.level > 0 && (e.kind === 'city' || e.o.type !== undefined));
   const out = list.slice(0, max).map((e) => {
     const stops = mode === 'to' ? [e.o, fixed] : [fixed, e.o], plan = buildPlan(s, { g, owner, stops, cash, year, cache });
     const prod = mode === 'to' ? monthlyOutput(e.o) : monthlyOutput(fixed);
     const cost = plan.build.stations + plan.build.track, afford = plan.total <= cash;
-    return { o: e.o, d: e.d, prod, want: mode === 'to' ? wantAt(fixed, g) : wantAt(e.o, g), rail: e.rail, linked: plan.linked, plan, cost, profit: plan.profit, afford, score: (afford ? 0 : -1e7) + (prod > 0 ? 0 : -1e6) - cost - e.d * 60 }; // cel mai puțin efort: ce e deja construit și ce e aproape; profitul se arată, dar nu decide
+    const chain = mode === 'to' && prod <= 0 ? chainOf(s, e.o, owner) : null; // sursa nu produce: ce îi lipsește și de unde se aduce
+    return { chain, o: e.o, d: e.d, prod, want: mode === 'to' ? wantAt(fixed, g) : wantAt(e.o, g), rail: e.rail, linked: plan.linked, plan, cost, profit: plan.profit, afford, score: (prod > 0 ? 0 : -1e7) + (afford ? 0 : -1e6) - cost - e.d * 60 - (chain ? chain.d * 60 : 0) }; // cel mai puțin efort: ce e deja construit și ce e aproape; profitul se arată, dar nu decide
   });
   out.sort((a, b) => b.score - a.score || a.d - b.d || a.o.id - b.o.id);
-  if (out.length) out[0].why = whyBest(out);
+  if (out.length) out[0].why = out[0].prod > 0 || mode !== 'to' ? whyBest(out) : 'nimeni nu produce acum; asta e cea mai ușor de pornit';
   return out;
+}
+
+/** Pentru o prelucrătoare fără materii: prima materie care lipsește și cea mai apropiată industrie care o produce: { g, from, d, forPlan } sau null. */
+export function chainOf(s, o, owner) {
+  const g = INDUSTRIES[o.type].in.find((q) => o.in[q] <= 0);
+  if (g === undefined) return null;
+  const src = suppliers(s, o, g, owner)[0];
+  return src ? { g, from: src.o, d: src.d } : { g, from: null, d: 99 };
 }
 
 /** O propoziție scurtă: de ce e prima alegere. */

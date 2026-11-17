@@ -29,10 +29,11 @@ export function createMenu(root, { hasSave, medals, firstTime, online, onNet, on
     const opts = () => (expert ? { expert: true, ai: new Array(nAi).fill(lvl) } : null);
     const size = (k, t, sub) => h('button', { class: 'opt', onclick: () => onNew(k, year, opts()) }, t, h('small', null, sub));
     const exBox = h('div', { class: 'rowb' });
-    const paintEx = () => exBox.replaceChildren(
+    const paintEx = () => exBox.replaceChildren(...[
       h('button', { class: 'opt exopt' + (expert ? ' on' : ''), title: 'Împrumuturi, bursă, întreținere completă și concurenți AI.', onclick: () => { expert = !expert; paintEx(); } }, expert ? '🎓 Mod expert: pornit' : '🎓 Mod expert: oprit', h('small', null, 'Împrumuturi, bursă și concurenți AI')),
       expert ? [0, 1, 2, 3].map((n) => h('button', { class: 'opt sm' + (n === nAi ? ' on' : ''), onclick: () => { nAi = n; paintEx(); } }, n ? n + ' AI' : 'Fără AI')) : null,
-      expert && nAi ? AI_LEVELS.map((l, i) => h('button', { class: 'opt sm' + (i === lvl ? ' on' : ''), onclick: () => { lvl = i; paintEx(); } }, l.name)) : null);
+      expert && nAi ? AI_LEVELS.map((l, i) => h('button', { class: 'opt sm' + (i === lvl ? ' on' : ''), onclick: () => { lvl = i; paintEx(); } }, l.name)) : null,
+    ].flat().filter(Boolean)); // replaceChildren nu aplatizează array-urile: altfel apare „[object HTMLButtonElement]”
     paintEx();
     const ys = [[1840, 'Începuturile', 'locomotive cu abur'], [1900, 'Epoca aburului', 'abur rapid'], [1950, 'Epoca nouă', 'diesel și electrice']];
     const yb = ys.map(([y, t, sub]) => h('button', { class: 'opt' + (y === year ? ' on' : ''), onclick: () => { year = y; yb.forEach((b, i) => b.classList.toggle('on', ys[i][0] === y)); } }, y + ' · ' + t, h('small', null, sub)));

@@ -1,6 +1,7 @@
 // „Planificatorul de rută”: panou fix (ca asistentul de cumpărare) cu 6 pași: ce cere orașul → de unde aduc → traseul și șina → câte vagoane →
 // mai vrea cineva marfa → rezumat și „Fă tot”. Calculele sunt în sim/planner.js; comenzile pleacă prin env.exec (applyCommand) din plannerRun.js.
 import { h } from '../../../../shared/ui/dom.js';
+import { GOODS } from '../sim/goods.js';
 import { viewer } from '../sim/viewer.js';
 import { buildPlan } from '../sim/planner.js';
 import { ERR_TEXT } from '../sim/commands.js';
@@ -37,6 +38,12 @@ export function openPlanner(env, preset = {}) {
       if (ctx.plan().legs.every((l) => l.link)) { p = { ...p, manual: false, step: 4 }; pickOn(); env.hud.hint('Șina e legată. Mergem mai departe!', false, 3500); }
       else env.hud.hint('Încă nu e șină legată între numerele de pe hartă. Trage-o de la 1 la 2.', true, 4500);
       draw();
+    },
+    /** Pasul „întâi adu materia g la fabrica o”: planul curent rămâne în coadă și se reia după ce termini lanțul. */
+    chain(g, o) {
+      const back = { ...p, queue: [], step: 2, result: null, snap: null };
+      p = { ...p, queue: [...p.queue, back], g, dst: o, src: null, mode: 'to', stops: [], track: 'none', model: null, manual: false, looked: false, entry: 2, step: 2, result: null, snap: null };
+      cache = {}; env.hud.hint(`Mai întâi ${o.name} are nevoie de ${GOODS[g].name.toLowerCase()}. După ce o rezolvi, te întorci la plan.`, false, 6000); draw();
     },
     newTrain(o) {
       p = { ...p, queue: [...p.queue, { ...p, queue: [], step: 6 }] };
