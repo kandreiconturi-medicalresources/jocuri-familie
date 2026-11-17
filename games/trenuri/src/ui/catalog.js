@@ -1,6 +1,7 @@
 // Catalogul de construcții: categorii (Șine, Gări, Îmbunătățiri, Trenuri). Ce nu poți cumpăra apare gri, cu motivul.
 import { h } from '../../../../shared/ui/dom.js';
 import { BIG_COST } from '../sim/terminal.js';
+import { THRU_BASE, THRU_TRACK } from '../sim/thru.js';
 import { BRIDGE } from '../sim/consts.js';
 import { bridgeCost } from '../sim/bigBridge.js';
 import { DEPOT, STATION_NAMES, STATION_COST, STATION_RADIUS, UPGRADES, MODELS, COST, CAR_PRICE } from '../sim/consts.js';
@@ -29,7 +30,8 @@ export function openCatalog(card, s, tools) {
       s.islands ? entry({ icon: '🏠', name: 'Cumpără teren', info: 'Parcele de 4×4 plăci pe insula altuia: prețul e de 3 ori valoarea terenului (depinde de teren, orașe și industrii din jur), iar banii merg la stăpânul insulei. Pe parcela ta poți pune șină, gară, port și capete de pod.', on: st.tool === 'land', pick: go({ tool: 'land' }) }) : null,
       entry({ icon: '🧹', name: 'Demolare', info: 'Șterge o placă de șină sau o gară (gratis).', on: st.tool === 'demolish', pick: go({ tool: 'demolish' }) }),
     ],
-    () => STATION_NAMES.map((n, i) => entry({ icon: i === 2 ? '🏛️' : '🚉', name: i === 2 ? 'Terminal mare' : n, info: i === 2 ? `Raza ${STATION_RADIUS[i]} plăci, 4–6 linii terminale, service care repară trenurile și macara care încarcă de două ori mai repede. Ocupă 4×5 plăci.` : `Raza ${STATION_RADIUS[i]} plăci: adună oameni și marfă din jur.`, price: i === 2 ? BIG_COST : STATION_COST[i], why: need(i === 2 ? BIG_COST : STATION_COST[i]), on: st.tool === 'station' && st.size === i, pick: go({ tool: 'station', size: i }) })),
+    () => [...STATION_NAMES.map((n, i) => entry({ icon: i === 2 ? '🏛️' : '🚉', name: i === 2 ? 'Terminal mare' : n, info: i === 2 ? `Raza ${STATION_RADIUS[i]} plăci, 4–6 linii terminale, service care repară trenurile și macara care încarcă de două ori mai repede. Ocupă 4×5 plăci.` : `Raza ${STATION_RADIUS[i]} plăci: adună oameni și marfă din jur.`, price: i === 2 ? BIG_COST : STATION_COST[i], why: need(i === 2 ? BIG_COST : STATION_COST[i]), on: st.tool === 'station' && st.size === i, pick: go({ tool: 'station', size: i }) })),
+      entry({ icon: '🏙️', name: 'Gară mare de trecere', info: `În oraș, pe linia principală: 2–10 linii paralele (tot atâtea trenuri încarcă deodată), peroane cu copertine, pasarelă și pasaj, clădire cu turn cu ceas. Acoperă tot orașul. Casele din loc se mută (despăgubiri). ${lei(THRU_BASE)} + ${lei(THRU_TRACK)} pe linie.`, price: THRU_BASE + 4 * THRU_TRACK, why: need(THRU_BASE + 2 * THRU_TRACK), on: st.tool === 'thru', pick: go({ tool: 'thru' }) })],
     () => [
       ...UPGRADES.map((u, k) => entry({ icon: u.icon, name: u.name, info: u.text, price: u.cost, why: !s.stations.length ? 'Construiește mai întâi o gară.' : need(u.cost), on: st.tool === 'upgrade' && st.up === k, pick: go({ tool: 'upgrade', up: k }) })),
       h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'),

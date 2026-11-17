@@ -1,0 +1,145 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createWorld, createNetWorld, hashState, serialize, deserialize, applyCommand, planTrack, stepWorld, maxPlatforms } from '../games/trenuri/src/sim/index.js';
+import { thruTiles, mainTiles, thruInfo, THRU_BASE, THRU_TRACK, HOUSE_PAY, THRU_MAX } from '../games/trenuri/src/sim/thru.js';
+import { covers } from '../games/trenuri/src/sim/catch.js';
+import { spawnCargo } from '../games/trenuri/src/sim/economy.js';
+import { deriveLayers } from '../games/trenuri/src/sim/roads.js';
+import { growBuildings } from '../games/trenuri/src/sim/growth.js';
+import { createHub } from './trenuri-hub.js';
+
+const ok = (r) => { assert.ok(r.ok, r.err); return r; };
+const run = (s, n) => { for (let i = 0; i < n; i++) stepWorld(s); };
+/** Lume plată; orașul 0 e la (30,22) cu case pe rândurile 28–29 și pe linia y = 30 (de dărâmat). */
+function town(s) {
+  s.height.fill(8); s.water.fill(0); s.forest.fill(0); s.industries.length = 0;
+  s.cities.forEach((c, i) => { c.x = 2 + i * 3; c.y = 60; c.buildings = []; });
+  const c = s.cities[0];
+  c.x = 30; c.y = 22; c.pop = 900;
+  for (const [x, y] of [[29, 28], [30, 28], [31, 28], [28, 29], [32, 29], [27, 30], [33, 30], [25, 27]]) c.buildings.push([x, y, x === 30 ? 9 : 2, 0]);
+  deriveLayers(s);
+  return s;
+}
+const world = () => town(createWorld({ seed: 4, size: 'S', year: 1960 }));
+
+test('gara de trecere: ocupă locul, dărâmă casele cu despăgubire, preț corect', () => {
+  const s = world(), c = s.cities[0], cash = s.companies[0].cash, n0 = c.buildings.length;
+  const info = thruInfo(s, 0, 30, 30, 6);
+  assert.ok(info.ok, info.err);
+  const r = ok(applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n: 6, dir: 0 }));
+  const st = s.stations.find((q) => q.id === r.id);
+  assert.equal(st.thru, 1); assert.equal(st.platforms, 6); assert.equal(st.cityId, 0); assert.equal(maxPlatforms(s, st), THRU_MAX);
+  assert.match(st.name, /^Gara Mare /);
+  const tiles = thruTiles(30, 30, 0, 6), main = mainTiles(30, 30, 0, 6);
+  assert.ok(tiles.every(([x, y]) => s.occ[y * s.w + x]), 'locul gării e ocupat');
+  const set = new Set([...tiles, ...main].map(([x, y]) => y * s.w + x));
+  assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'nicio casă în locul gării');
+  const gone = n0 - c.buildings.length;
+  assert.equal(gone, 7, 'șapte case mutate (cea de la 25,27 rămâne)');
+  assert.equal(cash - s.companies[0].cash, THRU_BASE + 6 * THRU_TRACK + 6 * HOUSE_PAY + 700, 'gară + linii + despăgubiri (blocul înalt costă mai mult)');
+  assert.ok(main.every(([x, y]) => !s.occ[y * s.w + x]), 'rândul liniei principale e liber');
+  growBuildings(s, c, 60);
+  assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'orașul nu mai construiește în locul gării sau pe linia ei');
+  // linia trece prin gară, dar nu poate intra în curte
+  ok(applyCommand(s, { type: 'buildTrack', by: 0, path: planTrack(s, [10, 30], [50, 30], 0).path }));
+  assert.equal(applyCommand(s, { type: 'buildStation', by: 0, x: tiles[0][0], y: tiles[0][1], size: 0 }).err, 'cladire');
+  // mai multe linii: doar în sus, plătești diferența
+  const before = s.companies[0].cash;
+  ok(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 9 }));
+  assert.equal(st.platforms, 9);
+  assert.ok(before - s.companies[0].cash >= 3 * THRU_TRACK);
+  assert.equal(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 8 }).err, 'exista');
+  ok(applyCommand(s, { type: 'upgradeStation', by: 0, id: st.id }));
+  assert.equal(st.platforms, 10);
+  assert.equal(applyCommand(s, { type: 'upgradeStation', by: 0, id: st.id }).err, 'limita');
+  // demolarea eliberează locul
+  ok(applyCommand(s, { type: 'removeStation', by: 0, id: st.id }));
+  assert.ok(thruTiles(30, 30, 0, 10).every(([x, y]) => !s.occ[y * s.w + x]));
+});
+
+test('gara de trecere: refuzată pe linie în diagonală sau peste apă; o gară normală se poate transforma', () => {
+  const s = world();
+  s.water[27 * s.w + 30] = 1; s.height[27 * s.w + 30] = 2;
+  assert.ok(!applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n: 6, dir: 0 }).ok, 'apă în curte');
+  ok(applyCommand(s, { type: 'buildTrack', by: 0, path: [[40, 40], [41, 41], [42, 42], [43, 43], [44, 44]] }));
+  assert.equal(thruInfo(s, 0, 42, 42, 4).err, 'loc', 'linia în diagonală nu merge');
+  const a = ok(applyCommand(s, { type: 'buildStation', by: 0, x: 30, y: 30, size: 1 })).id;
+  ok(applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n: 4 }));
+  const st = s.stations.find((q) => q.id === a);
+  assert.equal(st.thru, 1, 'aceeași gară (același id), acum de trecere');
+  assert.equal(st.dir, 4, 'curtea spre sud, fiindcă la nord e apă');
+});
+
+test('gara de trecere acoperă tot orașul (pasageri, poștă, cerere de marfă)', () => {
+  const s = world(), c = s.cities[0];
+  c.x = 30; c.y = 20; // centrul e departe (10 plăci): o gară normală nu l-ar acoperi
+  deriveLayers(s);
+  const n = ok(applyCommand(s, { type: 'buildStation', by: 0, x: 40, y: 30, size: 1 })).id;
+  const t = ok(applyCommand(s, { type: 'buildThru', by: 0, x: 22, y: 30, n: 3, dir: 4 })).id;
+  const sn = s.stations.find((q) => q.id === n), st = s.stations.find((q) => q.id === t);
+  st.cityId = 0;
+  assert.ok(!covers(sn, c)); assert.ok(covers(st, c));
+  for (let i = 0; i < 5; i++) spawnCargo(s);
+  assert.equal(sn.waiting.pass, 0);
+  assert.ok(st.waiting.pass > 0, 'pasagerii din tot orașul vin la gara mare');
+});
+
+/** Două gări legate; trenurile pornesc din gara de trecere (n linii). */
+function line(s, n) {
+  const A = ok(applyCommand(s, { type: 'buildStation', by: 0, x: 8, y: 30, size: 1 })).id;
+  const T = ok(applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n, dir: 0 })).id;
+  ok(applyCommand(s, { type: 'buildTrack', by: 0, path: planTrack(s, [8, 30], [50, 30], 0).path }));
+  return { A, T };
+}
+
+test('gara de trecere: n trenuri stau deodată (fiecare pe linia lui), niciodată mai multe decât liniile', () => {
+  const s = world(), { A, T } = line(s, 6), i0 = 30 * s.w + 30;
+  s.companies[0].cash = 1e6;
+  const trs = [];
+  for (let i = 0; i < 6; i++) { const id = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: T, kinds: [0], route: [T, A] })).id; trs.push(s.trains.find((t) => t.id === id)); }
+  assert.ok(trs.every((t) => t.state === 2 && t.to === T), 'toate 6 stau deodată în gară');
+  assert.equal(s.pocc[i0], 6);
+  // se duc pe rând la A și se întorc; la întoarcere rămân în gara mare (pauză): la final toate 6 stau iar deodată
+  let most = 0, i = 0;
+  for (; i < 30000; i++) {
+    stepWorld(s);
+    for (const t of trs) if (t.state === 2 && t.to === T && t.from === A) t.paused = 1;
+    most = Math.max(most, s.pocc[i0]);
+    if (trs.every((t) => t.paused && t.state === 2 && t.to === T)) break;
+  }
+  assert.ok(most <= 6, 'niciodată mai multe trenuri decât linii');
+  assert.ok(trs.every((t) => t.state === 2 && t.to === T), 'toate s-au întors și stau deodată pe cele 6 linii');
+});
+
+test('gara de trecere: serializare, determinism și lockstep cu 3 noduri', async () => {
+  const a = world(), b = world();
+  for (const s of [a, b]) { const { A, T } = line(s, 5); ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: T, kinds: [0, 1], route: [T, A] })); }
+  run(a, 400); run(b, 400);
+  const c = deserialize(serialize(b));
+  assert.equal(hashState(c), hashState(b));
+  assert.ok(thruTiles(30, 30, 0, 5).every(([x, y]) => c.occ[y * c.w + x]), 'locul ocupat se reface la încărcare');
+  run(a, 2000); run(c, 2000);
+  assert.equal(hashState(a), hashState(c));
+
+  const PL = [{ id: 'a', name: 'Ana', color: '#ff6b6b' }, { id: 'b', name: 'Bob', color: '#4dabf7' }, { id: 'c', name: 'Cip', color: '#ffd23f' }];
+  const cfg = { mode: 'coop', seed: 7, size: 'S', year: 1960, players: PL };
+  const mk = () => town(createNetWorld(cfg));
+  const probe = mk();
+  const sa = ok(applyCommand(probe, { type: 'buildStation', by: 0, x: 8, y: 30, size: 0 })).id, sb = ok(applyCommand(probe, { type: 'buildThru', by: 0, x: 30, y: 30, n: 4 })).id;
+  const path = planTrack(probe, [8, 30], [50, 30], 0).path;
+  const hub = createHub({ latency: 0.1 });
+  const nodes = PL.map((p) => hub.add(p.id, { world: mk(), hostId: 'a', speed: 4, raw: false }));
+  const [n1, n2, n3] = nodes;
+  await hub.run(1); n1.submit({ type: 'buildStation', x: 8, y: 30, size: 0 });
+  await hub.run(0.5); n2.submit({ type: 'buildThru', x: 30, y: 30, n: 4 });
+  await hub.run(0.5); n3.submit({ type: 'buildTrack', path });
+  await hub.run(0.5); n2.submit({ type: 'buyTrain', model: 3, kinds: [0, 0], stationId: sb, route: [sb, sa] });
+  await hub.run(0.5); n1.submit({ type: 'setThruTracks', id: sb, n: 6 });
+  let k = 0;
+  while (n1.world.tick < 2500 && k++ < 4000) await hub.run(0.05);
+  n1.setSpeed(0); await hub.run(8);
+  const st = n1.world.stations.find((q) => q.thru);
+  assert.ok(st && st.platforms === 6, 'gară de trecere cu 6 linii construită în rețea');
+  const hs = nodes.map((n) => hashState(n.world));
+  assert.ok(hs.every((h) => h === hs[0]), 'hash-uri diferite: ' + hs);
+});

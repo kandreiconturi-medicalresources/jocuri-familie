@@ -5,6 +5,7 @@ import { Builder } from './geo.js';
 import { frameOf } from '../sim/terminal.js';
 import { LANE, LADDER, END, laneC, laneStart, box } from './terminalLayout.js';
 import { hall } from './terminalHall.js';
+import { lampSink } from './stationProps.js';
 
 const lam = new MeshLambertMaterial({ vertexColors: true });
 const glass = new MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, side: DoubleSide });
@@ -15,7 +16,7 @@ function rails(B, pts) {
   for (const o of [-0.06, 0.06]) B.ribbon(pts.map((p) => [p[0], 0.09, p[1]]), 0.012, 0.0, 0.03, '#e9edf3', '#8d939b', o);
 }
 
-function yard(B, G, n, owner) {
+function yard(B, G, n, owner, wins) {
   const last = laneC(n - 1), top = last + 0.3;
   box(B, 0.5, 4.5, -2.5, 2.5, -0.4, 0.04, '#a39a8a'); // platforma curții (ascunde denivelările)
   rails(B, [[0, -2.45], [laneC(n - 1) + 0.0001, laneStart(n - 1)]]); // scara de macaze din linia principală
@@ -32,7 +33,7 @@ function yard(B, G, n, owner) {
   box(B, 0.3, top + 0.02, END + 0.08, 2.47, 0.5, 0.58, owner);
   box(B, (top + 0.3) / 2 - 0.12, (top + 0.3) / 2 + 0.12, END + 0.07, END + 0.09, 0.62, 0.86, '#ffffff'); // ceasul
   box(B, (top + 0.3) / 2 - 0.13, (top + 0.3) / 2 + 0.13, END + 0.08, END + 0.1, 0.58, 0.88, '#4a4038');
-  for (let c = 0.45; c < top - 0.1; c += 0.35) box(B, c, c + 0.18, END + 0.08, END + 0.09, 0.15, 0.4, '#7fb2d8'); // ferestre
+  for (let c = 0.45; c < top - 0.1; c += 0.35) { box(B, c, c + 0.18, END + 0.08, END + 0.09, 0.15, 0.4, '#7fb2d8'); wins.push([[c, 0.15, END + 0.07], [c + 0.18, 0.15, END + 0.07], [c + 0.18, 0.4, END + 0.07], [c, 0.4, END + 0.07]]); } // ferestre (luminate noaptea)
   // service: linie din scară până în hală
   const sc = 3.9, sa = -2.45 + sc * LADDER;
   rails(B, [[laneC(n - 1), laneStart(n - 1)], [sc, sa], [sc, 2.3]]);
@@ -47,8 +48,10 @@ function yard(B, G, n, owner) {
 }
 
 function one(s, g, st, colorOf) {
-  const f = frameOf(st.dir), root = new Group(), B = new Builder(), G = new Builder(), n = Math.max(1, Math.min(6, st.platforms | 0 || 4));
-  yard(B, G, n, colorOf(st.owner));
+  const f = frameOf(st.dir), root = new Group(), B = new Builder(), G = new Builder(), n = Math.max(1, Math.min(6, st.platforms | 0 || 4)), lamps = [], wins = [];
+  lampSink.list = lamps;
+  yard(B, G, n, colorOf(st.owner), wins);
+  lampSink.list = null;
   const body = new Mesh(B.geometry(), lam); body.userData.cast = true; body.userData.recv = true; root.add(body);
   if (!G.empty) { const gm = new Mesh(G.geometry(), glass); gm.renderOrder = 2; root.add(gm); }
   const bridge = new Mesh(new BoxGeometry(1.76, 0.06, 0.1), new MeshLambertMaterial({ color: '#d99a18' }));
@@ -58,7 +61,8 @@ function one(s, g, st, colorOf) {
   bridge.position.set(3.5, 0.86, -1.6); root.add(bridge, trolley, cable, load);
   root.position.set(st.x + 0.5, g.tileY(st.x, st.y), st.y + 0.5);
   root.rotation.y = Math.atan2(-f.cy, f.cx);
-  return { root, update(tm, busy) {
+  const y0 = g.tileY(st.x, st.y), toW = (p) => [st.x + 0.5 + f.cx * p[0] + f.ax * p[2], y0 + p[1], st.y + 0.5 + f.cy * p[0] + f.ay * p[2]];
+  return { root, lamps: lamps.map(toW), wins: wins.map((q) => q.map(toW)), update(tm, busy) {
     const sp = busy ? 0.6 : 0.2, ph = tm * sp, along = Math.sin(ph * 0.7) * 0.6, cross = 3.5 + Math.sin(ph) * 0.6, lift = 0.2 + (0.5 + 0.5 * Math.sin(ph * 2)) * 0.45;
     bridge.position.z = -1.6 + along; trolley.position.set(cross, 0.92, -1.6 + along);
     load.position.set(cross, lift, -1.6 + along); cable.scale.y = Math.max(0.01, 0.9 - lift - 0.1); cable.position.set(cross, (0.9 + lift + 0.1) / 2, -1.6 + along);
@@ -68,7 +72,8 @@ function one(s, g, st, colorOf) {
 /** Grupul tuturor terminalelor mari; userData.update(t) mișcă macaralele. */
 export function createTerminals(s, g, colorOf) {
   const root = new Group(), items = [];
-  for (const st of s.stations) if (st.big) { const it = one(s, g, st, colorOf); it.id = st.id; items.push(it); root.add(it.root); }
+  root.userData.lamps = []; root.userData.wins = [];
+  for (const st of s.stations) if (st.big) { const it = one(s, g, st, colorOf); it.id = st.id; items.push(it); root.add(it.root); root.userData.lamps.push(...it.lamps); root.userData.wins.push(...it.wins); }
   root.userData.update = (tm) => { for (const it of items) it.update(tm, s.trains.some((t) => t.state === 2 && t.to === it.id)); };
   return root;
 }

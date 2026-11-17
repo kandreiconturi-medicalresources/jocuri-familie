@@ -10,11 +10,25 @@ import { cityCards } from './plannerCards.js';
 import { PROD } from '../sim/consts.js';
 import { islandAt } from '../sim/islands.js';
 import { industryPrice } from '../sim/land.js';
+import { thruInfo, THRU_MAX } from '../sim/thru.js';
 
 const LEVEL = ['Sat', 'Oraș', 'Metropolă'];
 
 export function createEcoPanels(card, ev) {
   const { open, row, goodRow, chip } = card;
+  /** Gara mare de trecere: câte linii are, butoane pentru linii în plus (cu preț); la gara normală din oraș, transformarea. */
+  const thruRows = (s, st) => {
+    const me = ev.me ? ev.me() : 0;
+    if (st.port || st.big || st.owner !== me || !ev.thru) return null;
+    const opts = [];
+    for (let n = st.thru ? st.platforms + 1 : 2; n <= THRU_MAX && opts.length < 4; n++) {
+      const r = thruInfo(s, me, st.x, st.y, n, st.thru ? st.dir : undefined);
+      if (r.ok) opts.push(h('button', { class: 'opt', onclick: () => { if (st.thru ? ev.thru(st.id, n) : ev.toThru(st.x, st.y, n)) api.station(s, st); } }, `🏙️ ${n} linii · ${lei(r.cost)}`, r.houses.length ? h('small', null, `${r.houses.length} case mutate`) : null));
+    }
+    const busy = s.trains.filter((t) => t.state === 2 && t.to === st.id).length;
+    return st.thru ? [row('🛤️ Linii (trenuri deodată)', `${busy} ocupate din ${st.platforms}`), h('div', { class: 'note' }, '🏙️ Acoperă tot orașul: toți locuitorii, poșta și cererea de marfă.'), ...opts]
+      : st.cityId >= 0 && opts.length ? [h('div', null, h('b', null, 'Fă-o gară mare de trecere')), h('div', { class: 'note' }, 'Linii paralele, peroane, pasarelă, clădire mare; acoperă tot orașul.'), ...opts] : null;
+  };
   /** „Cumpără industria” (etapa 7.4): industrie de pe insula altuia; marfa ei merge apoi la gările tale. */
   const buyBtn = (s, o) => {
     const k = s.islands ? islandAt(s, o.x, o.y) : -1, me = ev.me ? ev.me() : 0;
@@ -61,10 +75,11 @@ export function createEcoPanels(card, ev) {
       const goods = [];
       for (let g = 2; g < NG; g++) if (st.cargo[g] > 0) goods.push(goodRow(g, st.cargo[g]));
       const ind = s.industries.filter((o) => near(st, o));
-      open(h('h3', null, '🚉 ' + st.name), h('div', null, st.big ? 'Terminal mare' : STATION_NAMES[st.size]), row('👥 Pasageri care așteaptă', st.waiting.pass), row('✉️ Poștă', st.waiting.mail),
+      open(h('h3', null, '🚉 ' + st.name), h('div', null, st.big ? 'Terminal mare' : st.thru ? 'Gară mare de trecere' : STATION_NAMES[st.size]), row('👥 Pasageri care așteaptă', st.waiting.pass), row('✉️ Poștă', st.waiting.mail),
         ...goods, row('Trenuri aici', trains.length),
         st.big ? [row('🛤️ Linii terminale', `${s.trains.filter((t) => t.state === 2 && t.to === st.id).length} ocupate din ${st.platforms}`),
           h('div', { class: 'note' }, '🔧 Service: trenul care oprește aici e reparat complet. 🏗️ Macaraua încarcă și descarcă de două ori mai repede. Mai multe linii (până la 6): 🧰 Mai mult → ⬆️ Gară mai mare.')] : null,
+        thruRows(s, st),
         ind.length ? h('div', null, 'Industrii în rază: ', ind.map((o) => INDUSTRIES[o.type].icon + ' ' + o.name).join(', ')) : null,
         h('div', null, h('b', null, 'Îmbunătățiri')), h('div', { class: 'note' }, 'Depoul de apă umple locomotivele cu abur (merg mai repede). Atelierul repară trenurile.'),
         UPGRADES.map((u, k) => st.up[k]

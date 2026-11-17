@@ -1,5 +1,6 @@
 // Economie: apariția pasagerilor și a poștei, creșterea orașelor cu ce primesc, întreținere lunară.
-import { STATION_RADIUS, WAIT_CAP, MAINT, MODELS, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
+import { covers } from './catch.js';
+import { WAIT_CAP, MAINT, MODELS, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
 import { NG, wantOf } from './goods.js';
 import { growBuildings, levelOf } from './growth.js';
 import { addNews } from './news.js';
@@ -12,9 +13,8 @@ import { islandMonthly } from './islandMonth.js';
 
 export function spawnCargo(s) {
   for (const st of s.stations) {
-    const r = STATION_RADIUS[st.size] + 2;
     let pop = 0;
-    for (const c of s.cities) if (Math.abs(c.x - st.x) <= r && Math.abs(c.y - st.y) <= r) pop += c.pop;
+    for (const c of s.cities) if (covers(st, c)) pop += c.pop;
     if (!pop) continue;
     const mail = pop >> 1;
     st.rem.pass += pop + (st.up[2] ? pop >> 1 : 0); st.rem.mail += mail + (st.up[1] ? mail >> 1 : 0);
@@ -27,7 +27,7 @@ export function spawnCargo(s) {
 
 /** Creșterea lunară a unui oraș: puțin singur, mult cu ce i se aduce (pasageri, poștă, mărfuri cerute). */
 export function growCity(s, c) {
-  const served = s.stations.some((st) => Math.max(Math.abs(c.x - st.x), Math.abs(c.y - st.y)) <= STATION_RADIUS[st.size] + 2);
+  const served = s.stations.some((st) => covers(st, c));
   let gain = Math.max(2, (c.pop * (served ? 2 : 1) / 100) | 0);
   for (let g = 0; g < NG; g++) gain += Math.min(c.got[g], wantOf(c, g)) * (g < 2 ? 1 : 2);
   c.pop += Math.min(gain, ((c.pop * 15) / 100 | 0) + 6);

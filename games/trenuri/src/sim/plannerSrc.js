@@ -1,5 +1,6 @@
 // Planificatorul de rută, partea 1 (pură, numai întregi): ce cere un oraș, cât produce o industrie, există șină între două locuri,
 // unde se pune o gară și cum se trage șina între două capete (A* + pod/nivelare/tunel din tracePlan). Fără DOM.
+import { covers } from './catch.js';
 import { DX, DY, STATION_RADIUS, STATION_COST, PROD, WATER_H, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
 import { CITY_GOODS, INDUSTRIES, wantOf, cityGoods } from './goods.js';
 import { tileDist } from './cargo.js';
@@ -32,8 +33,7 @@ export function monthlyOutput(o) {
 
 /** Gara ta care deservește locul o (industrie sau oraș), cea mai apropiată de `toward`; altfel null. */
 export function stationAtPlace(s, o, owner, toward) {
-  const r = (st) => STATION_RADIUS[st.size] + 2;
-  const ok = (st) => st.owner === owner && (isCity(o) ? Math.abs(o.x - st.x) <= r(st) && Math.abs(o.y - st.y) <= r(st) : near(st, o));
+  const ok = (st) => st.owner === owner && (isCity(o) ? covers(st, o) : near(st, o));
   let best = null;
   for (const st of s.stations) if (ok(st) && (!best || tileDist(st, toward) < tileDist(best, toward))) best = st;
   return best;

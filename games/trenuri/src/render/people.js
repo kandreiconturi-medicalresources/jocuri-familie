@@ -3,6 +3,8 @@
 import { Group, Quaternion, Matrix4, Vector3, Euler, Color } from 'three';
 import { poseAt, travelled, stubPath, cumOf } from './pose.js';
 import { layoutOf } from './stationLayout.js';
+import { laneOf, sgOf } from './bays.js';
+import { walkPath } from './thruLayout.js';
 import { makePeopleMeshes, CLOTHES, SKINS } from './peopleGeo.js';
 import { look } from './look.js';
 import { perf } from '../../../../shared/engine/perf.js';
@@ -26,15 +28,24 @@ export function createPeople(s, g, camera) {
   function make(st, L, pl, u, v, delay) {
     const p = P.find((q) => !q.on);
     if (!p) return null;
-    Object.assign(p, { on: true, sid: st.id, L, pl, u, v, y0: g.tileY(st.x, st.y), yaw: rnd() * TAU, ph: rnd() * TAU, sc: 0, fade: 0, delay, h: 0.9 + rnd() * 0.2, c: pick(CLOTHES), k: pick(SKINS), pts: null, pi: 0, spd: 0.25, fate: 'idle', rest: rnd() * 3 });
+    Object.assign(p, { on: true, sid: st.id, L, pl, u, v, y0: g.tileY(st.x, st.y), yaw: rnd() * TAU, ph: rnd() * TAU, sc: 0, fade: 0, delay, h: 0.9 + rnd() * 0.2, c: pick(CLOTHES), k: pick(SKINS), pts: null, pi: 0, spd: 0.25, fate: 'idle', rest: rnd() * 3, z: 0, to: null });
     return p;
   }
   const goTo = (p, pts, spd, fate) => { p.pts = pts; p.pi = 0; p.spd = spd; p.fate = fate; p.rest = 0; };
   const rndSpot = (pl) => [pl.u0 + rnd() * (pl.u1 - pl.u0), pl.v + (rnd() - 0.5) * pl.hw * 1.6];
-  const wander = (p) => { const [u, v] = rndSpot(p.pl); goTo(p, [[u, v]], 0.05 + rnd() * 0.04, 'idle'); };
+  const wander = (p) => {
+    const L = p.L;
+    if (L.thru && L.plats.length > 1 && rnd() < 0.18) { // schimbă peronul: pe pasarelă sau prin pasaj
+      const q = pick(L.plats.filter((x) => x !== p.pl)), path = walkPath(L.G, p.pl, q, rnd() < 0.4), [u, v] = rndSpot(q);
+      goTo(p, [[path[0][0], p.pl.v], ...path, [u, v]], 0.16 + rnd() * 0.06, 'idle'); p.to = q; return;
+    }
+    const [u, v] = rndSpot(p.pl); goTo(p, [[u, v]], 0.05 + rnd() * 0.04, 'idle');
+  };
+  /** Drumul spre ieșire: în gara de trecere urcă pe pasarelă (sau coboară în pasaj) și intră în clădire. */
+  const exitPts = (pl, u) => (pl.out ? [[pl.out(false)[0][0] + (u - pl.out(false)[0][0]) * 0.2, pl.v], ...pl.out(rnd() < 0.35)] : [pl.exit]);
 
   function spawnIdle(st, L) {
-    const pl = L.big ? pick(L.plats) : (rnd() < 0.55 || L.plats.length < 2 ? L.plats[0] : pick(L.plats.slice(1)));
+    const pl = L.multi ? pick(L.plats) : (rnd() < 0.55 || L.plats.length < 2 ? L.plats[0] : pick(L.plats.slice(1)));
     if (!pl) return;
     const [u, v] = rndSpot(pl), p = make(st, L, pl, u, v, 0);
     if (p) p.sc = 0;
@@ -42,12 +53,12 @@ export function createPeople(s, g, camera) {
   /** Poziția (în u, de-a lungul peronului) a vagonului i (0 = primul după locomotivă). */
   function carU(t, st, L, lane, i) {
     if (L.big && lane > 0) return 1.2 - ((i + 1) * CAR_GAP) / 256; // la fel ca în trains.js (bays)
+    if (L.thru && lane > 0) return sgOf(st, t) * ((t.cars * CAR_GAP) / 512 - ((i + 1) * CAR_GAP) / 256);
     const moving = t.path.length > 1, path = moving ? t.path : stubPath(s, st), d = moving ? travelled(s, t) : path.length > 1 ? cumOf(s, path)[1] : 0, o = poseAt(s, g, path, d - (i + 1) * CAR_GAP);
     return (o.x - L.ox) * L.ax + (o.z - L.oz) * L.az;
   }
   function arrive(t, st, L) {
-    let lane = 0;
-    if (L.big) for (const q of s.trains) { if (q.id === t.id) break; if (q.state === 2 && q.to === st.id) lane++; }
+    const lane = L.multi ? laneOf(st, t) : 0; // aceeași linie ca trenul desenat (bays.js)
     const plats = L.plats.filter((pl) => pl.lanes.includes(lane));
     if (!plats.length || total() > cap() - 6) return;
     const idle = P.filter((p) => p.on && p.sid === st.id && p.fate === 'idle' && plats.includes(p.pl));
@@ -58,7 +69,7 @@ export function createPeople(s, g, camera) {
         const pl = pick(plats), u = clamp(pl, cu + (rnd() - 0.5) * 0.3);
         if (Math.abs(cu - u) > 0.7) continue;
         const sgn = pl.v > L.lanes[lane] ? 1 : -1, p = make(st, L, pl, u, L.lanes[lane] + sgn * 0.2, rnd() * 0.9 + j * 0.15);
-        if (p) goTo(p, [[u + (rnd() - 0.5) * 0.1, pl.v + (rnd() - 0.5) * 0.06], [pl.exit[0] + (rnd() - 0.5) * 0.1, pl.exit[1]]], 0.2 + rnd() * 0.1, 'gone');
+        if (p) goTo(p, [[u + (rnd() - 0.5) * 0.1, pl.v + (rnd() - 0.5) * 0.06], ...(pl.out ? exitPts(pl, u) : [[pl.exit[0] + (rnd() - 0.5) * 0.1, pl.exit[1]]])], 0.2 + rnd() * 0.1, 'gone');
       }
       for (let j = 0; j < 2 && idle.length; j++) { // urcă
         const p = idle.splice((rnd() * idle.length) | 0, 1)[0], sgn = p.pl.v > L.lanes[lane] ? 1 : -1;
@@ -76,10 +87,10 @@ export function createPeople(s, g, camera) {
     let tot = total();
     for (const st of s.stations) {
       if (!near.has(st.id) || st.port || c === 0) continue;
-      const L = layoutOf(s, st), pass = st.waiting ? st.waiting.pass | 0 : 0, mx = st.big ? 22 : 6 + 3 * L.plats.length, base = (st.size >= 1 || st.big ? 3 : 1) + 2 * L.plats.length;
+      const L = layoutOf(s, st), pass = st.waiting ? st.waiting.pass | 0 : 0, mx = st.big ? 22 : st.thru ? 10 + 4 * L.plats.length : 6 + 3 * L.plats.length, base = (st.size >= 1 || st.big ? 3 : 1) + 2 * L.plats.length;
       const want = Math.min(mx, Math.max(base, pass > 0 ? 1 + ((pass / 4) | 0) : 0)), n = cnt.get(st.id) || 0;
       if (n < want && tot < c && rnd() < 0.7) { spawnIdle(st, L); tot++; }
-      else if (n > want + 1) { const p = P.find((q) => q.on && q.sid === st.id && q.fate === 'idle'); if (p) goTo(p, [p.pl.exit], 0.22, 'gone'); }
+      else if (n > want + 1) { const p = P.find((q) => q.on && q.sid === st.id && q.fate === 'idle'); if (p) goTo(p, exitPts(p.pl, p.u), 0.22, 'gone'); }
     }
     const seen = new Set();
     for (const t of s.trains) {
@@ -94,13 +105,13 @@ export function createPeople(s, g, camera) {
   }
   function move(p, dt) {
     if (!p.pts) { if (p.fate === 'idle' && (p.rest -= dt) <= 0) wander(p); return false; }
-    const q = p.pts[p.pi], du = q[0] - p.u, dv = q[1] - p.v, d = Math.hypot(du, dv), step = p.spd * dt;
+    const q = p.pts[p.pi], qz = q[2] || 0, du = q[0] - p.u, dv = q[1] - p.v, d = Math.hypot(du, dv, (qz - p.z) * 0.5), step = p.spd * dt;
     if (d <= step) {
-      p.u = q[0]; p.v = q[1];
-      if (++p.pi >= p.pts.length) { p.pts = null; if (p.fate === 'gone') p.fade = 1; else p.rest = 1 + rnd() * 5; }
+      p.u = q[0]; p.v = q[1]; p.z = qz;
+      if (++p.pi >= p.pts.length) { p.pts = null; if (p.to) { p.pl = p.to; p.to = null; } if (p.fate === 'gone') p.fade = 1; else p.rest = 1 + rnd() * 5; }
       return false;
     }
-    p.u += (du / d) * step; p.v += (dv / d) * step;
+    p.u += (du / d) * step; p.v += (dv / d) * step; p.z += ((qz - p.z) / d) * step;
     p.yaw = turn(p.yaw, Math.atan2(p.L.ax * du + p.L.bx * dv, p.L.az * du + p.L.bz * dv), Math.min(1, dt * 10));
     return true;
   }
@@ -120,7 +131,7 @@ export function createPeople(s, g, camera) {
         const walking = move(p, dt);
         if (p.fade > 0) { p.sc -= dt * 3; if (p.sc <= 0) { p.on = false; continue; } } else if (p.sc < 1) p.sc = Math.min(1, p.sc + dt * 4);
         const L = p.L, sw = Math.sin(time * 9 + p.ph), s0 = p.sc * p.h * 1.5;
-        vv.set(L.ox + L.ax * p.u + L.bx * p.v, baseY(p) + p.pl.top + (walking ? Math.abs(sw) * 0.007 : 0), L.oz + L.az * p.u + L.bz * p.v);
+        vv.set(L.ox + L.ax * p.u + L.bx * p.v, baseY(p) + p.pl.top + p.z + (walking ? Math.abs(sw) * 0.007 : 0), L.oz + L.az * p.u + L.bz * p.v);
         qq.setFromEuler(ee.set(0, p.yaw, walking ? sw * 0.07 : 0));
         m4.compose(vv, qq, ss.set(s0, s0, s0));
         body.setMatrixAt(nb, m4); skin.setMatrixAt(nb, m4);

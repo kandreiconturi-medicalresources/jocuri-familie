@@ -68,7 +68,7 @@ export function hashState(s) {
   for (let i = 0; i < s.track.length; i++) h = fnv(fnv(h, s.track[i]), s.track[i] >> 8);
   for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); h = arr(h, c.got); }
   for (const o of s.industries) { h = num(num(num(h, o.type), o.x * 256 + o.y), o.boost); h = arr(arr(h, o.in), o.out); }
-  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); if (t.port) h = num(h, 900 + t.dock); }
+  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); if (t.port) h = num(h, 900 + t.dock); if (t.thru) h = num(h, 1300 + t.dir); }
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);
@@ -102,7 +102,7 @@ function unb64(str, Type) {
   return new Type(u.buffer);
 }
 const BIG = ['height', 'water', 'forest', 'track', 'land'];
-const DERIVED = ['roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc', 'isl', 'seaC'];
+const DERIVED = ['keep', 'roads', 'occ', 'dirty', 'blk', 'stm', 'sgm', 'resv', 'pocc', 'isl', 'seaC'];
 
 /** Obiect JSON simplu (poate merge în localStorage). */
 export function serialize(s) {

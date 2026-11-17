@@ -1,5 +1,7 @@
 // Mobilier de peron (bănci, felinare, ceas, intrare în pasaj subteran, copertină), generic: axa lungă (tx,tz) în plan, y = fața peronului.
 const STEEL = '#4a525c', WOOD = '#8a5a32';
+/** Când `list` e un array, fiecare felinar își adaugă acolo capul [x, y, z] (pentru luminile de noapte, stationLights.js). */
+export const lampSink = { list: null };
 
 export function bench(B, x, y, z, tx, tz) {
   const rx = -tz, rz = tx;
@@ -11,6 +13,7 @@ export function lamp(B, x, y, z) {
   B.obox(x, y + 0.14, z, 0, 1, 0.006, 0.006, 0.14, STEEL);
   B.obox(x, y + 0.3, z, 0, 1, 0.03, 0.03, 0.006, STEEL);
   B.obox(x, y + 0.287, z, 0, 1, 0.022, 0.022, 0.008, '#ffe9a8');
+  if (lampSink.list) lampSink.list.push([x, y + 0.28, z]);
 }
 /** Ceas de peron: stâlp cu fața pătrată (față către ambele capete ale peronului). */
 export function clock(B, x, y, z, tx, tz) {

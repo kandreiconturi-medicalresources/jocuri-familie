@@ -13,6 +13,8 @@ import { blobGeometry, blobMaterial } from './blob.js';
 import { perf } from '../../../../shared/engine/perf.js';
 import { frameOf } from '../sim/terminal.js';
 import { LANE } from './terminal.js';
+import { bayMap } from './bays.js';
+import { laneV } from './thruLayout.js';
 
 export const TRAIN_MODELS = [...MODELS.map((m) => 'trains/' + m.glb), ...CAR_TYPES.map((c) => 'trains/' + c.glb)];
 const CAR_GAP = 250, MAX_BLOBS = 600;
@@ -21,16 +23,32 @@ const m4 = new Matrix4(), qq = new Quaternion(), vv = new Vector3(), ss = new Ve
 const oa = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, ob = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
-/** Trenurile oprite într-un terminal mare (în afară de primul) stau pe liniile curții: id tren → { st, f, c }. */
+/** Sensul trenului față de axa gării (din ultimii doi pași ai traseului cu care a sosit). */
+function headingOf(s, t, st) {
+  const p = t.path, f = frameOf(st.dir);
+  if (p.length < 2) return 1;
+  const a = p[p.length - 2], b = p[p.length - 1], dx = (b % s.w) - (a % s.w), dy = ((b / s.w) | 0) - ((a / s.w) | 0);
+  return dx * f.ax + dy * f.ay < 0 ? -1 : 1;
+}
+/** Trenurile oprite într-un terminal mare sau într-o gară de trecere stau pe liniile lor (linia 0 = traseul): id tren → { st, f, c, a0, sg, thru }. */
 function bays(s) {
   const out = new Map();
-  for (const st of s.stations) {
-    if (!st.big) continue;
-    const f = frameOf(st.dir); let k = 0;
-    for (const t of s.trains) if (t.state === 2 && t.to === st.id) { if (k > 0) out.set(t.id, { st, f, c: k * LANE }); k++; }
+  for (const [id, b] of bayMap(s, (t, st) => headingOf(s, t, st))) {
+    if (!b.lane) continue;
+    const st = b.st, f = frameOf(st.dir), t = s.trains.find((q) => q.id === id);
+    if (st.thru) out.set(id, { st, f, c: laneV(b.lane), a0: ((t ? t.cars : 0) * CAR_GAP) / 512, sg: b.sg, thru: true });
+    else out.set(id, { st, f, c: b.lane * LANE, a0: 1.2, sg: 1, thru: false });
   }
   return out;
 }
+/** Poza vagonului k pe linia din gară (sh din bays) în o. */
+function bayPose(g, sh, k, o) {
+  const a = sh.sg * (sh.a0 - (k * CAR_GAP) / 256), st = sh.st, f = sh.f;
+  o.x = st.x + 0.5 + f.cx * sh.c + f.ax * a; o.y = g.tileY(st.x, st.y) + 0.06; o.z = st.y + 0.5 + f.cy * sh.c + f.ay * a;
+  o.yaw = Math.atan2(sh.sg * f.ax, sh.sg * f.ay); o.pitch = 0;
+  return o;
+}
+const bp = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, ease = (x) => x * x * (3 - 2 * x);
 
 export function createTrains(s, g, camera) {
   const root = new Group(), items = new Map(), q = perf.quality();
@@ -97,15 +115,21 @@ export function createTrains(s, g, camera) {
           else if (!path.length) continue; // remorca stă pe placa depoului: path are o placă
         }
         const d = stub ? cumOf(s, path)[1] : it.prev + (it.cur - it.prev) * alpha, moving = it.cur !== it.prev;
+        const sh = bay.get(t.id);
+        if (sh && sh.thru) it.sh = sh;
+        it.bl = Math.max(0, Math.min(1, (it.bl || 0) + (sh && sh.thru ? dt : -dt) * 1.4));
+        const bl = it.bl;
         it.parts.forEach((p, k) => {
           const dd = d - k * CAR_GAP, o = poseAt(s, g, path, dd), yaw = o.yaw, pitch = o.pitch, ox = o.x, oy = o.y, oz = o.z;
           let roll = 0;
           if (path.length > 1) { // înclinare în curbă, după schimbarea direcției puțin înainte față de puțin în urmă
             roll = Math.max(-0.09, Math.min(0.09, wrap(poseAt(s, g, path, dd + 70, oa).yaw - poseAt(s, g, path, dd - 70, ob).yaw) * 0.22));
           }
-          const sh = bay.get(t.id); // în terminalul mare trenul stă pe linia lui, cu locomotiva la opritor
-          if (sh) { const a = 1.2 - (k * CAR_GAP) / 256; p.position.set(sh.st.x + 0.5 + sh.f.cx * sh.c + sh.f.ax * a, g.tileY(sh.st.x, sh.st.y) + 0.06, sh.st.y + 0.5 + sh.f.cy * sh.c + sh.f.ay * a); p.rotation.set(0, Math.atan2(sh.f.ax, sh.f.ay), 0); }
-          else { p.position.set(ox, oy, oz); p.rotation.set(-pitch, yaw, roll); }
+          if (sh && !sh.thru) { bayPose(g, sh, k, bp); p.position.set(bp.x, bp.y, bp.z); p.rotation.set(0, bp.yaw, 0); } // terminalul: locomotiva la opritor
+          else if (bl > 0.001 && it.sh) { // gara de trecere: trenul trece lin pe linia lui (peste scara de macaze) și înapoi
+            bayPose(g, it.sh, k, bp); const e = ease(bl);
+            p.position.set(ox + (bp.x - ox) * e, oy + (bp.y - oy) * e, oz + (bp.z - oz) * e); p.rotation.set(-pitch * (1 - e), yaw + wrap(bp.yaw - yaw) * e, roll * (1 - e));
+          } else { p.position.set(ox, oy, oz); p.rotation.set(-pitch, yaw, roll); }
           if (blobs.visible && nb < MAX_BLOBS) blobs.setMatrixAt(nb++, m4.compose(vv.set(ox, oy + 0.04, oz), qq.setFromEuler(ee.set(0, yaw, 0)), ss.set(0.55, 1, 1.0)));
           if (k === 0 && MODELS[t.model].smoke && acc > 0.1 && moving) smoke.emit(ox + Math.sin(yaw) * 0.2, oy + 0.56, oz + Math.cos(yaw) * 0.2, 1);
         });
