@@ -3,7 +3,7 @@ import { perf } from '../../../../shared/engine/perf.js';
 import { detectPhone, capFps, createPacer } from '../../../../shared/engine/pace.js';
 
 export const MODES = ['3d', '2d', 'classic'];
-export const look = { phone: detectPhone(), cool: false, mode: '3d', cap: 60 };
+export const look = { phone: detectPhone(), cool: false, mode: '3d', cap: 60, ultra: false };
 look.cap = capFps(look);
 /** Ritmul desenării (plafonul de cadre): citit de bucla din main.js. */
 export const pacer = createPacer(look.cap);
@@ -13,6 +13,9 @@ const cbs = [];
 export const shadowsOn = () => perf.quality() >= 2 && !look.cool && look.mode !== '2d';
 /** Straturi „de lux” (nori, catenară, păsări): calitatea 2 fără modul răcoros. */
 export const rich = () => perf.quality() >= 2 && !look.cool;
+
+/** Grafica Ultra (post-procesare, umbre moi 4K): doar pe PC, la calitatea 2, fără modul răcoros, în 3D/clasic. */
+export const ultraOn = () => look.ultra && !look.phone && rich() && look.mode !== '2d';
 
 export function setLook(patch) {
   Object.assign(look, patch);

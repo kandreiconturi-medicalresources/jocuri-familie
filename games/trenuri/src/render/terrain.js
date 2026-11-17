@@ -5,7 +5,9 @@ import { grassTexture, waterTexture } from './texgen.js';
 import { perf } from '../../../../shared/engine/perf.js';
 import { createFoam } from './foam.js';
 import { createDepth } from './depth.js';
-import { look, shadowsOn } from './look.js';
+import { look, shadowsOn, ultraOn } from './look.js';
+import { ultraTerrainMaterial, terrainWeights } from './terrainUltra.js';
+import { createUltraWater } from './waterUltra.js';
 
 const CH = 32, UV = 1 / 3.2;
 const PAL = [ // înălțime 0..15 -> culoare
@@ -30,11 +32,12 @@ function tileColor(s, x, y, out) {
 }
 
 let mat = null;
-const MATERIAL = () => mat || (mat = new MeshLambertMaterial({ vertexColors: true, map: grassTexture(perf.quality() >= 1 ? 256 : 128), color: new Color(1.2, 1.2, 1.15) }));
+const BASIC = () => mat || (mat = new MeshLambertMaterial({ vertexColors: true, map: grassTexture(perf.quality() >= 1 ? 256 : 128), color: new Color(1.2, 1.2, 1.15) }));
+const MATERIAL = () => (ultraOn() ? ultraTerrainMaterial() : BASIC());
 
 function chunk(s, g, cx, cy) {
   const x0 = cx * CH, y0 = cy * CH, nx = Math.min(CH, s.w - x0), ny = Math.min(CH, s.h - y0), W = nx + 1;
-  const pos = new Float32Array(W * (ny + 1) * 3), nor = new Float32Array(pos.length), col = new Float32Array(pos.length), uv = new Float32Array(W * (ny + 1) * 2);
+  const pos = new Float32Array(W * (ny + 1) * 3), nor = new Float32Array(pos.length), col = new Float32Array(pos.length), uv = new Float32Array(W * (ny + 1) * 2), tw = new Float32Array(W * (ny + 1) * 2);
   const c = new Color(), tmp = new Color(), idx = [];
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
     const gx = x0 + i, gy = y0 + j, k = (j * W + i) * 3;
@@ -49,7 +52,8 @@ function chunk(s, g, cx, cy) {
     c.multiplyScalar(0.25);
     const n = vnoise(gx * 0.16, gy * 0.16) * 0.6 + vnoise(gx * 0.55, gy * 0.55) * 0.4; // petice mari de nuanță
     c.r *= 0.9 + 0.24 * n + 0.07 * (n - 0.5); c.g *= 0.9 + 0.2 * n; c.b *= 0.9 + 0.2 * n - 0.1 * (n - 0.5);
-    const slope = 1 - nor[k + 1];
+    const slope = 1 - nor[k + 1], wt = terrainWeights(y, slope);
+    tw[(j * W + i) * 2] = wt[0]; tw[(j * W + i) * 2 + 1] = wt[1];
     if (y > 0.12) c.lerp(ROCK, smooth(Math.min(1, Math.max(0, (slope - 0.1) / 0.14))) * 0.85); // stâncă pe pante
     if (y > -0.04 && y < 0.07) c.lerp(y < 0.02 ? WET : SAND, 0.55); // mal: nisip ud, apoi uscat
     else if (y <= -0.04) c.lerp(DEEP, Math.min(0.75, (-0.04 - y) * 6)); // fund de apă
@@ -64,6 +68,7 @@ function chunk(s, g, cx, cy) {
   geo.setAttribute('normal', new Float32BufferAttribute(nor, 3));
   geo.setAttribute('color', new Float32BufferAttribute(col, 3));
   geo.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+  geo.setAttribute('tw', new Float32BufferAttribute(tw, 2)); // ponderi stâncă/nisip pentru materialul Ultra
   geo.setIndex(new Uint32BufferAttribute(idx, 1));
   geo.computeBoundingSphere();
   const m = new Mesh(geo, MATERIAL());
@@ -73,6 +78,7 @@ function chunk(s, g, cx, cy) {
 
 export function createTerrain(s, g) {
   const root = new Group(), chunks = new Map();
+  let cur = MATERIAL();
   for (let cy = 0; cy * CH < s.h; cy++) for (let cx = 0; cx * CH < s.w; cx++) { const m = chunk(s, g, cx, cy); chunks.set(cy * 1000 + cx, m); root.add(m); }
   const tex = waterTexture(), tex2 = waterTexture(), big = Math.max(s.w, s.h) * 4;
   tex.repeat.set(big / 6, big / 6); tex2.repeat.set(big / 9, big / 9);
@@ -84,6 +90,7 @@ export function createTerrain(s, g) {
   const foam = createFoam(s);
   const depth = createDepth(s); // gradient de adâncime: turcoaz la mal, albastru adânc larg
   root.add(water, depth.mesh, glint, foam.mesh);
+  let uw = null; // apa Ultra se creează la prima pornire
   return {
     root,
     /** După nivelare: reface doar bucățile (cx, cy) date. */
@@ -97,11 +104,16 @@ export function createTerrain(s, g) {
       if (list.length) { foam.rebuild(); depth.rebuild(); }
     },
     tick(t, night = 0) {
+      const m = MATERIAL(); if (m !== cur) { cur = m; for (const c of chunks.values()) c.material = m; } // Ultra pornit/oprit
       tex.offset.set(t * 0.004, t * 0.0026); tex2.offset.set(-t * 0.0033, t * 0.0021);
       water.position.y = WATER_Y - 0.005 + 0.012 * Math.sin(t * 0.8); glint.position.y = water.position.y + 0.004; // val liniștit
-      glint.visible = !look.cool; foam.tick(t, night); depth.tick(night);
+      const u = ultraOn();
+      if (u && !uw) uw = createUltraWater(s, depth.mesh.material.map, foam.mesh.material.map);
+      water.material = u ? uw.material : wm; if (u) uw.tick(t, night);
+      depth.mesh.visible = foam.mesh.visible = !u; // în Ultra le desenează shaderul apei
+      glint.visible = !look.cool && !u; foam.tick(t, night); depth.tick(night);
       wm.color.setRGB(1 - 0.6 * night, 1 - 0.55 * night, 1 - 0.3 * night); glint.material.color.copy(wm.color);
     },
-    dispose() { foam.dispose(); depth.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
+    dispose() { if (uw) uw.dispose(); foam.dispose(); depth.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
   };
 }

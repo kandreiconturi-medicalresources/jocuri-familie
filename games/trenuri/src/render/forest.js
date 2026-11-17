@@ -1,7 +1,7 @@
 // Păduri pe bucăți (cu culling): specii în pâlcuri după relief și zgomot, scară/rotire/nuanță aleatoare, copaci singuratici,
 // pietre, tufe, iarbă și flori (scatter.js). La calitate 0: umbre „blob” sub copaci.
 import { Group } from 'three';
-import { addInstances, hash, TREE_LOW, TREE_HIGH, ROCKS, BUSHES, PALM } from './props.js';
+import { addInstances, hash, TREE_LOW, TREE_HIGH, ROCKS, BUSHES, PALM, U_TREE_LOW, U_TREE_HIGH, U_BUSHES, U_CRAGS, U_FLOOR } from './props.js';
 import { blobMesh } from './blob.js';
 import { fieldSet } from './fields.js';
 import { scatterChunk } from './scatter.js';
@@ -14,9 +14,11 @@ const noise = (x, y) => { // zgomot de valoare simplu, pentru pâlcuri de aceea�
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 };
 
-/** sparse = „Mod răcoros”: fără iarbă și flori, decor rar (pe jumătate din plăci). */
-export function createForest(s, g, quality, sparse = false) {
-  const root = new Group(), fields = fieldSet(s), low = quality >= 1 ? TREE_LOW : TREE_LOW.slice(0, 3), high = quality >= 1 ? TREE_HIGH : TREE_HIGH.slice(0, 2);
+/** sparse = „Mod răcoros”: fără iarbă și flori, decor rar (pe jumătate din plăci). ultra = specii în plus, stânci pe pante, ciuperci și buturugi. */
+export function createForest(s, g, quality, sparse = false, ultra = false) {
+  const root = new Group(), fields = fieldSet(s), low = ultra ? U_TREE_LOW : quality >= 1 ? TREE_LOW : TREE_LOW.slice(0, 3), high = ultra ? U_TREE_HIGH : quality >= 1 ? TREE_HIGH : TREE_HIGH.slice(0, 2);
+  const bushes = ultra ? U_BUSHES : BUSHES, H = (x, y) => s.height[Math.min(s.h - 1, Math.max(0, y)) * s.w + Math.min(s.w - 1, Math.max(0, x))];
+  const steep = (x, y) => { const h = H(x, y); return Math.max(Math.abs(h - H(x + 1, y)), Math.abs(h - H(x - 1, y)), Math.abs(h - H(x, y + 1)), Math.abs(h - H(x, y - 1))) >= 2; };
   const res = reservedTiles(s), free = (i) => !res.has(i) && !s.water[i] && !s.track[i] && !s.occ[i] && !s.roads[i] && !fields.has(i);
   for (let cy = 0; cy * CH < s.h; cy++) for (let cx = 0; cx * CH < s.w; cx++) {
     const lists = new Map(), blobs = [], rocks = ROCKS.map(() => []), add = (m, it) => { if (!lists.has(m)) lists.set(m, []); lists.get(m).push(it); };
@@ -32,13 +34,18 @@ export function createForest(s, g, quality, sparse = false) {
           add(set[pick], { x: fx, y: gy - 0.02, z: fz, yaw: hash(x, y, k + 20) * 6.28, s: sc, c: TINTS[(hash(x, y, k + 40) * TINTS.length) | 0] });
           if (quality === 0) blobs.push({ x: fx, y: gy, z: fz, r: 0.2 * sc / 0.4 + 0.1 });
         }
+        if (ultra && hash(x, y, 61) < 0.22) { // sub copaci: ciuperci, buturugi, bușteni, ferigi
+          const fx = x + 0.15 + 0.7 * hash(x, y, 62), fz = y + 0.15 + 0.7 * hash(x, y, 63);
+          add(U_FLOOR[(hash(x, y, 64) * U_FLOOR.length) | 0], { x: fx, y: g.at(fx, fz) - 0.01, z: fz, yaw: hash(x, y, 65) * 6.28, s: 0.28 + 0.14 * hash(x, y, 66) });
+        }
       } else if (free(i) && s.height[i] > 3) {
         const r = hash(x, y, 77), fx = x + 0.15 + 0.7 * hash(x, y, 78), fz = y + 0.15 + 0.7 * hash(x, y, 79), sc = 0.28 + 0.16 * hash(x, y, 80);
-        if (r < 0.05) { const t = ((hash(x, y, 5) * 3) | 0) % 3; rocks[t].push({ x: fx, y: g.at(fx, fz), z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.4 + 0.5 * hash(x, y, 7) }); }
+        if (ultra && (steep(x, y) || s.height[i] >= 12) && hash(x, y, 67) < 0.35) add(U_CRAGS[(hash(x, y, 68) * U_CRAGS.length) | 0], { x: fx, y: g.at(fx, fz) - 0.04, z: fz, yaw: hash(x, y, 69) * 6.28, s: 0.22 + 0.25 * hash(x, y, 70) }); // stânci pe pante
+        else if (r < 0.05) { const t = ((hash(x, y, 5) * 3) | 0) % 3; rocks[t].push({ x: fx, y: g.at(fx, fz), z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.4 + 0.5 * hash(x, y, 7) }); }
         else if (r < 0.06 && s.height[i] >= 10) rocks[3].push({ x: fx, y: g.at(fx, fz) - 0.03, z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.35 + 0.3 * hash(x, y, 7) });
         else if (quality >= 1 && s.height[i] === 4 && r < 0.12 && hash(x, y, 81) < 0.5) { const gy = g.at(fx, fz); add(PALM, { x: fx, y: gy, z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.34 + 0.12 * hash(x, y, 7) }); }
         else if (quality >= 1 && s.height[i] > 4 && r < 0.085) { const gy = g.at(fx, fz); add(TREE_LOW[(hash(x, y, 82) * 3) | 0], { x: fx, y: gy - 0.02, z: fz, yaw: hash(x, y, 6) * 6.28, s: sc, c: TINTS[(hash(x, y, 83) * TINTS.length) | 0] }); if (quality === 0) blobs.push({ x: fx, y: gy, z: fz, r: 0.18 }); }
-        else if (quality >= 1 && s.height[i] > 4 && r < 0.12) { const gy = g.at(fx, fz); add(BUSHES[hash(x, y, 84) < 0.7 ? 0 : 1], { x: fx, y: gy - 0.02, z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.5 + 0.5 * hash(x, y, 7) }); }
+        else if (quality >= 1 && s.height[i] > 4 && r < 0.12) { const gy = g.at(fx, fz); add(bushes[ultra ? (hash(x, y, 84) * bushes.length) | 0 : hash(x, y, 84) < 0.7 ? 0 : 1], { x: fx, y: gy - 0.02, z: fz, yaw: hash(x, y, 6) * 6.28, s: 0.5 + 0.5 * hash(x, y, 7) }); }
       }
     }
     for (const [m, list] of lists) addInstances(root, m, list);

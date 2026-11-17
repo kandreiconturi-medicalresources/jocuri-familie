@@ -64,3 +64,38 @@ export function softTexture(n = 64) {
   x.fillStyle = g; x.fillRect(0, 0, n, n);
   return tex(c, false);
 }
+
+/** Stâncă (Ultra): aproape albă, se înmulțește cu culoarea de pe vârfuri; pete, straturi și crăpături (dau și relief prin luminozitate). */
+export function rockTexture(n = 512) {
+  const c = canvas(n), x = c.getContext('2d'), r = rng(4321);
+  x.fillStyle = '#d2cec6'; x.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 0.12; i++) blob(x, n, r() * n, r() * n, 12 + r() * 40, r() < 0.5 ? '150,144,134' : '240,236,228', 0.5);
+  for (let i = 0; i < 14; i++) { // straturi orizontale
+    const y = r() * n; x.fillStyle = `rgba(110,104,96,${0.12 + r() * 0.15})`;
+    wrapped(n, 0, y, 6, (a, b) => x.fillRect(0, b, n, 2 + r() * 4));
+  }
+  x.lineCap = 'round';
+  for (let i = 0; i < 70; i++) { // crăpături
+    let px = r() * n, py = r() * n; x.strokeStyle = `rgba(70,64,58,${0.35 + r() * 0.4})`; x.lineWidth = 1 + r() * 1.5;
+    x.beginPath(); x.moveTo(px, py);
+    for (let k = 0; k < 4; k++) { px += (r() - 0.5) * 28; py += (r() - 0.5) * 28; x.lineTo(px, py); }
+    x.stroke();
+  }
+  for (let i = 0; i < n * n / 30; i++) { x.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.14)'; x.fillRect(r() * n, r() * n, 2, 2); }
+  return tex(c);
+}
+
+/** Nisip (Ultra): bob fin și valuri de vânt. */
+export function sandTexture(n = 512) {
+  const c = canvas(n), x = c.getContext('2d'), r = rng(2468);
+  x.fillStyle = '#ece4cc'; x.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 0.08; i++) blob(x, n, r() * n, r() * n, 16 + r() * 40, r() < 0.5 ? '214,200,166' : '250,246,232', 0.45);
+  x.lineCap = 'round';
+  for (let i = 0; i < 90; i++) { // valuri de vânt
+    const px = r() * n, py = r() * n, w = 30 + r() * 50;
+    x.strokeStyle = `rgba(180,162,124,${0.18 + r() * 0.2})`; x.lineWidth = 1.5 + r();
+    wrapped(n, px, py, w + 6, (a, b) => { x.beginPath(); x.moveTo(a, b); x.quadraticCurveTo(a + w / 2, b - 5, a + w, b); x.stroke(); });
+  }
+  for (let i = 0; i < n * n / 12; i++) { x.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.25)' : 'rgba(120,100,70,.18)'; x.fillRect(r() * n, r() * n, 1.5, 1.5); }
+  return tex(c);
+}
