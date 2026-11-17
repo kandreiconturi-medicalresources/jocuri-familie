@@ -12,14 +12,17 @@ export { Builder };
 export const sym = (right) => [...right, ...right.map(([x, y]) => [-x, y]).reverse()];
 
 const centroid = (pr) => { let x = 0, y = 0; for (const p of pr) { x += p[0]; y += p[1]; } return [x / pr.length, y / pr.length]; };
+/** Semnul ariei conturului (+1 = antiorar în (x, y)): cu el normala exterioară a unei muchii a→b e (by − ay, −(bx − ax)) · semn, corectă și la contururi concave. */
+const orient = (pr) => { let a = 0; for (let i = 0; i < pr.length; i++) { const p = pr[i], q = pr[(i + 1) % pr.length]; a += p[0] * q[1] - q[0] * p[1]; } return a >= 0 ? 1 : -1; };
+const outward = (a, b, sg) => [(b[1] - a[1]) * sg, -(b[0] - a[0]) * sg, 0];
 const colAt = (col, i) => (Array.isArray(col) ? col[i % col.length] : col);
 
 /** Prismă convexă extrudată pe z între z0 și z1 (capace opționale). col poate fi un tablou: o culoare pe muchie. */
 export function prism(B, pr, z0, z1, col, caps = 3) {
-  const [cx, cy] = centroid(pr), n = pr.length;
+  const [cx, cy] = centroid(pr), n = pr.length, sg = orient(pr);
   for (let i = 0; i < n; i++) {
-    const a = pr[i], b = pr[(i + 1) % n], mx = (a[0] + b[0]) / 2 - cx, my = (a[1] + b[1]) / 2 - cy;
-    B.quad([a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], colAt(col, i), [mx, my, 0]);
+    const a = pr[i], b = pr[(i + 1) % n];
+    B.quad([a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], colAt(col, i), outward(a, b, sg));
   }
   const cap = (z, k, c) => { for (let i = 0; i < n; i++) B.tri([cx, cy, z], [pr[i][0], pr[i][1], z], [pr[(i + 1) % n][0], pr[(i + 1) % n][1], z], c, [0, 0, k]); };
   if (caps & 1) cap(z0, -1, colAt(col, 0));
@@ -28,10 +31,10 @@ export function prism(B, pr, z0, z1, col, caps = 3) {
 
 /** Loft între două contururi cu același număr de puncte (A la zA, B la zB); capacul de la zB opțional. */
 export function loft(B, pa, za, pb, zb, col, cap = null) {
-  const n = pa.length, [cx, cy] = centroid(pa);
+  const n = pa.length, sg = orient(pa);
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n, a = pa[i], b = pa[j], c = pb[j], d = pb[i];
-    B.quad([a[0], a[1], za], [b[0], b[1], za], [c[0], c[1], zb], [d[0], d[1], zb], colAt(col, i), [(a[0] + b[0]) / 2 - cx, (a[1] + b[1]) / 2 - cy, 0]);
+    B.quad([a[0], a[1], za], [b[0], b[1], za], [c[0], c[1], zb], [d[0], d[1], zb], colAt(col, i), outward(a, b, sg));
   }
   if (cap) { const [qx, qy] = centroid(pb); for (let i = 0; i < n; i++) B.tri([qx, qy, zb], [pb[i][0], pb[i][1], zb], [pb[(i + 1) % n][0], pb[(i + 1) % n][1], zb], cap, [0, 0, zb >= za ? 1 : -1]); }
 }

@@ -1,5 +1,20 @@
 // Poziția unui tren pe traseu (în coordonate de lume), din distanța parcursă (1/256 de placă).
-const cache = new WeakMap();
+import { DX, DY } from '../sim/consts.js';
+const cache = new WeakMap(), stubs = new Map();
+
+/** Traseu de două plăci pentru un tren care stă în gară fără drum (nou cumpărat): cu fața spre gară pe prima legătură, vagoanele pe șină. */
+export function stubPath(s, st) {
+  const i = st.y * s.w + st.x, key = st.id + ':' + st.x + ',' + st.y + ',' + s.track[i];
+  let p = stubs.get(key);
+  if (!p) {
+    let d = 0; for (; d < 8; d++) if ((s.track[i] >> d) & 1) break;
+    const nx = st.x + (DX[d] | 0), ny = st.y + (DY[d] | 0);
+    p = d < 8 && nx >= 0 && ny >= 0 && nx < s.w && ny < s.h ? [ny * s.w + nx, i] : [i];
+    stubs.set(key, p);
+    if (stubs.size > 300) stubs.delete(stubs.keys().next().value);
+  }
+  return p;
+}
 
 /** Distanțe cumulate pe traseu (în 1/256), memorate pe tabloul traseului. */
 export function cumOf(s, path) {

@@ -25,6 +25,7 @@ import { perf } from '../../../../shared/engine/perf.js';
 import { look, onLook, shadowsOn, rich } from './look.js';
 import { createGulls } from './gulls.js';
 import { createPeople } from './people.js';
+import { reservedTiles } from './stationPlan.js';
 
 /** Aplică steagurile de umbre ale calității curente pe un strat nou (userData.cast / recv / blob). */
 function shade(obj) {
@@ -88,7 +89,7 @@ export function createView(stage, s) {
     frame(alpha, dt, t) {
       stage.frame(t);
       if (t - scanT > 1.5) { scanT = t; scanPower(); }
-      if (t - platT > 1) { platT = t; const k = s.stations.map((q) => q.platforms | 0).join(); if (k !== platK) { platK = k; s.dirty.stations = true; } }
+      if (t - platT > 1) { platT = t; const rs = reservedTiles(s), k = s.stations.map((q) => (q.platforms | 0) + ':' + q.x + ',' + q.y).join() + rs.size + ':' + rs.sig; if (k !== platK) { platK = k; s.dirty.stations = true; s.dirty.forest = true; } }
       refresh();
       trains.update(alpha, dt, stage.night);
       signals.update(dt);

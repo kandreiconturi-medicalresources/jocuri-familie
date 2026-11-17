@@ -327,3 +327,9 @@ Flux ghidat în 6 pași, pentru cine n-a mai jucat tycoon: 1 **Ce cere orașul**
 - **`?fps`/`?stats`/F3** merg ca înainte și arată plafonul efectiv (`cap 24 🔋`, `q1 cap24`). `window.__trenuri` expune și `look` și `pacer`.
 - Teste: `tests/pace.test.js` (telefon sau nu, plafoane, ritmul pe ecrane de 60 și 144 Hz, fără rafală după pauză, `renderNeeded`, pașii la 4×, `perf` cu plafon) și `tests/trenuri-ctxmenu.test.js`.
 - **Nemăsurat aici:** verificarea pe harta XL cu 8 insule pe un telefon real (FPS, apeluri de desen în `?stats`) rămâne de făcut pe dispozitiv; în browserul de dezvoltare doar s-au verificat plafonul, DPR, umbrele și logica de desen.
+
+### Gări și trenuri (randare): `render/stationPlan.js`, `stationExtras.js`
+- **Planul gării** (`planOf`, memorat după vecinătatea de 15×15 plăci): axa șinei, partea clădirii aleasă după ce e liber (fără șină, drum, casă, apă), peronul lung cât plăcile drepte vecine (până la 4 de fiecare parte, o bucată pe placă, urmărește treptele terenului), câte linii suplimentare încap pe partea opusă. Clădirea nu iese din placă unde nu e loc (`compact`) și nu mai crește în lungime la upgrade (doar în înălțime). Plăcile rezervate (`reservedTiles`) scot copacii și iarba de sub peroane.
+- **Gară mare:** linii suplimentare cu traverse și opritoare, peroane insulă cu adăposturi scurte, scări de pasaj și pasarelă vitrată peste toate liniile (`stationExtras.js`).
+- **Oameni:** apar și în vederea clasică (camera clasică e de 10× mai departe: distanța se împarte la 10), la 1,5× mărime, ies din vagoanele reale (`stubPath` dă trenului nou cumpărat o direcție pe șină), mulțime de bază pe fiecare peron.
+- **Trenuri:** contururile `prism`/`loft` își iau normala exterioară din orientarea conturului (corect și la forme concave), deci materialul e din nou `FrontSide`.

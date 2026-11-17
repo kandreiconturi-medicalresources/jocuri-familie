@@ -5,6 +5,7 @@ import { addInstances, hash, TREE_LOW, TREE_HIGH, ROCKS, BUSHES, PALM } from './
 import { blobMesh } from './blob.js';
 import { fieldSet } from './fields.js';
 import { scatterChunk } from './scatter.js';
+import { reservedTiles } from './stationPlan.js';
 
 const CH = 32;
 const TINTS = [0xffffff, 0xf0f8e0, 0xe2f0d0, 0xfff0d8, 0xe8ffe8, 0xf4ffd8];
@@ -16,13 +17,13 @@ const noise = (x, y) => { // zgomot de valoare simplu, pentru pâlcuri de aceea�
 /** sparse = „Mod răcoros”: fără iarbă și flori, decor rar (pe jumătate din plăci). */
 export function createForest(s, g, quality, sparse = false) {
   const root = new Group(), fields = fieldSet(s), low = quality >= 1 ? TREE_LOW : TREE_LOW.slice(0, 3), high = quality >= 1 ? TREE_HIGH : TREE_HIGH.slice(0, 2);
-  const free = (i) => !s.water[i] && !s.track[i] && !s.occ[i] && !s.roads[i] && !fields.has(i);
+  const res = reservedTiles(s), free = (i) => !res.has(i) && !s.water[i] && !s.track[i] && !s.occ[i] && !s.roads[i] && !fields.has(i);
   for (let cy = 0; cy * CH < s.h; cy++) for (let cx = 0; cx * CH < s.w; cx++) {
     const lists = new Map(), blobs = [], rocks = ROCKS.map(() => []), add = (m, it) => { if (!lists.has(m)) lists.set(m, []); lists.get(m).push(it); };
     for (let y = cy * CH; y < Math.min(s.h, cy * CH + CH); y++) for (let x = cx * CH; x < Math.min(s.w, cx * CH + CH); x++) {
       const i = y * s.w + x;
       if (sparse && hash(x, y, 88) < 0.5) continue;
-      if (s.forest[i]) {
+      if (s.forest[i] && !res.has(i)) {
         const n = quality >= 2 ? 2 : 1, z = noise(x * 0.11, y * 0.11), hi = s.height[i] >= 9 || (s.height[i] >= 8 && z > 0.55);
         for (let k = 0; k < n; k++) {
           const fx = x + 0.2 + 0.6 * hash(x, y, k * 3 + 1), fz = y + 0.2 + 0.6 * hash(x, y, k * 3 + 2), set = hi ? high : low;
