@@ -6,7 +6,7 @@ Joc de strategie original cu trenuri și orașe (gen tycoon feroviar): construie
 Comutator „✨ Grafică Ultra (PC)” în ☰ Meniu; activ doar la calitatea 2, fără Modul răcoros, în 3D/clasic, niciodată pe telefon (`ultraOn()` în `render/look.js`). Se oprește singur dacă FPS-ul scade.
 - `render/ultra.js`: post-procesare (GTAO doar pe obiecte solide, bloom, SMAA); scena se desenează în țintă ca pe ecran, ca transparențele să arate la fel.
 - `render/terrainUltra.js`: iarbă/stâncă/nisip amestecate per pixel (atributul `tw`), relief din textură. `render/waterUltra.js`: apă cu valuri, Fresnel, sclipiri, adâncime și spumă.
-- `render/ultraAssets.js`: modelele Ultra se încarcă abia la prima pornire: `cars/` (Car Kit), `cityroads/` (City Kit Roads), specii în plus în `nature/` (Nature Kit). `render/cars.js` (mașini decorative pe drumuri), `render/streets.js` (felinare și semafoare), `forest.js` cu `ultra = true`.
+- `render/ultraAssets.js`: modelele Ultra se încarcă abia la prima pornire: `cars/` (Car Kit), `cityroads/` (City Kit Roads), specii în plus în `nature/` (Nature Kit). `render/cars.js` (mașini decorative pe drumuri), `render/streets.js` (felinare și semafoare), `forest.js` cu `ultra = true`, `render/life.js` (fum din coșurile fabricilor, trecători pe trotuare, copaci în vânt).
 
 ## Module
 | Folder | Rol |
