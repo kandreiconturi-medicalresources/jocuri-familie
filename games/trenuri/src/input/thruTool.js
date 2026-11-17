@@ -4,7 +4,7 @@ import { thruNear, thruTiles, mainTiles, THRU_MIN, THRU_MAX, THRU_BASE, THRU_TRA
 import { viewer } from '../sim/viewer.js';
 import { lei } from '../ui/hud.js';
 
-const GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', ORANGE = '#ff9f43';
+const BLUE = '#4dabf7', GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', ORANGE = '#ff9f43';
 export const THRU_TOOL = { id: 'thru', e: '🏙️', t: 'Gară mare de trecere', hint: 'Alege câte linii (2–10), apoi atinge orașul: gara își caută singură locul (auriu), își pune linia dreaptă, nivelează terenul și mută casele cu despăgubire. Acoperă tot orașul.' };
 
 export function createThruTool(c) {
@@ -23,6 +23,7 @@ export function createThruTool(c) {
     const gone = new Set(r.ok ? r.houses : []), out = [{ x: px, y: py, color: GOLD }];
     const inb = ([x, y]) => x >= 0 && y >= 0 && x < s.w && y < s.h;
     for (const [x, y] of [...thruTiles(px, py, dir, o.n), ...mainTiles(px, py, dir, o.n)].filter(inb)) out.push({ x, y, color: gone.has(y * s.w + x) ? ORANGE : r.ok ? GREEN : RED });
+    if (r.ok && r.fan) for (const q of r.fan) q.forEach(([x, y], k) => { if (k && inb([x, y])) out.push({ x, y, color: k === q.length - 1 ? GOLD : BLUE }); }); // intrările (capăt auriu = aici legi o linie)
     c.ov().set(out);
     const k = `${t.x},${t.y},${o.n},${r.ok ? r.cost : r.err},${armed ? 1 : 0}`;
     if (k === key || armed) { key = k; return; }
@@ -36,7 +37,7 @@ export function createThruTool(c) {
       const f = info(t);
       if (!f.ok) { key = ''; paint(t); return; }
       const st = s0().stations.find((q) => q.x === f.x && q.y === f.y);
-      armed = { x: f.x, y: f.y, dir: f.dir, n: o.n, cost: f.cost, houses: f.houses, pay: f.pay, levelCost: f.levelCost, up: st && st.thru ? st.id : -1, t: { x: f.x, y: f.y } };
+      armed = { x: f.x, y: f.y, dir: f.dir, n: o.n, cost: f.cost, fan: f.fan, houses: f.houses, pay: f.pay, levelCost: f.levelCost, up: st && st.thru ? st.id : -1, t: { x: f.x, y: f.y } };
       c.bar(); key = ''; paint(t);
       c.hud().hint(`🏙️ ${o.n} linii · ${lei(f.cost)}: apasă ✅ Construiește (sau Enter / atinge încă o dată). ❌ sau clic dreapta anulează.`, false, 8000);
       return;
@@ -50,9 +51,9 @@ export function createThruTool(c) {
     armed = null; c.bar();
     const r = a.up >= 0 ? c.exec({ type: 'setThruTracks', id: a.up, n: a.n }) : c.exec({ type: 'buildThru', x: a.x, y: a.y, n: a.n, dir: a.dir });
     memo = null; key = '';
-    if (r && r.ok) c.hud().hint(a.up >= 0 ? `Gata: ${a.n} linii · ${lei(r.cost)}.` : `🏙️ Gară mare cu ${a.n} linii · ${lei(r.cost)}. Linia principală trece drept prin gară: leagă-i capetele cu șina ta.`, false, 6000);
+    if (r && r.ok) c.hud().hint(a.up >= 0 ? `Gata: ${a.n} linii · ${lei(r.cost)}.` : `🏙️ Gară mare cu ${a.n} linii · ${lei(r.cost)}. Are ${a.fan ? a.fan.length : 2} intrări (capetele aurii): leagă la fiecare câte o linie din alt loc, iar trenurile intră toate în aceeași gară.`, false, 6000);
     else c.hud().hint((r && (ERR_TEXT[r.err] || r.err)) || 'Nu s-a putut construi gara.', true, 5000);
-    paint(a.t);
+    if (r && r.ok) c.ov().clear(); else paint(a.t); // după construire nu mai lăsăm previzualizarea pe hartă
   }
   function bar() {
     const out = [];

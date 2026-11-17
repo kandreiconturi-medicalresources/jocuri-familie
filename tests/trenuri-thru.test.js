@@ -151,6 +151,7 @@ test('gara de trecere cu 10 linii încape în orice oraș (caută locul, pune li
     for (const c of s.cities) {
       const r = thruNear(s, 0, c.x, c.y, 10);
       assert.ok(r.ok, `${seed} ${c.name}: ${r.err}`);
+      assert.ok(r.fan.length >= 4, `${seed} ${c.name}: doar ${r.fan.length} intrări`); // casele se mută, dealul se nivelează treptat
     }
     const c = s.cities[0], r = thruNear(s, 0, c.x, c.y, 10);
     const b = applyCommand(s, { type: 'buildThru', by: 0, x: r.x, y: r.y, n: 10, dir: r.dir });
@@ -159,4 +160,33 @@ test('gara de trecere cu 10 linii încape în orice oraș (caută locul, pune li
     assert.equal(st.platforms, 10);
     assert.ok(mainTiles(st.x, st.y, st.dir, 10).every(([x, y]) => s.track[y * s.w + x] & 0x4000), 'linia principală e pusă');
   }
+});
+
+test('gara mare are intrări separate: 5 linii din 5 locuri diferite, trenurile lor intră toate în gară', () => {
+  const s = world();
+  s.companies[0].cash = 1e6;
+  const info = thruInfo(s, 0, 30, 30, 5);
+  assert.ok(info.ok, info.err);
+  assert.ok(info.fan.length >= 5, 'cel puțin 5 intrări, are ' + info.fan.length);
+  const T = ok(applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n: 5, dir: info.dir })).id;
+  const trains = [];
+  for (const p of info.fan.slice(0, 5)) {
+    const end = p[p.length - 1], prev = p[p.length - 2], dx = end[0] - prev[0], dy = end[1] - prev[1];
+    const far = [end[0] + dx * 7, end[1] + dy * 7];
+    const A = ok(applyCommand(s, { type: 'buildStation', by: 0, x: far[0], y: far[1], size: 0 })).id;
+    const path = planTrack(s, far, end, 0);
+    assert.ok(path, 'drum spre intrare');
+    ok(applyCommand(s, { type: 'buildTrack', by: 0, path: path.path }));
+    trains.push(ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: A, kinds: [0], route: [A, T] })).id);
+  }
+  const seen = new Set();
+  let most = 0;
+  for (let i = 0; i < 6000 && seen.size < trains.length; i++) {
+    stepWorld(s);
+    const here = s.trains.filter((t) => t.state === 2 && t.to === T);
+    for (const t of here) seen.add(t.id);
+    most = Math.max(most, here.length);
+  }
+  assert.equal(seen.size, trains.length, 'toate trenurile au ajuns în gara mare');
+  assert.ok(most >= 2, 'mai multe trenuri deodată în gară: ' + most);
 });
