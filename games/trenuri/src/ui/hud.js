@@ -78,8 +78,9 @@ export function createHud(root, ev) {
     setSub(items) {
       sub.replaceChildren(...items.map((o) => h('button', { class: 'opt ' + (o.on ? 'on ' : '') + (o.cls || ''), onclick: o.fn }, o.label, o.small ? h('small', null, o.small) : null)));
     },
-    stationOpts(size, onPick, onTurn) {
+    stationOpts(size, onPick, onTurn, onThru) {
       const opts = STATION_NAMES.map((n, i) => ({ label: i === 2 ? 'Terminal mare' : n, small: lei(i === 2 ? BIG_COST : STATION_COST[i]), on: size === i, fn: () => onPick(i) }));
+      if (onThru) opts.push({ label: '🏙️ Gară mare în oraș', small: '2–10 linii, trenuri deodată', cls: 'go', fn: onThru });
       if (size === 2 && onTurn) opts.push({ label: '🔄 Rotește', small: 'curtea (R)', fn: onTurn });
       api.setSub(opts);
     },

@@ -2,7 +2,8 @@
 // Logic rămâne o gară pe o placă (rutele și rezervările nu se schimbă): peroane = linii, deci tot atâtea trenuri stau deodată.
 // Ocupă un dreptunghi de-a lungul liniei (pe partea `dir`); casele din el se dărâmă cu despăgubire, drumurile se mută,
 // iar pe rândul liniei principale casele dispar ca să încapă șina. Gara acoperă tot orașul ei (vezi catch.js).
-import { WATER_H, T_PRESENT, T_OWNER_SHIFT, UPGRADES, STATION_COST } from './consts.js';
+import { WATER_H, T_PRESENT, T_OWNER_SHIFT, UPGRADES, STATION_COST, COST } from './consts.js';
+import { levelCostOf, markTerrain, layPath } from './terraform.js';
 import { frameOf } from './terminal.js';
 import { NG } from './goods.js';
 import { addNews } from './news.js';
@@ -15,6 +16,7 @@ export const halfLen = (n) => (n > 6 ? 4 : 3);
 export const lane10 = (k) => 6 * ((k + 1) >> 1) + 4 * (k >> 1);
 /** Câte rânduri de plăci ocupă: liniile + peronul clădirii + clădirea (≈1,1 plăci după ultima linie). */
 export const rowsOf = (n) => Math.ceil((lane10(n - 1) + 11 - 5) / 10);
+const LEVEL_MAX = 4; // cât de denivelat poate fi terenul (se nivelează la construire)
 const clampN = (n) => Math.max(THRU_MIN, Math.min(THRU_MAX, n | 0));
 const fail = (err) => ({ ok: false, err });
 
@@ -39,7 +41,7 @@ function houseAt(s, i) {
 const payOf = (b) => (b[2] >= 8 ? TOWER_PAY : HOUSE_PAY);
 
 /** Planul gării: { ok, err?, houses: [indici], pay, dir, n }. `st` = gara existentă (transformare sau linii în plus). */
-export function thruPlan(s, x, y, dir, n, st = null) {
+export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1) {
   n = clampN(n);
   if (dir !== 0 && dir !== 2 && dir !== 4 && dir !== 6) return fail('teren');
   const w = s.w, i0 = y * w + x, h0 = s.height[i0], mask = alongMask(dir), houses = [];
@@ -51,41 +53,56 @@ export function thruPlan(s, x, y, dir, n, st = null) {
   const demolish = (i) => { const hb = houseAt(s, i); if (!hb) return false; houses.push(i); pay += payOf(hb.b); return true; };
   if (!st && s.occ[i0] && !demolish(i0)) return fail('cladire');
   const stAt = new Set(s.stations.map((q) => q.y * w + q.x)), dep = new Set(s.depots.map((d) => d.y * w + d.x));
+  const lvl = []; // plăci de nivelat la înălțimea gării (teren denivelat: se plătește, nu se refuză)
+  let vol = 0;
+  const level = (i) => { const d = Math.abs(s.height[i] - h0); if (d > LEVEL_MAX) return false; if (d > 1) { lvl.push(i); vol += d; } return true; };
   for (const [tx, ty] of thruTiles(x, y, dir, n)) {
     if (tx < 0 || ty < 0 || tx >= w || ty >= s.h) return fail('harta');
     const i = ty * w + tx;
     if (own.has(i)) continue;
     if (s.water[i] || s.height[i] <= WATER_H) return fail('teren');
     if ((s.track[i] & T_PRESENT) || stAt.has(i) || dep.has(i) || center.has(i)) return fail('loc');
-    if (Math.abs(s.height[i] - h0) > 1) return fail('panta');
+    if (!level(i)) return fail('panta');
     if (s.occ[i] && !demolish(i)) return fail('loc'); // industrie sau curtea altei gări
   }
-  for (const [tx, ty] of mainTiles(x, y, dir, n)) {
+  const lay = [], A = halfLen(n), f = frameOf(dir); // linia principală dreaptă prin gară: o pune gara unde lipsește
+  for (let a = -A; a <= A; a++) {
+    const tx = x + f.ax * a, ty = y + f.ay * a;
     if (tx < 0 || ty < 0 || tx >= w || ty >= s.h) return fail('harta');
-    const i = ty * w + tx;
-    if (s.water[i] && !(s.track[i] & T_PRESENT)) return fail('teren');
-    if ((s.track[i] & 0xff & ~mask) || stAt.has(i) || dep.has(i) || center.has(i)) return fail('loc');
+    const i = ty * w + tx, t = s.track[i];
+    lay.push([tx, ty]);
+    if (!a) continue;
+    if (s.water[i] && !(t & T_PRESENT)) return fail('teren');
+    if ((t & 0xff & ~mask) || stAt.has(i) || dep.has(i) || center.has(i)) return fail('loc');
+    if ((t & T_PRESENT) && by >= 0 && ((t >> T_OWNER_SHIFT) & 7) !== by) return fail('proprietar');
+    if (!(t & T_PRESENT) && !level(i)) return fail('panta');
     if (s.occ[i] && !own.has(i) && !demolish(i)) return fail('loc');
   }
-  return { ok: true, houses, pay, dir, n };
+  for (const a of [-A - 1, A + 1]) { // se leagă de șina care continuă dincolo de capete
+    const tx = x + f.ax * a, ty = y + f.ay * a;
+    if (tx >= 0 && ty >= 0 && tx < w && ty < s.h && (s.track[ty * w + tx] & T_PRESENT)) a < 0 ? lay.unshift([tx, ty]) : lay.push([tx, ty]);
+  }
+  const fresh = lay.filter(([tx, ty]) => !(s.track[ty * w + tx] & T_PRESENT)).length;
+  return { ok: true, houses, pay, dir, n, lvl, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, layCost: fresh * COST.tile };
 }
 
 /** Prima direcție bună (cele mai puține case dărâmate), după linia care trece prin placă. null dacă nu încape. */
-export function thruAuto(s, x, y, n, st = null) {
+export function thruAuto(s, x, y, n, st = null, by = -1) {
   const t = s.track[y * s.w + x] & 0xff;
   let order = [0, 2, 4, 6];
   if (t & 0x11) order = [2, 6]; // linie N–S: gara la est sau vest
   else if (t & 0x44) order = [0, 4];
   else if (t) return null;
   let best = null, err = 'loc';
-  for (const d of order) { const p = thruPlan(s, x, y, d, n, st); if (!p.ok) { err = p.err; continue; } if (!best || p.pay < best.pay) best = p; }
+  for (const d of order) { const p = thruPlan(s, x, y, d, n, st, by); if (!p.ok) { err = p.err; continue; } if (!best || thruCost(p, st) < thruCost(best, st)) best = p; }
   return best || fail(err);
 }
 
 /** Prețul total: gara + liniile + despăgubirile (la transformare se scade prețul gării vechi, la linii în plus doar diferența). */
 export function thruCost(p, st = null) {
-  if (st && st.thru) return (p.n - st.platforms) * THRU_TRACK + p.pay;
-  return THRU_BASE + p.n * THRU_TRACK + p.pay - (st ? STATION_COST[st.size] >> 1 : 0);
+  const extra = (p.levelCost | 0) + (p.layCost | 0);
+  if (st && st.thru) return (p.n - st.platforms) * THRU_TRACK + p.pay + extra;
+  return THRU_BASE + p.n * THRU_TRACK + p.pay + extra - (st ? STATION_COST[st.size] >> 1 : 0);
 }
 
 /** Orașul gării: cel mai apropiat centru (≤ 8 plăci) sau -1. */
@@ -100,6 +117,12 @@ function claim(s, st, p) {
   const gone = new Set(p.houses);
   if (gone.size) for (const c of s.cities) { const n0 = c.buildings.length; c.buildings = c.buildings.filter((b) => !gone.has(b[1] * s.w + b[0])); if (c.buildings.length !== n0) s.dirty.cities = true; }
   for (const i of gone) s.occ[i] = 0;
+  if (p.lvl && p.lvl.length) {
+    for (const i of p.lvl) s.height[i] = p.h0;
+    const xs = p.lvl.map((i) => i % s.w), ys = p.lvl.map((i) => (i / s.w) | 0);
+    markTerrain(s, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+  }
+  if (p.lay && p.lay.length > 1) layPath(s, p.lay, { id: st.owner });
   markOne(s, st);
   for (const [x, y] of thruTiles(st.x, st.y, st.dir, st.platforms)) s.forest[y * s.w + x] = 0;
   for (const [x, y] of mainTiles(st.x, st.y, st.dir, st.platforms)) if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.forest[y * s.w + x] = 0;
@@ -133,9 +156,28 @@ export function thruInfo(s, by, x, y, n, dir) {
   const t = s.track[i];
   if (!st && (t & T_PRESENT) && ((t >> T_OWNER_SHIFT) & 7) !== by) return fail('proprietar');
   if (!st && (s.water[i] || s.height[i] <= WATER_H)) return fail('teren');
-  const p = st && st.thru ? thruPlan(s, x, y, st.dir, n, st) : dir === undefined || dir < 0 ? thruAuto(s, x, y, n, st) : thruPlan(s, x, y, dir | 0, n, st);
+  const p = st && st.thru ? thruPlan(s, x, y, st.dir, n, st, by) : dir === undefined || dir < 0 ? thruAuto(s, x, y, n, st, by) : thruPlan(s, x, y, dir | 0, n, st, by);
   if (!p || !p.ok) return p || fail('loc');
   return { ...p, cost: thruCost(p, st), st };
+}
+
+/** Cel mai bun loc din jurul plăcii atinse (rază 5): întâi placa însăși, apoi cel mai ieftin, cu preferință pentru aproape. */
+export function thruNear(s, by, x, y, n, R = 5) {
+  const here = thruInfo(s, by, x, y, n);
+  if (here.ok) return { ...here, x, y };
+  let best = null, bs = Infinity;
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    const tx = x + dx, ty = y + dy;
+    if ((!dx && !dy) || !inMap(s, tx, ty)) continue;
+    const t = s.track[ty * s.w + tx];
+    if ((t & 0xff) && !(t & 0x55)) continue; // pe diagonală nu se poate
+    const r = thruInfo(s, by, tx, ty, n);
+    if (!r.ok) continue;
+    const ci = cityOf(s, tx, ty), cd = ci >= 0 ? Math.max(Math.abs(s.cities[ci].x - tx), Math.abs(s.cities[ci].y - ty)) : 9;
+    const score = r.cost + cd * 2500 + Math.max(Math.abs(dx), Math.abs(dy)) * 300 + (t & T_PRESENT ? 0 : 1500); // cât mai în oraș
+    if (score < bs) { bs = score; best = { ...r, x: tx, y: ty }; }
+  }
+  return best || here;
 }
 
 /** buildThru { x, y, n, dir? }: gară nouă de trecere sau transformarea gării tale normale de pe placă. */

@@ -27,7 +27,7 @@ const coastal = (s, t) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => 
 function landOptions(s, t, me) {
   const i = t.y * s.w + t.x, out = [];
   if (s.water[i]) return out;
-  out.push(O('track', '🛤️', 'Șină de aici'), O('station', '🚉', 'Gară'), O('terminal', '🏛️', 'Terminal mare'));
+  out.push(O('track', '🛤️', 'Șină de aici'), O('station', '🚉', 'Gară'), O('thru', '🏙️', 'Gară mare în oraș', '2–10 linii'), O('terminal', '🏛️', 'Terminal mare'));
   if (s.islands && dockOf(s, t.x, t.y) >= 0 && tileOwner(s, t.x, t.y) === me) out.push(O('port', '⚓', 'Port'));
   if (depotSpot(s, i)) out.push(O('depot', '🏭', 'Depou', 'capăt de linie'));
   if (s.track[i] & 0x4000) out.push(O('signal', '🚦', 'Semnal')); // T_PRESENT

@@ -14,7 +14,7 @@ test('teren liber (hartă obișnuită): șină, gară, terminal, nivelare; făr�
   let t = null;
   for (let y = 2; y < s.h - 2 && !t; y++) for (let x = 2; x < s.w - 2 && !t; x++) if (dry(s, x, y) && !(s.track[y * s.w + x] & 0x4000)) t = tile(x, y);
   const o = ids(contextOptions(s, t, {}, 0));
-  assert.deepEqual(o, ['track', 'station', 'terminal', 'level']);
+  assert.deepEqual(o, ['track', 'station', 'thru', 'terminal', 'level']);
 });
 
 test('apa nu are meniu', () => {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorld, createNetWorld, hashState, serialize, deserialize, applyCommand, planTrack, stepWorld, maxPlatforms } from '../games/trenuri/src/sim/index.js';
-import { thruTiles, mainTiles, thruInfo, THRU_BASE, THRU_TRACK, HOUSE_PAY, THRU_MAX } from '../games/trenuri/src/sim/thru.js';
+import { thruTiles, mainTiles, thruInfo, thruNear, THRU_BASE, THRU_TRACK, HOUSE_PAY, THRU_MAX } from '../games/trenuri/src/sim/thru.js';
 import { covers } from '../games/trenuri/src/sim/catch.js';
 import { spawnCargo } from '../games/trenuri/src/sim/economy.js';
 import { deriveLayers } from '../games/trenuri/src/sim/roads.js';
@@ -36,7 +36,7 @@ test('gara de trecere: ocupă locul, dărâmă casele cu despăgubire, preț cor
   assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'nicio casă în locul gării');
   const gone = n0 - c.buildings.length;
   assert.equal(gone, 7, 'șapte case mutate (cea de la 25,27 rămâne)');
-  assert.equal(cash - s.companies[0].cash, THRU_BASE + 6 * THRU_TRACK + 6 * HOUSE_PAY + 700, 'gară + linii + despăgubiri (blocul înalt costă mai mult)');
+  assert.equal(cash - s.companies[0].cash, THRU_BASE + 6 * THRU_TRACK + 6 * HOUSE_PAY + 700 + info.layCost + info.levelCost, 'gară + linii + despăgubiri + linia principală pusă de gară (blocul înalt costă mai mult)');
   assert.ok(main.every(([x, y]) => !s.occ[y * s.w + x]), 'rândul liniei principale e liber');
   growBuildings(s, c, 60);
   assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'orașul nu mai construiește în locul gării sau pe linia ei');
@@ -142,4 +142,21 @@ test('gara de trecere: serializare, determinism și lockstep cu 3 noduri', async
   assert.ok(st && st.platforms === 6, 'gară de trecere cu 6 linii construită în rețea');
   const hs = nodes.map((n) => hashState(n.world));
   assert.ok(hs.every((h) => h === hs[0]), 'hash-uri diferite: ' + hs);
+});
+
+test('gara de trecere cu 10 linii încape în orice oraș (caută locul, pune linia dreaptă, nivelează)', () => {
+  for (const seed of [1, 2, 3]) {
+    const s = createWorld({ seed, size: 'M', year: 2025 });
+    s.sandbox = 1;
+    for (const c of s.cities) {
+      const r = thruNear(s, 0, c.x, c.y, 10);
+      assert.ok(r.ok, `${seed} ${c.name}: ${r.err}`);
+    }
+    const c = s.cities[0], r = thruNear(s, 0, c.x, c.y, 10);
+    const b = applyCommand(s, { type: 'buildThru', by: 0, x: r.x, y: r.y, n: 10, dir: r.dir });
+    assert.ok(b.ok, b.err);
+    const st = s.stations.find((q) => q.id === b.id);
+    assert.equal(st.platforms, 10);
+    assert.ok(mainTiles(st.x, st.y, st.dir, 10).every(([x, y]) => s.track[y * s.w + x] & 0x4000), 'linia principală e pusă');
+  }
 });
