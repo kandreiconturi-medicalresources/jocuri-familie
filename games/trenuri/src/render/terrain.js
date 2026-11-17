@@ -7,6 +7,7 @@ import { createFoam } from './foam.js';
 import { createDepth } from './depth.js';
 import { look, shadowsOn, ultraOn } from './look.js';
 import { ultraTerrainMaterial, terrainWeights } from './terrainUltra.js';
+import { createUltraWater } from './waterUltra.js';
 
 const CH = 32, UV = 1 / 3.2;
 const PAL = [ // înălțime 0..15 -> culoare
@@ -89,6 +90,7 @@ export function createTerrain(s, g) {
   const foam = createFoam(s);
   const depth = createDepth(s); // gradient de adâncime: turcoaz la mal, albastru adânc larg
   root.add(water, depth.mesh, glint, foam.mesh);
+  let uw = null; // apa Ultra se creează la prima pornire
   return {
     root,
     /** După nivelare: reface doar bucățile (cx, cy) date. */
@@ -105,9 +107,13 @@ export function createTerrain(s, g) {
       const m = MATERIAL(); if (m !== cur) { cur = m; for (const c of chunks.values()) c.material = m; } // Ultra pornit/oprit
       tex.offset.set(t * 0.004, t * 0.0026); tex2.offset.set(-t * 0.0033, t * 0.0021);
       water.position.y = WATER_Y - 0.005 + 0.012 * Math.sin(t * 0.8); glint.position.y = water.position.y + 0.004; // val liniștit
-      glint.visible = !look.cool; foam.tick(t, night); depth.tick(night);
+      const u = ultraOn();
+      if (u && !uw) uw = createUltraWater(s, depth.mesh.material.map, foam.mesh.material.map);
+      water.material = u ? uw.material : wm; if (u) uw.tick(t, night);
+      depth.mesh.visible = foam.mesh.visible = !u; // în Ultra le desenează shaderul apei
+      glint.visible = !look.cool && !u; foam.tick(t, night); depth.tick(night);
       wm.color.setRGB(1 - 0.6 * night, 1 - 0.55 * night, 1 - 0.3 * night); glint.material.color.copy(wm.color);
     },
-    dispose() { foam.dispose(); depth.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
+    dispose() { if (uw) uw.dispose(); foam.dispose(); depth.dispose(); root.traverse((o) => o.geometry && o.geometry.dispose()); },
   };
 }
