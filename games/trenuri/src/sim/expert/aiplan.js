@@ -1,9 +1,11 @@
 // Concurenții AI: ce legături merită construite (orașe și industrii) și unde se pun gările. Funcții pure, fără efecte.
 import { WATER_H, STATION_RADIUS, T_PRESENT, PROD } from '../consts.js';
-import { GOODS, INDUSTRIES, CITY_GOODS } from '../goods.js';
+import { GOODS, INDUSTRIES, cityGoods } from '../goods.js';
 import { tileDist } from '../cargo.js';
 import { near } from '../industry.js';
 
+/** Insule: AI-ul construiește doar pe insula lui. */
+const onOwn = (s, co, o) => { const k = s.isl[o.y * s.w + o.x] - 1; return k >= 0 && s.islands[k].owner === co.id; };
 export const nodeKey = (a, b) => (a.k < b.k ? a.k + '|' + b.k : b.k + '|' + a.k);
 const cityNode = (c) => ({ k: 'c' + c.id, o: c, city: true });
 const indNode = (o) => ({ k: 'i' + o.id, o });
@@ -13,7 +15,7 @@ export function candidates(s, co, L) {
   const done = new Set([...co.ai.done, ...co.ai.bad]), out = [];
   const add = (a, b, good, income) => {
     const d = tileDist(a.o, b.o);
-    if (d < 7 || d > L.maxD || done.has(nodeKey(a, b))) return;
+    if (d < 7 || d > L.maxD || done.has(nodeKey(a, b)) || (s.islands && (!onOwn(s, co, a.o) || !onOwn(s, co, b.o)))) return;
     out.push({ a, b, good, d, score: ((income(d) * 100) / (d * 130 + 7000)) | 0 });
   };
   const cs = s.cities.map(cityNode);
@@ -26,13 +28,14 @@ export function candidates(s, co, L) {
     if (g < 0) continue;
     const inc = (d) => PROD * GOODS[g].rate * d * 5;
     for (const q of s.industries) if (INDUSTRIES[q.type].in.includes(g)) add(indNode(o), indNode(q), g, inc);
-    for (const c of s.cities) if (CITY_GOODS[c.level].includes(g)) add(indNode(o), cityNode(c), g, inc);
+    for (const c of s.cities) if (cityGoods(c).includes(g)) add(indNode(o), cityNode(c), g, inc);
   }
   return out.sort((x, y) => y.score - x.score || (x.a.k < y.a.k ? -1 : x.a.k > y.a.k ? 1 : 0) || (x.b.k < y.b.k ? -1 : 1));
 }
 
 /** O gară deja a companiei care acoperă nodul (ca să nu mai punem alta). */
 export function ownStation(s, co, n) {
+  if (n.port) return n.o.owner === co.id ? n.o : null; // 7.5: portul e chiar gara de capăt
   return s.stations.find((st) => st.owner === co.id && (n.city
     ? Math.max(Math.abs(n.o.x - st.x), Math.abs(n.o.y - st.y)) <= STATION_RADIUS[st.size] + 2
     : near(st, n.o))) || null;

@@ -88,6 +88,8 @@ export function createTrackDraw(c, { points = false } = {}) {
       dirty = true; flush(true);
     },
     isActive: () => raw.length > 0,
+    /** Din meniul de clic dreapta: traseul începe pe t; următoarea tragere (sau atingere, la „punct cu punct”) îl continuă. */
+    startAt(t) { reset(); begin(t); pend = true; dirty = true; c.hud().hint(points ? 'Începutul e pus. Atinge punctele următoare.' : 'Începutul e pus aici. Trage din el ca să desenezi șina.', false, 5000); c.bar(); },
     pending: () => pend && !!plan,
     dragStart(t) {
       const l = raw.length ? last() : null;

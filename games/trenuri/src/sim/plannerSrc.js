@@ -1,7 +1,7 @@
 // Planificatorul de rută, partea 1 (pură, numai întregi): ce cere un oraș, cât produce o industrie, există șină între două locuri,
 // unde se pune o gară și cum se trage șina între două capete (A* + pod/nivelare/tunel din tracePlan). Fără DOM.
 import { DX, DY, STATION_RADIUS, STATION_COST, PROD, WATER_H, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT } from './consts.js';
-import { CITY_GOODS, INDUSTRIES, wantOf } from './goods.js';
+import { CITY_GOODS, INDUSTRIES, wantOf, cityGoods } from './goods.js';
 import { tileDist } from './cargo.js';
 import { near } from './industry.js';
 import { planTrack } from './plan.js';
@@ -13,7 +13,7 @@ const ownerOf = (t) => (t & T_OWNER_MASK) >> T_OWNER_SHIFT;
 
 /** Ce cere un oraș: [{ g, want, got, pct }] (doar mărfuri, fără pasageri și poștă). `got` = cât a primit luna asta sau cea trecută. */
 export function cityRequests(s, c) {
-  return CITY_GOODS[c.level].filter((g) => g >= 2).map((g) => {
+  return cityGoods(c).filter((g) => g >= 2).map((g) => {
     const want = wantOf(c, g), got = Math.max(c.got[g], c.prev ? c.prev[g] : 0);
     return { g, want, got, pct: Math.min(100, ((got * 100) / Math.max(1, want)) | 0) };
   });

@@ -26,6 +26,8 @@ export function createTrackTool(c) {
     /** Al doilea deget în timpul desenului: anulare curată, fără bucăți de șină. */
     dragAbort() { if (drawing()) cur().cancel(); else cur().dragCancel(); },
     tap: (t) => cur().tap(t),
+    /** Începe traseul pe placa t; pe touch, un deget desenează (altfel n-ai cum să continui din punct). */
+    startAt(t) { tmode = 'draw'; if (mode === 'auto') { cur().tap(t); return; } cur().startAt(t); },
     dragStart: (t) => cur().dragStart(t),
     dragMove: (t, m) => cur().dragMove(t, m),
     dragFlush: () => { if (drawing()) cur().dragFlush(); },

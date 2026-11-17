@@ -10,6 +10,8 @@ import { createCargo, wagonFills } from './cargo.js';
 import { makeBeacon } from './depot.js';
 import { blobGeometry, blobMaterial } from './blob.js';
 import { perf } from '../../../../shared/engine/perf.js';
+import { frameOf } from '../sim/terminal.js';
+import { LANE } from './terminal.js';
 
 export const TRAIN_MODELS = [...MODELS.map((m) => 'trains/' + m.glb), ...CAR_TYPES.map((c) => 'trains/' + c.glb)];
 const CAR_GAP = 250, MAX_BLOBS = 600;
@@ -17,6 +19,17 @@ const CAR_MODEL = CAR_TYPES.map((c) => 'trains/' + c.glb);
 const m4 = new Matrix4(), qq = new Quaternion(), vv = new Vector3(), ss = new Vector3(), ee = new Euler();
 const oa = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, ob = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+
+/** Trenurile oprite într-un terminal mare (în afară de primul) stau pe liniile curții: id tren → { st, f, c }. */
+function bays(s) {
+  const out = new Map();
+  for (const st of s.stations) {
+    if (!st.big) continue;
+    const f = frameOf(st.dir); let k = 0;
+    for (const t of s.trains) if (t.state === 2 && t.to === st.id) { if (k > 0) out.set(t.id, { st, f, c: k * LANE }); k++; }
+  }
+  return out;
+}
 
 export function createTrains(s, g, camera) {
   const root = new Group(), items = new Map(), q = perf.quality();
@@ -70,6 +83,7 @@ export function createTrains(s, g, camera) {
       if (nightLevel !== night) { night = nightLevel; setNight(night); }
       const lit = night > 0.04;
       let nb = 0;
+      const bay = bays(s);
       for (const t of s.trains) {
         const it = items.get(t.id);
         if (!it) continue;
@@ -88,7 +102,9 @@ export function createTrains(s, g, camera) {
           if (path.length > 1) { // înclinare în curbă, după schimbarea direcției puțin înainte față de puțin în urmă
             roll = Math.max(-0.09, Math.min(0.09, wrap(poseAt(s, g, path, dd + 70, oa).yaw - poseAt(s, g, path, dd - 70, ob).yaw) * 0.22));
           }
-          p.position.set(ox, oy, oz); p.rotation.set(-pitch, yaw, roll);
+          const sh = bay.get(t.id); // în terminalul mare trenul stă pe linia lui, cu locomotiva la opritor
+          if (sh) { const a = 1.2 - (k * CAR_GAP) / 256; p.position.set(sh.st.x + 0.5 + sh.f.cx * sh.c + sh.f.ax * a, g.tileY(sh.st.x, sh.st.y) + 0.06, sh.st.y + 0.5 + sh.f.cy * sh.c + sh.f.ay * a); p.rotation.set(0, Math.atan2(sh.f.ax, sh.f.ay), 0); }
+          else { p.position.set(ox, oy, oz); p.rotation.set(-pitch, yaw, roll); }
           if (blobs.visible && nb < MAX_BLOBS) blobs.setMatrixAt(nb++, m4.compose(vv.set(ox, oy + 0.04, oz), qq.setFromEuler(ee.set(0, yaw, 0)), ss.set(0.55, 1, 1.0)));
           if (k === 0 && MODELS[t.model].smoke && acc > 0.1 && moving) smoke.emit(ox + Math.sin(yaw) * 0.2, oy + 0.56, oz + Math.cos(yaw) * 0.2, 1);
         });

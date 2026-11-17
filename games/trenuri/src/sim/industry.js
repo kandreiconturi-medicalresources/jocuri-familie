@@ -36,7 +36,7 @@ export function collectDaily(s) {
   for (const st of s.stations) {
     for (const o of s.industries) {
       const g = INDUSTRIES[o.type].out;
-      if (g < 0 || o.out[g] <= 0 || !near(st, o)) continue;
+      if (g < 0 || o.out[g] <= 0 || !near(st, o) || (o.buyer !== undefined && o.buyer !== st.owner)) continue; // industria cumpărată (7.4) dă doar gărilor cumpărătorului
       const n = Math.min(o.out[g], WAIT_CAP - st.cargo[g]);
       if (n > 0) { o.out[g] -= n; st.cargo[g] += n; }
     }

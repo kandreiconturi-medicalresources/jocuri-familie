@@ -1,5 +1,7 @@
 // Singura cale prin care jucătorul schimbă starea: applyCommand(state, cmd) → { ok, err?, cost? }.
 import { START_CASH, DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H, UPGRADES } from './consts.js';
+import { CONSIST_COMMANDS } from './consist.js';
+import { BIG_COST, BIG_PLATFORMS, autoDir, yardProblem, claimYard, freeYard } from './terminal.js';
 import { pathCost } from './plan.js';
 import { addNews } from './news.js';
 import { mark } from './blocks.js';
@@ -13,13 +15,24 @@ import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
 import { validOrders, cleanOrders } from './orders.js';
 import { executePlan } from './execPlan.js';
+import { islandApply, claimIsland } from './islands.js';
+import { PORT_COMMANDS } from './ports.js';
+import { SHIP_COMMANDS } from './ships.js';
+import { BRIDGE_COMMANDS } from './bigBridge.js';
+import { LAND_COMMANDS } from './land.js';
+import { BANK_COMMANDS } from './bank.js';
+import { TEAM_COMMANDS } from './teams.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
-  bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung.', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
+  bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung (cel mult 30 de plăci pentru podul mare).', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
+  loc: 'Terminalul mare are nevoie de loc liber și plat lângă gară (4×5 plăci) și de o linie dreaptă.',
+  insula: 'Insula asta e a altei companii: aici nu poți construi. Cumpără teren 🏠 sau fă comerț prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
+  pod: 'Podul mare e o linie dreaptă (orizontală, verticală sau în diagonală), de pe uscat pe uscat, cu cel puțin o placă de apă între capete.', ocupat: 'Pe parcela asta sunt gări sau depouri ale altcuiva: nu se poate vinde.',
+  port: 'Portul se pune pe insula ta, pe o placă de uscat chiar lângă apă.', vapor: 'Ruta vaporului nu e bună: alege porturi la care se ajunge pe apă.',
 };
 
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
@@ -74,14 +87,18 @@ function buildStation(s, cmd, c) {
   const t = s.track[i];
   if ((t & T_PRESENT) && ownerOf(t) !== c.id) return fail('proprietar');
   if (s.stations.some((st) => st.y * s.w + st.x === i)) return fail('teren');
-  const cost = STATION_COST[size];
+  const big = !!cmd.big && size === 2;
+  const dir = big ? (cmd.dir === undefined ? autoDir(s, x, y) : cmd.dir | 0) : cmd.dir | 0;
+  if (big) { if (dir < 0) return fail('loc'); const p = yardProblem(s, x, y, dir); if (p) return fail(p === 'harta' || p === 'cladire' || p === 'panta' ? p : 'loc'); }
+  const cost = big ? BIG_COST : STATION_COST[size];
   if (!spend(s, c, cost)) return fail('bani');
   s.track[i] = t | T_PRESENT | (c.id << T_OWNER_SHIFT);
   s.forest[i] = 0;
   const cityId = nearCity(s, x, y), city = cityId >= 0 ? s.cities[cityId] : null;
   const same = city ? s.stations.filter((st) => st.cityId === cityId).length : 0;
   const name = city ? `${STATION_NAMES[size]} ${city.name}${same ? ' ' + (same + 1) : ''}` : `${STATION_NAMES[size]} ${s.stations.length + 1}`;
-  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir: cmd.dir | 0, platforms: 1, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: UPGRADES.map(() => 0) };
+  const st = { id: s.nextId++, owner: c.id, x, y, size, name, cityId, dir, platforms: big ? BIG_PLATFORMS : 1, waiting: { pass: 0, mail: 0 }, rem: { pass: 0, mail: 0 }, cargo: new Array(NG).fill(0), up: UPGRADES.map(() => 0) };
+  if (big) { st.big = 1; claimYard(s, st); }
   s.stations.push(st);
   s.stm[i] = 1;
   syncAuto(s);
@@ -97,6 +114,7 @@ function removeStation(s, cmd, c) {
   if (st.owner !== c.id) return fail('proprietar');
   if (s.trains.some((t) => t.route.includes(st.id) || t.from === st.id || t.to === st.id)) return fail('ruta');
   s.stations.splice(k, 1);
+  if (st.big) { freeYard(s, st); s.dirty.forest = true; }
   const i = st.y * s.w + st.x;
   s.stm[i] = 0;
   if (!(s.track[i] & 0xff)) s.track[i] = 0;
@@ -190,18 +208,21 @@ function joinCompany(s, cmd) {
   const id = s.companies.length;
   s.companies.push({ id, name: String(cmd.name || 'Jucător').slice(0, 20), color: String(cmd.color || '#8fd3ff').slice(0, 9), cash: START_CASH, loan: 0, history: [], month: 0, record: 0 });
   if (s.mode === 'expert') initCompany(s.companies[id]);
+  else if (s.islands) s.companies[id].tr = []; // 7.4: banca și în modul simplu
   n.pl[cmd.pl] = id;
+  if (n.team) { if (!n.nm) n.nm = {}; n.nm[cmd.pl] = s.companies[id].name.slice(0, 14); } // 7.5: echipă nouă cu un singur membru
+  if (s.islands) claimIsland(s, id);
   addNews(s, '🏢', `A intrat în joc: ${s.companies[id].name}!`);
   return { ok: true, cost: 0 };
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');
   if (cmd.type === 'setSpeed') return { ok: true }; // viteza o ține gazda, în afara simulării
   const fn = TABLE[cmd.type] || EXPERT_COMMANDS[cmd.type], c = s.companies[cmd.by | 0];
   if (!fn || !c) return fail('drum');
-  return fn(s, cmd, c);
+  return s.islands ? islandApply(s, cmd, c, fn) : fn(s, cmd, c);
 }

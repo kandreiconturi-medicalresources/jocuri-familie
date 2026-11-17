@@ -40,3 +40,12 @@
 .card .trow .tmain small { font-weight: 600; font-size: 12px; }
 .tbar .chip.goal { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 640px) { .tbar { gap: 4px; } .chip { padding: 0 8px; font-size: 16px; } .tool { width: 60px; } .toolbar { gap: 5px; } }
+
+/* Etapa 7.1–7.2: 🗺️ Insulele, port, vapor */
+.card table.isl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 14px; }
+.card table.isl th, .card table.isl td { padding: 3px 4px; text-align: center; border-bottom: 1px dashed #c9b8ee; }
+.card table.isl td:first-child { text-align: left; }
+.card table.isl tr.me td { background: rgba(255,210,63,.15); }
+.card button.lnk { background: none; border: 0; color: #1c6fd1; font: inherit; padding: 4px 2px; min-height: 32px; cursor: pointer; text-decoration: underline; }
+.card .row.me { background: rgba(255,210,63,.15); border-radius: 6px; }
+.card .opt.locked { opacity: .55; }

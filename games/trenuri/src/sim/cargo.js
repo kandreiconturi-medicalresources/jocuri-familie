@@ -5,6 +5,7 @@ import { near } from './industry.js';
 import { addNews } from './news.js';
 import { recordIncome } from './expert/report.js';
 import { dropAmount } from './drops.js';
+import { portCap, exportBonus } from './ports.js';
 
 /** Distanță în linie dreaptă în plăci (aproximare întreagă a diagonalei). */
 export function tileDist(a, b) {
@@ -18,7 +19,7 @@ const takeFrom = (st, g, n) => { if (g === 0) st.waiting.pass -= n; else if (g =
 
 /** Cine cere marfa g la gara st: orașe în rază (după nivel) sau industrii care o folosesc. Pasagerii și poșta se primesc oriunde. */
 export function accepts(s, st, g) {
-  if (g < 2) return true;
+  if (g < 2 || st.port) return true; // portul ia orice marfă în depozit
   return s.cities.some((c) => cityNear(st, c) && wantOf(c, g) > 0) || s.industries.some((o) => INDUSTRIES[o.type].in.includes(g) && near(st, o));
 }
 
@@ -35,6 +36,7 @@ function targetOf(s, st, g) {
 /** Cât mai cere gara st din marfa g luna asta (orașul: cererea minus ce a primit; industria: loc în stoc; pasageri și poștă: oricât). */
 export function roomAt(s, st, g) {
   if (g < 2) return 1e9;
+  if (st.port) return Math.max(0, portCap(st) - st.cargo[g]);
   const t = targetOf(s, st, g);
   return !t ? 0 : t.c ? Math.max(0, wantOf(t.c, g) - t.c.got[g]) : Math.max(0, STOCK_CAP - t.o.in[g]);
 }
@@ -46,6 +48,7 @@ export function deliver(s, st, g, n) {
     if (c) c.got[g] += n;
     return true;
   }
+  if (st.port) { st.cargo[g] = Math.min(portCap(st), st.cargo[g] + n); return true; } // depozitul portului
   const t = targetOf(s, st, g);
   if (!t) return false;
   if (t.c) t.c.got[g] += n; else t.o.in[g] = Math.min(STOCK_CAP, t.o.in[g] + n);
@@ -97,7 +100,7 @@ export function unload(s, t, st) {
     const ok = deliver(s, st, b.c, k);
     if (ok) s.stats.del[b.c] += k;
     const pay = ((k * dist * GOODS[b.c].rate * bonus) / 100) | 0;
-    const v = ok ? pay : ((pay * LOW_PAY) / 100) | 0;
+    const v = (ok ? pay : ((pay * LOW_PAY) / 100) | 0) + (st.port ? exportBonus(s, st, b, k) : 0);
     earned += v;
     if (co.rep) recordIncome(co, t, b.c, v);
     if (!ok) dumped = b.c;

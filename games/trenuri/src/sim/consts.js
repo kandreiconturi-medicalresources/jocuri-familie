@@ -62,3 +62,22 @@ export const CAR_W = 12;
 // Etapa 6.6, runda 2: depouri, defecțiuni, remorcare, semnale de bloc. Duratele sunt în pași (10 pași = o zi).
 export const DEPOT = { cost: 6000, lift: 30, repairBase: 40, repairPer: 6, tracks: 2, towModel: 0, auto: TICKS_PER_DAY, self: 400, selfCost: 2000 };
 export const BLOCK_MIN = 3, BLOCK_MAX = 12; // „Semnale automate pe linie lungă”: unul la fiecare N plăci
+
+// Faza 7: insule, porturi și vapoare. speed în 1/256 placă/pas, cap = tone în cală, mat = materiale [marfă, tone] cerute din portul tău.
+export const SHIP_MODELS = [
+  { id: 0, key: 'panze', name: 'Barcă cu pânze', year: 1800, price: 6000, speed: 12, cap: 60, maint: 60, mat: [[5, 15]] },
+  { id: 1, key: 'aburi', name: 'Vapor cu aburi', year: 1860, price: 14000, speed: 18, cap: 120, maint: 120, mat: [[5, 10], [8, 15]] },
+  { id: 2, key: 'cargou', name: 'Cargou', year: 1920, price: 26000, speed: 24, cap: 240, maint: 200, mat: [[8, 30], [9, 10]] },
+  { id: 3, key: 'rapida', name: 'Navă rapidă', year: 1965, price: 40000, speed: 34, cap: 200, maint: 300, mat: [[8, 40], [9, 20]] },
+];
+export const PORT = { cost: 12000, cap: 400, capPer: 200, fee: 60, dwell: 40, stops: 6 };
+/** Materiale de construcție în modul cu insule: [marfă, tone]. Primul port și primul vapor nu cer materiale. */
+export const MATS = { port: [[5, 20], [8, 10]], big: [[8, 20], [9, 10]], up: [[5, 10], [8, 5]] };
+
+// Etapa 7.3–7.4: poduri mari, proprietăți, pragurile clasamentului.
+export const T_BIGBR = 0x2000; // placă de pod mare (biții 0x2000 era liber): se desenează cu piloni și grinzi
+/** Pod mare: până la `max` plăci de apă; cost = base·n + sq·n²; oțel (marfa 8) = n/2 tone (cel puțin 2); `val` = valoarea unei plăci în clasament. */
+export const BRIDGE = { max: 30, base: 400, sq: 60, steel: 8, val: 250 };
+/** Parcele 4×4: preț = valoarea terenului × `mult`; industria străină costă `ind` + 10 lei pe tonă produsă (până la 2000 t). */
+export const LAND = { size: 4, mult: 3, ind: 18000 };
+export const THRESHOLDS = [100000, 500000, 1000000];

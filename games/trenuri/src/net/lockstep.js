@@ -151,6 +151,8 @@ export function createLockstep(o) {
     },
     /** Doar gazda: un jucător nou în competitiv primește o companie nouă. */
     join(pl, name, color) { if (isHost() && s && s.net && s.net.mode === 'comp' && s.net.pl[pl] === undefined) schedule(me, 0, { type: 'joinCompany', pl, name, color }); },
+    /** Doar gazda, în jocul pe echipe (7.5): mută jucătorul `pl` în echipa companiei `co`. */
+    assign(pl, co, name) { if (isHost() && s && s.net && s.net.team) schedule(me, 0, { type: 'setTeam', pl, co, name }); },
     /** Doar gazda: încarcă o altă lume (salvare) și o trimite tuturor din `ids`. */
     load(w, ids) {
       if (!isHost()) return;

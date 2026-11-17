@@ -4,6 +4,8 @@ import { perf } from '../../../../shared/engine/perf.js';
 import { createSky } from './sky.js';
 import { createClassic } from './classic.js';
 import { createStats } from './stats.js';
+import { look, onLook, shadowsOn } from './look.js';
+import { dprCap } from '../../../../shared/engine/pace.js';
 
 const DAY = { sun: new Color(0xffd9a2), hemiSky: new Color(0xd3e6ff), hemiGround: new Color(0xcdae80), fog: new Color(0xe8e6d2) };
 const NIGHT = { sun: new Color(0x6f86c8), hemiSky: new Color(0x3d4c82), hemiGround: new Color(0x2a2f48), fog: new Color(0x465782) };
@@ -20,12 +22,12 @@ export function createStage(canvas) {
   scene.add(hemi, sun, sun.target);
   const classic = createClassic(camera);
   const sky = createSky(scene, camera);
-  const stats = createStats(renderer, () => perf.quality());
+  const stats = createStats(renderer, () => perf.quality() + ' cap' + look.cap);
   const target = new Vector3(), fwd = new Vector3(), col = new Color();
   const st = { night: 0, shadowOn: false, half: 0 };
 
   function applyQuality() {
-    const q = perf.quality(), on = q >= 1, size = q >= 2 ? 2048 : 1024;
+    const q = perf.quality(), on = shadowsOn(), size = q >= 2 ? 2048 : 1024;
     renderer.toneMapping = q >= 2 ? ACESFilmicToneMapping : NoToneMapping;
     renderer.toneMappingExposure = q >= 2 ? 1.12 : 1;
     sun.castShadow = on;
@@ -42,7 +44,7 @@ export function createStage(canvas) {
     document.body.classList.toggle('q2', q >= 2);
   }
   function resize() {
-    const q = perf.quality(), dpr = Math.min(window.devicePixelRatio || 1, q >= 2 ? 2 : q === 1 ? 1.5 : 1);
+    const dpr = Math.min(window.devicePixelRatio || 1, dprCap({ phone: look.phone, cool: look.cool, quality: perf.quality() }));
     renderer.setPixelRatio(dpr);
     renderer.setSize(innerWidth, innerHeight, false);
     camera.aspect = innerWidth / innerHeight;
@@ -50,6 +52,7 @@ export function createStage(canvas) {
   }
   addEventListener('resize', resize);
   perf.onChange(() => { resize(); applyQuality(); });
+  onLook(() => { resize(); applyQuality(); });
   resize(); applyQuality();
 
   /** Ziua/noaptea: ciclu foarte lent (≈6 minute), noaptea rămâne vizibilă (max 0.62). */

@@ -20,6 +20,11 @@ import { showOver } from './ui/exOver.js';
 import { createExtras } from './ui/extras.js';
 import { mountExtraTools } from './ui/tools-extra.js';
 import { mountMobileControls } from './ui/mobileControls.js';
+import { createIslandUi } from './ui/islandUi.js';
+import { createContextRun } from './input/contextRun.js';
+import { createFlatIcons } from './ui/flatIcons.js';
+import { look, setLook, onLook, MODES } from './render/look.js';
+import { simStepCap, renderNeeded } from '../../../shared/engine/pace.js';
 
 const TUTORIAL_SEED = 11;
 
@@ -28,11 +33,13 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   let mode = 'normal', shown = new Set(), tipT = 0, lastBest = 0, endShown = true, lastMonth = -1, endUi = null, overUi = null, exMonth = -1;
   const prefs = createPrefs(save);
   const camera = createCamera(stage, { w: 64, h: 64 });
+  stage.classic.bind(camera.cam);
+  let wokeAt = -1e9, drawnAt = 0, lastCam = [0, 0, 0, 0, 0];
   const myCo = () => s.companies[viewer.co] || s.companies[0];
   const exec = (cmd) => {
     if (np.active) { const r = np.submit(cmd); if (!r.ok) { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); } return r; } // în rețea: răspunsul vine când gazda aplică comanda
     const r = applyCommand(s, { by: 0, ...cmd });
-    if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(ERR_TEXT[r.err] || 'Nu merge asta.', true); }
+    if (r.ok) { sfx('build'); extras.log(cmd); } else { sfx('nope'); hud.hint(r.text || ERR_TEXT[r.err] || 'Nu merge asta.', true, r.text ? 7000 : 3500); }
     return r;
   };
   const waits = []; // „Fă tot” în rețea: promisiunea se închide când gazda aplică comanda și răspunde
@@ -45,6 +52,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   const panels = createPanels(uiRoot, {
     sell: (id) => exec({ type: 'sellTrain', trainId: id }),
     orders: (id, orders) => exec({ type: 'setOrders', trainId: id, orders }),
+    cars: (id, kinds) => exec({ type: 'setCars', trainId: id, kinds }),
     upgrade: (id, kind) => exec({ type: 'buildUpgrade', stationId: id, kind }).ok,
     pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }),
     route: (id, route) => exec({ type: 'setRoute', trainId: id, route }),
@@ -53,6 +61,8 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     show: (x, y) => extras.show(x, y),
     makeRoute: (preset) => extras.buy(preset),
     plan: (preset) => extras.planner(preset),
+    buyIndustry: (id) => exec({ type: 'buyIndustry', id }).ok,
+    me: () => viewer.co,
   });
   const ex = createExpertUi({ card: panels.card, state: () => s, me: () => viewer.co, exec: (c) => exec(c) });
   const goals = createGoals(panels.card);
@@ -69,9 +79,10 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (on) panels.layer(s); else panels.close();
     },
     goals: () => { const sc = scn(); if (sc) goals.progress(s, sc); },
-    expert: () => ex.show(),
+    expert: () => ex.show(), islands: () => isl.open(), bank: () => isl.bank(),
     todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
-    menu: () => openSettings(panels.card, prefs, { tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
+    view: () => setView(MODES[(MODES.indexOf(look.mode) + 1) % MODES.length], true),
+    menu: () => openSettings(panels.card, prefs, { cool: { get: () => look.cool, set: (v) => { prefs.set('cool', v); setLook({ cool: v }); hud.hint(v ? '🔋 Mod răcoros: mai puține cadre, fără umbre și iarbă.' : 'Mod răcoros oprit.', false, 3000); } }, tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({
     state: () => s, view: () => view, hud, panels, exec, errText: (k) => ERR_TEXT[k],
@@ -81,7 +92,21 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   });
   const extras = createExtras({ stage, uiRoot, panels, camera, helper, exec, execWait, state: () => s, view: () => view, hud, tools, pause: (id, on) => exec({ type: on ? 'pauseTrain' : 'resumeTrain', trainId: id }), depot: (id) => exec({ type: 'sendToDepot', trainId: id }), rescue: (id) => exec({ type: 'rescueTrain', trainId: id }) });
   mountExtraTools(hud, tools);
+  const isl = createIslandUi({ card: panels.card, state: () => s, me: () => viewer.co, exec, hud, tools, show: (x, y) => extras.show(x, y) });
+  Object.assign(panels, { port: isl.port, ship: isl.ship, shipNear: isl.shipNear }); // Info pe port / vapor
   mountMobileControls(uiRoot, camera);
+  const flat = createFlatIcons(uiRoot, { camera: stage.camera, state: () => s, view: () => view, zoom: () => camera.cam.dist });
+  const VIEWS = { '3d': ['3D', 'Vedere 3D'], '2d': ['2D', '🗺️ Vedere 2D: de sus, cu iconițe mari'], classic: ['🏛️', '🏛️ Vedere clasică: izometrică, se rotește cu ↶ ↷'] };
+  /** 3D · 2D · clasic: pornește vederea, o ține minte și arată butonul potrivit. */
+  function setView(m, say) {
+    setLook({ mode: m });
+    stage.classic.setMode(m === 'classic' ? 'classic' : m === '2d' ? 'flat' : 'off');
+    camera.apply(); flat.show(m === '2d');
+    prefs.set('view', m); hud.setView(VIEWS[m][0], VIEWS[m][1]);
+    if (say) hud.hint(VIEWS[m][1], false, 3500);
+  }
+  onLook(() => { wokeAt = performance.now(); });
+  const ctxRun = createContextRun({ root: uiRoot, state: () => s, view: () => view, tools, panels, exec, extras, isl, hud });
   const np = createNetPlay({
     root: uiRoot, hint: (t, warn, ms) => hud.hint(t, warn, ms), sfx, onResult: gotResult, setSpeedUi: (v) => setSpeed(v),
     setWorld: (w, o) => game.setWorld(w, o), onStop: () => onNetEnd(),
@@ -106,14 +131,15 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
   addEventListener('keydown', (e) => { if (e.target.tagName !== 'INPUT' && s && !orbit && tools.key(e)) e.preventDefault(); });
   bindPointer(canvas, camera, pickTile, {
     groundAt: (x, z) => (view ? view.ground.at(x, z) : 0),
-    wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit) tools.tap(t); }, hover: (t) => { if (!orbit) tools.hover(t); },
+    wantsDrag: () => !orbit && tools.wantsDrag(), tap: (t) => { if (!orbit && !ctxRun.swallow()) tools.tap(t); }, context: (t, x, y) => { if (!orbit) ctxRun.open(t, x, y); }, hover: (t) => { if (!orbit) tools.hover(t); },
     dragStart: (t) => tools.dragStart(t), dragMove: (t, m) => tools.dragMove(t, m), dragFlush: () => tools.dragFlush(), dragAbort: () => tools.dragAbort(), touchMode: () => tools.touchMode(), isAnchor: (t) => tools.isAnchor(t), holdRing: (t) => tools.holdRing(t), rightClick: () => !orbit && tools.rightClick(), dragEnd: (t, m) => tools.dragEnd(t, m), dragCancel: () => tools.dragCancel(),
   });
   // tap în afara panoului (pe hartă) închide cardul deschis
   canvas.addEventListener('pointerdown', () => { follow = null; unlock(); if (panels.isOpen()) panels.close(); });
   setAmbient(prefs.get('ambient'));
+  setView(look.mode, false);
 
-  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭'];
+  const BIG = ['🚂', '🏙️', '🏗️', '🌽', '🏆', '🤷', '🔧', '↩️', '🏅', '🚑', '🚨', '🏭', '🧱', '⚓'];
   function toastNews() {
     const n = s.news, k = n.indexOf(lastNews);
     if (k === n.length - 1) return;
@@ -174,7 +200,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       orbit = demo; simAcc = 0; lastCash = myCo().cash; shown = new Set(); tipT = -3; resetSounds();
       lastBest = s.scn ? s.scn.best : 0; endShown = !s.scn || s.scn.done; lastMonth = -1;
       if (overUi) { overUi.close(); overUi = null; }
-      exMonth = -1; hud.setExpert(s.mode === 'expert' && !demo);
+      exMonth = -1; hud.setExpert(s.mode === 'expert' && !demo); hud.setIslands(!!s.islands && !demo); isl.setWorld(s, demo);
       uiRoot.classList.toggle('demo', demo);
       helper.show(!demo); hud.setGoal(null);
       if (!resync) { panels.close(); tools.setTool('track'); }
@@ -187,9 +213,10 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (s.scn) { const sc = scn(); if (sc) hud.setGoal(goalChip(s, sc)); }
     },
     newWorld(size, demo, year = 1950, opt = null) {
-      const w = createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year, mode: opt && opt.expert ? 'expert' : 'simple', ai: opt && opt.ai ? opt.ai : [] });
+      const w = createWorld({ seed: (Math.random() * 4294967295) >>> 0, size, year, mode: opt && opt.expert ? 'expert' : 'simple', ai: opt && opt.ai ? opt.ai : [], map: opt && opt.islands ? 'islands' : 'normal' });
       game.setWorld(w, { demo });
-      if (opt && opt.expert) helper.say('Mod expert! Deschide 💼 sus: împrumuturi, bursă, raport anual. Atinge ⓘ ca să afli ce înseamnă.', { force: true });
+      if (opt && opt.islands) helper.say('Lumea cu insule! Insula ta nu are toate resursele. Atinge 🗺️ sus ca să vezi ce-ți lipsește, apoi fă un port ⚓ (🧰 Mai mult) și un vapor 🚢.', { force: true });
+      else if (opt && opt.expert) helper.say('Mod expert! Deschide 💼 sus: împrumuturi, bursă, raport anual. Atinge ⓘ ca să afli ce înseamnă.', { force: true });
     },
     startScenario(id) {
       const sc = scenarioById(id);
@@ -225,20 +252,30 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
       if (!np.update(dt, () => view.trains.onStep())) {
         simAcc += dt * speed * SIM_HZ;
         let n = 0;
-        while (simAcc >= 1 && n++ < 8) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
+        const cap = simStepCap(look);
+        while (simAcc >= 1 && n++ < cap) { stepWorld(s); view.trains.onStep(); simAcc -= 1; }
         if (simAcc > 1) simAcc = 0;
       }
       if (!orbit) { extras.update(dt); trainSounds(s, clock); watchScenario(); watchExpert(); tutorial.update(dt); tips(dt); }
     },
+    /** Atingere sau schimbare din afară: următoarele cadre se desenează. */
+    wake() { wokeAt = performance.now(); },
+    /** Cadrul acesta trebuie desenat? Nu dacă jocul e pe pauză și camera stă (cu o bătaie rară). */
+    needsRender(now) {
+      if (!s) return false;
+      const c = camera.cam, moved = c.x !== lastCam[0] || c.z !== lastCam[1] || c.dist !== lastCam[2] || c.yaw !== lastCam[3] || c.pitch !== lastCam[4];
+      return renderNeeded({ now, drawnAt, running: orbit || np.active || speed > 0 || !!follow, camMoved: moved, wokeAt });
+    },
     render(dt) {
       if (!s) return;
+      drawnAt = performance.now(); { const c = camera.cam; lastCam = [c.x, c.z, c.dist, c.yaw, c.pitch]; }
       if (follow) {
         const p = view.trains.positionOf(follow.id);
         if (p && clock < follow.until) { camera.cam.x += (p.x - camera.cam.x) * 0.06; camera.cam.z += (p.z - camera.cam.z) * 0.06; camera.apply(); } else follow = null;
       }
       stage.setFog(camera.cam.dist * 1.15, camera.cam.dist * 3.2);
       view.frame(np.active ? np.alpha : speed ? simAcc : 1, dt, clock);
-      extras.frame(dt);
+      extras.frame(dt); flat.frame();
       const c = myCo().cash;
       hud.setMoney(c, s.sandbox);
       if (c > lastCash + 50 && !orbit) sfx('cash');

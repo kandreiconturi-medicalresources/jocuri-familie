@@ -57,5 +57,11 @@ const SHIFT = { 0: 2, 1: 4, 3: 4, 5: 5, 9: 5, 11: 5, 13: 5 };
 /** Cât vrea un oraș pe lună din marfa g (0 = nu cere). */
 export function wantOf(c, g) {
   if (g < 2) return Math.max(1, c.pop >> SHIFT[g]);
-  return CITY_GOODS[c.level].includes(g) ? Math.max(1, c.pop >> SHIFT[g]) : 0;
+  if (CITY_GOODS[c.level].includes(g)) return Math.max(1, c.pop >> SHIFT[g]);
+  return c.want && c.want.includes(g) ? Math.max(1, c.pop >> (SHIFT[g] || 5)) : 0; // insule: orașul cere și ce nu se face pe insula lui
+}
+/** Mărfurile pe care le cere orașul (nivel + cererea în plus de pe insule). */
+export function cityGoods(c) {
+  const l = CITY_GOODS[c.level];
+  return c.want ? l.concat(c.want.filter((g) => !l.includes(g))) : l;
 }

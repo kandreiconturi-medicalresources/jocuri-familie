@@ -16,6 +16,8 @@ import { TRAIN_MODELS } from './render/trains.js';
 import { HOUSES, TREES, ROCK } from './render/props.js';
 import { EXTRA_MODELS } from './render/industries.js';
 import { createStage } from './render/stage.js';
+import { look, setLook, pacer, MODES } from './render/look.js';
+import { loopStepCap } from '../../../shared/engine/pace.js';
 import { createGame } from './game.js';
 import { createMenu } from './ui/menu.js';
 import { loadMedals } from './sim/index.js';
@@ -54,11 +56,13 @@ function fpsMeter() {
   if (!/[?&]fps/.test(location.search)) return () => {};
   const el = document.createElement('div'); el.className = 'fps'; document.body.append(el);
   let n = 0, t0 = performance.now();
-  return () => { n++; const t = performance.now(); if (t - t0 > 1000) { el.textContent = `${Math.round(n * 1000 / (t - t0))} fps · q${perf.quality()}`; n = 0; t0 = t; } };
+  return () => { n++; const t = performance.now(); if (t - t0 > 1000) { el.textContent = `${Math.round(n * 1000 / (t - t0))} fps · cap ${look.cap}${look.cool ? ' 🔋' : ''} · q${perf.quality()}`; n = 0; t0 = t; } };
 }
 
 async function boot() {
   const bar = $('bootbar'), pct = $('bootpct');
+  const p0 = save.get('prefs', {}) || {}; // înainte de scenă: modul răcoros și vederea (pe telefon, răcoros e pornit implicit)
+  setLook({ cool: p0.cool === null || p0.cool === undefined ? look.phone : !!p0.cool, mode: MODES.includes(p0.view) ? p0.view : '3d' });
   const stage = createStage($('c'));
   await loadModels(MODEL_LIST, (p) => { bar.style.width = Math.round(p * 100) + '%'; pct.textContent = Math.round(p * 100) + '%'; });
   if (missing.length) $('bootnote').textContent = `Unele modele lipsesc (${missing.length}); folosesc forme simple.`;
@@ -73,11 +77,22 @@ async function boot() {
   });
   if (game.prefs.get('tutorialDone')) showMenu(); else game.startTutorial(); // primul joc: tutorialul pornește singur
   const tick = fpsMeter();
-  loop = startLoop({ update: (dt) => game.update(dt), render: () => { game.render(1 / 60); tick(); } });
+  let drawn = 0;
+  const wake = () => game.wake();
+  for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'touchstart', 'click', 'resize', 'orientationchange']) addEventListener(ev, wake, { capture: true, passive: true });
+  loop = startLoop({
+    maxSteps: loopStepCap(look),
+    update: (dt) => game.update(dt),
+    render: (alpha, now) => { // plafon de cadre; pe pauză cu camera nemișcată nu desenăm (simularea merge mai departe)
+      if (!pacer.due(now)) return false;
+      if (!game.needsRender(now)) return 'idle';
+      game.render(Math.min(0.1, drawn ? (now - drawn) / 1000 : 1 / 60)); drawn = now; tick();
+    },
+  });
   $('boot').remove();
   document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });
   addEventListener('pagehide', () => game.save());
   startPlaySession('trenuri', { onBlocked: (reason) => { game.save(); loop.stop(); showTimeOverlay(reason); } });
-  window.__trenuri = { game, perf, stage };
+  window.__trenuri = { game, perf, stage, look, pacer };
 }
 boot();

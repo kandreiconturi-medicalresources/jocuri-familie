@@ -2,12 +2,14 @@
 import { MAX_PLATFORMS, PLATFORM_COST } from './consts.js';
 import { near } from './industry.js';
 import { addNews } from './news.js';
+import { BIG_MAX } from './terminal.js';
 
 const fail = (err) => ({ ok: false, err });
 export const platformsOf = (st) => st.platforms || 1;
 
 /** Câte peroane poate avea gara: sat 2, oraș 3, metropolă 4; fără oraș, după câte industrii sunt în rază (1→2, 2→3, 3+→4). */
 export function maxPlatforms(s, st) {
+  if (st.big) return BIG_MAX; // terminalul mare: 4 linii de la început, până la 6
   const c = st.cityId >= 0 ? s.cities[st.cityId] : null;
   let m = c ? 2 + c.level : 1;
   let n = 0;

@@ -102,3 +102,30 @@
 .sl-btns { display: flex; gap: 4px; }
 .sl-btns .opt { min-width: 44px; min-height: 44px; padding: 0 8px; }
 .warnrow { font-weight: 700; color: #c62838; }
+/* 7.5: membrii echipelor în cutiuța din rețea (gazda îi poate muta cu o atingere) */
+.nethud .tmem { display: flex; flex-wrap: wrap; gap: 3px; margin: 1px 0 3px 18px; }
+.nethud .tmem .chip { font: inherit; font-size: 11px; padding: 1px 6px; border-radius: 9px; border: 0; background: #ede4ff; color: #3a1a6a; pointer-events: auto; }
+.nethud .tmem button.chip { cursor: pointer; background: #ffe8cc; min-height: 22px; }
+/* 7.5: pastilele echipelor din lobby */
+.lobby .pl .team { margin-left: auto; padding: 4px 10px; border-radius: 14px; font-size: 13px; min-height: 32px; }
+.lobby .team.t0 { background: #ffd8a8; } .lobby .team.t1 { background: #a5d8ff; } .lobby .team.t2 { background: #e5dbff; } .lobby .team.t3 { background: #d3f9d8; }
+
+/* meniul de la clic dreapta / apăsare lungă (7.6) */
+.cm { position: fixed; z-index: 60; width: min(300px, calc(100vw - 12px)); padding: 8px; border-radius: 18px; background: #fffaf0; border: 4px solid #5a2ba0; box-shadow: 0 6px 0 rgba(0,0,0,.25); pointer-events: auto; }
+.cm-h { font: 800 13px var(--font); color: #3a1a6a; margin: 0 4px 6px; opacity: .8; }
+.cm-g { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cm-b { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 4px 6px; border-radius: 14px; border: 3px solid #5a2ba0; background: #fff; color: #3a1a6a; font: 800 14px/1.1 var(--font); cursor: pointer; touch-action: manipulation; }
+.cm-b:active { background: #ffd23f; }
+.cm-b.no { background: #ffe0e4; }
+.cm-b.arm { background: #ff7a8a; }
+.cm-i { font-size: 22px; line-height: 1.1; }
+.cm-b small { font-weight: 600; font-size: 10px; opacity: .8; }
+
+/* vederea 2D: iconite mari pentru gari, porturi, trenuri si vapoare (7.7) */
+.fi-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 4; }
+.fi { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; will-change: transform; }
+.fi-i { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.45); font-size: 20px; line-height: 1; background: #5a2ba0; }
+.fi-st .fi-i, .fi-port .fi-i { width: 40px; height: 40px; border-radius: 12px; font-size: 24px; }
+.fi-tr .fi-i, .fi-sh .fi-i { width: 30px; height: 30px; font-size: 17px; }
+.fi-n { margin-top: 1px; padding: 0 6px; border-radius: 8px; background: rgba(255,255,255,.92); color: #3a1a6a; font: 800 11px/1.3 var(--font); white-space: nowrap; }
+.fi-n:empty { display: none; }

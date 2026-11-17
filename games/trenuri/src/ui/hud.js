@@ -1,5 +1,6 @@
 // Interfața de joc: bara de sus (bani, dată, viteză), bara de unelte, opțiuni, mesaj scurt.
 import { h } from '../../../../shared/ui/dom.js';
+import { BIG_COST } from '../sim/terminal.js';
 import { STATION_NAMES, STATION_COST, availableModels, CAR_PRICE } from '../sim/consts.js';
 import { CAR_SETS, CAR_TYPES } from '../sim/goods.js';
 
@@ -25,13 +26,16 @@ export function createHud(root, ev) {
   const goal = h('button', { class: 'chip goal hidden', 'aria-label': 'Obiective', onclick: () => ev.goals() });
   const speeds = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => h('button', { class: 'rb', 'aria-label': 'Viteză ' + t, onclick: () => ev.speed(v) }, t));
   const layerBtn = h('button', { class: 'rb', title: 'Mărfuri', 'aria-label': 'Mărfuri', onclick: () => ev.layer() }, '📦');
+  const islBtn = h('button', { class: 'rb hidden', title: 'Insulele: resurse, porturi, clasament', 'aria-label': 'Insulele', onclick: () => ev.islands() }, '🗺️');
+  const bankBtn = h('button', { class: 'rb hidden', title: 'Banca: împrumut și rambursare automată', 'aria-label': 'Banca', onclick: () => ev.bank() }, '🏦');
   const exBtn = h('button', { class: 'rb hidden', title: 'Mod expert: finanțe, bursă, raport', 'aria-label': 'Mod expert', onclick: () => ev.expert() }, '💼');
   const todoBtn = h('button', { class: 'rb todo', title: 'De făcut', 'aria-label': 'De făcut', onclick: () => ev.todo() }, '📌');
+  const viewBtn = h('button', { class: 'rb', title: 'Vederea: 2D, 3D sau clasică', 'aria-label': 'Vederea', onclick: () => ev.view() }, '🧊');
   const menuBtn = h('button', { class: 'rb', title: 'Meniu', 'aria-label': 'Meniu', onclick: () => ev.menu() }, '☰');
   const bar = h('div', { class: 'tbar' }, info, goal, h('div', { class: 'sp' }), speeds,
-    layerBtn, exBtn, todoBtn,
+    layerBtn, islBtn, bankBtn, exBtn, todoBtn,
     h('button', { class: 'rb', title: 'Ziarul', 'aria-label': 'Ziarul', onclick: () => ev.news() }, '📰'),
-    menuBtn);
+    viewBtn, menuBtn);
   const hint = h('div', { class: 'hint hidden' });
   const sub = h('div', { class: 'sub' });
   const tools = TOOLS.map((t) => h('button', { class: 'tool', 'aria-label': t.t, onclick: () => ev.tool(t.id) }, h('span', { class: 'e' }, t.e), t.t));
@@ -55,6 +59,9 @@ export function createHud(root, ev) {
       money.classList.toggle('bad', c < 0);
     },
     setExpert(on) { exBtn.classList.toggle('hidden', !on); },
+    setIslands(on) { islBtn.classList.toggle('hidden', !on); bankBtn.classList.toggle('hidden', !on); },
+    /** Butonul de vedere arată vederea curentă (🧊 3D · 🗺️ 2D · 🏛️ clasic). */
+    setView(icon, name) { viewBtn.textContent = icon; viewBtn.title = 'Vederea: ' + name + ' (atinge ca să schimbi)'; },
     setLayer(on) { layerBtn.classList.toggle('on', on); },
     setDate(d) { date.textContent = `📅 ${MONTHS[d.m - 1]} ${d.y}`; },
     setSpeed(v) { speeds.forEach((b, i) => b.classList.toggle('on', [0, 1, 2, 4][i] === v)); },
@@ -71,8 +78,10 @@ export function createHud(root, ev) {
     setSub(items) {
       sub.replaceChildren(...items.map((o) => h('button', { class: 'opt ' + (o.on ? 'on ' : '') + (o.cls || ''), onclick: o.fn }, o.label, o.small ? h('small', null, o.small) : null)));
     },
-    stationOpts(size, onPick) {
-      api.setSub(STATION_NAMES.map((n, i) => ({ label: n, small: lei(STATION_COST[i]), on: size === i, fn: () => onPick(i) })));
+    stationOpts(size, onPick, onTurn) {
+      const opts = STATION_NAMES.map((n, i) => ({ label: i === 2 ? 'Terminal mare' : n, small: lei(i === 2 ? BIG_COST : STATION_COST[i]), on: size === i, fn: () => onPick(i) }));
+      if (size === 2 && onTurn) opts.push({ label: '🔄 Rotește', small: 'curtea (R)', fn: onTurn });
+      api.setSub(opts);
     },
     trainOpts(model, cars, year, onModel, onCars) {
       const price = (m, set) => m.price + (set < 0 ? 4 : CAR_SETS[set].length) * CAR_PRICE;

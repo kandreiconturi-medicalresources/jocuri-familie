@@ -2,10 +2,11 @@
 // Fiecare placă desenează „spițele” spre mijlocul muchiilor conectate (cele 8 direcții); o placă cu exact două
 // legături în unghi devine o curbă. Ramificațiile și șinele paralele ies natural, fiindcă totul vine din biții plăcii.
 import { Group, Mesh, MeshLambertMaterial, MeshPhongMaterial } from 'three';
-import { DX, DY, T_BRIDGE, T_PRESENT } from '../sim/consts.js';
+import { DX, DY, T_BRIDGE, T_BIGBR, T_PRESENT } from '../sim/consts.js';
 import { Builder } from './geo.js';
 import { SEA_BED } from './ground.js';
 
+const STEEL = '#8d99a6', STEEL_DARK = '#5d6874', CONCRETE = '#b9b5ab', CONCRETE_DARK = '#8f8b81';
 const CH = 32, SLEEPER = '#6e4a2e', BALLAST = '#9d9385', BALLAST_SIDE = '#7d7468', WOOD = '#a98457', WOOD_DARK = '#7b5a37';
 const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -38,6 +39,24 @@ function along(pts, dist) {
   return [pts[0], 0, 1];
 }
 
+/** Pod mare (7.3): două grinzi laterale (tălpi și montanți) și, din trei în trei plăci, un pilon de beton până la fundul apei. */
+function bigBridge(B, s, g, x, y) {
+  const d0 = s.track[y * s.w + x] & 0xff, dir = [...Array(8).keys()].find((d) => (d0 >> d) & 1), l = Math.hypot(DX[dir], DY[dir]);
+  const tx = DX[dir] / l, tz = DY[dir] / l, cx = x + 0.5, cz = y + 0.5, top = g.tileY(x, y) - 0.07, bot = SEA_BED - 0.06, half = dir & 1 ? 0.707 : 0.5;
+  for (const o of [-0.24, 0.24]) {
+    const px = cx - tz * o, pz = cz + tx * o;
+    B.obox(px, top + 0.3, pz, tx, tz, half, 0.026, 0.026, STEEL); // talpa de sus
+    B.obox(px, top + 0.02, pz, tx, tz, half, 0.02, 0.02, STEEL_DARK); // talpa de jos
+    B.obox(px, top + 0.16, pz, tx, tz, 0.022, 0.022, 0.14, STEEL); // montant
+    B.obox(px, top + 0.16, pz, tx, tz, half, 0.012, 0.012, STEEL); // balustradă de la mijloc
+  }
+  B.obox(cx, top - 0.015, cz, tx, tz, half, 0.27, 0.02, STEEL_DARK); // tablier
+  if ((x + y) % 3 === 0) { // pilon de beton cu capitel
+    B.obox(cx, (top + bot) / 2, cz, tx, tz, 0.09, 0.2, (top - bot) / 2, CONCRETE);
+    B.obox(cx, top - 0.05, cz, tx, tz, 0.13, 0.3, 0.03, CONCRETE_DARK);
+  }
+}
+
 function addTile(B, R, s, g, x, y, q) {
   const polys = tilePolys(s, g, x, y, q ? 6 : 3), bridge = s.track[y * s.w + x] & T_BRIDGE;
   const spacing = q ? 0.17 : 0.26;
@@ -52,6 +71,7 @@ function addTile(B, R, s, g, x, y, q) {
     for (const o of [-0.085, 0.085]) R.ribbon(pts, 0.014, 0.05, 0.095, '#e9edf3', '#8d939b', o);
     if (bridge) for (const o of [-0.235, 0.235]) { B.ribbon(pts, 0.011, 0.03, 0.13, '#caa66e', WOOD_DARK, o); }
   }
+  if (bridge && polys.length && (s.track[y * s.w + x] & T_BIGBR)) { bigBridge(B, s, g, x, y); return; }
   if (bridge && polys.length) { // piloni: doi pe lățimea podului, sub placă, până la fundul apei
     const yc = g.tileY(x, y), d0 = (s.track[y * s.w + x] & 0xff), dir = [...Array(8).keys()].find((d) => (d0 >> d) & 1), l = Math.hypot(DX[dir], DY[dir]);
     const tx = DX[dir] / l, tz = DY[dir] / l, top = yc - 0.07, bot = SEA_BED - 0.06;

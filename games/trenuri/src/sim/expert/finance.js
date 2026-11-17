@@ -7,6 +7,8 @@ import { RATINGS, EX_MAINT, LOAN_TR, BANKRUPT_MONTHS } from './consts.js';
 
 const fail = (err) => ({ ok: false, err });
 export const isEx = (s, c) => s.mode === 'expert' && !c.easy && !c.dead;
+/** Împrumuturi: în expert (necontinuat simplu) și, din 7.4, în orice lume cu insule (compania are `tr`). */
+export const loanOk = (s, c) => !c.dead && (s.islands ? !!c.tr : s.mode === 'expert' && !c.easy);
 
 /** Indicele ratingului (0 = A … 3 = D): cât din active sunt datorii. */
 export function ratingOf(s, id) {
@@ -42,7 +44,7 @@ export function payMonthly(s, co) {
 }
 
 function takeLoan(s, cmd, c) {
-  if (s.mode !== 'expert' || c.easy || c.dead) return fail('expert');
+  if (!loanOk(s, c)) return fail('expert');
   const r = ratingOf(s, c.id);
   if (c.tr.length >= RATINGS[r].max) return fail('rating');
   c.cash += LOAN_TR; c.loan += LOAN_TR; c.tr.push({ p: LOAN_TR, r: RATINGS[r].rate });
@@ -51,7 +53,7 @@ function takeLoan(s, cmd, c) {
 
 /** Rambursează tranșa cu dobânda cea mai mare (cea mai nouă, la egalitate). */
 function repayLoan(s, cmd, c) {
-  if (s.mode !== 'expert' || c.easy || c.dead) return fail('expert');
+  if (!loanOk(s, c)) return fail('expert');
   if (!c.tr.length) return fail('inexistent');
   let k = 0;
   for (let i = 0; i < c.tr.length; i++) if (c.tr[i].r >= c.tr[k].r) k = i;
