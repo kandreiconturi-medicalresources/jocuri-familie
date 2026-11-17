@@ -12,6 +12,7 @@ import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from
 import { accelEvery, slopeVmax } from './physics.js';
 import { missionPath, arriveMission } from './mission.js';
 import { breakHeavy, deadTick } from './depots.js';
+import { smartReroute } from './smartRoute.js';
 export { capacity, tileDist } from './cargo.js';
 
 /** Cel mai scurt drum pe șine între două plăci (indici), sau null. Dijkstra, ordine deterministă. */
@@ -171,6 +172,7 @@ function move(s, t) {
   const last = t.path.length - 2;
   let adv = Math.min(t.speed, t.left), stop = false;
   let gate = t.seg < last ? enter(s, t, t.path, t.seg + 2) : GO; // semnal: GO / ocupat / roșu
+  if (gate !== GO && ((s.tick + t.id) & 3) === 0 && smartReroute(s, t)) gate = enter(s, t, t.path, t.seg + 2); // blocul ținut de alt tren: ia linia liberă
   if (gate !== GO) { // secțiunea următoare e ocupată sau rezervată
     const room = segLen(s.w, t.path, t.seg) - t.pos;
     if (adv >= room) { adv = room; stop = true; }
@@ -187,7 +189,7 @@ function move(s, t) {
     const nx = t.path[t.seg + 2];
     if (gate === RED || (nx !== undefined && s.resv[nx] && s.resv[nx] !== t.id + 1)) { // semafor roșu sau placă ținută de alt tren: după SIG_ALT caută alt drum, apoi se întoarce
       t.hold++;
-      if (t.hold >= SIG_ALT && (t.hold - SIG_ALT) % 12 === 0 && reroute(s, t)) return;
+      if (t.hold >= SIG_ALT && (t.hold - SIG_ALT) % 12 === 0 && reroute(s, t)) { t.rr = s.tick + 1; return; }
       if (t.hold >= SIG_REV + (t.id & 7) * 20) reverse(s, t); // fiecare tren așteaptă altfel: nu se întorc amândoi odată
       return;
     }

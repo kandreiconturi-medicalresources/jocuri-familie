@@ -9,7 +9,7 @@ export const CITY_HIGH = 10; // cerere lunară de la care spunem „mare”
 
 /** 'station' dacă o gară e lângă loc, 'track' dacă trece șină la mai puțin de 3 plăci, altfel 'none'. */
 export function railAt(s, o, owner = null) {
-  if (s.stations.some((st) => (owner === null || st.owner === owner) && (o.type === undefined ? tileDist(st, o) <= 5 : near(st, o)))) return 'station';
+  if (s.stations.some((st) => (owner === null || st.owner === owner) && (o.type === undefined ? tileDist(st, o) <= 5 || (st.thru && st.cityId === o.id) : near(st, o)))) return 'station';
   for (let y = Math.max(0, o.y - 2); y <= Math.min(s.h - 1, o.y + 2); y++) for (let x = Math.max(0, o.x - 2); x <= Math.min(s.w - 1, o.x + 2); x++) if (s.track[y * s.w + x] & T_PRESENT) return 'track';
   return 'none';
 }

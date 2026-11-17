@@ -11,6 +11,7 @@ import { EXPERT_COMMANDS, initCompany } from './expert/index.js';
 import { SIGNAL_COMMANDS, syncAuto } from './signals.js';
 import { TERRAIN_COMMANDS, applyLevels, layPath, markTerrain } from './terraform.js';
 import { STATION_COMMANDS } from './stations.js';
+import { THRU_COMMANDS, freeThru } from './thru.js';
 import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
 import { validOrders, cleanOrders } from './orders.js';
@@ -22,6 +23,7 @@ import { BRIDGE_COMMANDS } from './bigBridge.js';
 import { LAND_COMMANDS } from './land.js';
 import { BANK_COMMANDS } from './bank.js';
 import { TEAM_COMMANDS } from './teams.js';
+import { SHAPE_COMMANDS } from './shapes.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
@@ -29,7 +31,7 @@ export const ERR_TEXT = {
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
-  loc: 'Terminalul mare are nevoie de loc liber și plat lângă gară (4×5 plăci) și de o linie dreaptă.',
+  loc: 'Terminalul mare sau gara de trecere au nevoie de loc plat lângă gară (fără alte șine, industrii sau apă; casele se mută) și de o linie dreaptă.',
   insula: 'Insula asta e a altei companii: aici nu poți construi. Cumpără teren 🏠 sau fă comerț prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
   pod: 'Podul mare e o linie dreaptă (orizontală, verticală sau în diagonală), de pe uscat pe uscat, cu cel puțin o placă de apă între capete.', ocupat: 'Pe parcela asta sunt gări sau depouri ale altcuiva: nu se poate vinde.',
   port: 'Portul se pune pe insula ta, pe o placă de uscat chiar lângă apă.', vapor: 'Ruta vaporului nu e bună: alege porturi la care se ajunge pe apă.',
@@ -115,6 +117,7 @@ function removeStation(s, cmd, c) {
   if (s.trains.some((t) => t.route.includes(st.id) || t.from === st.id || t.to === st.id)) return fail('ruta');
   s.stations.splice(k, 1);
   if (st.big) { freeYard(s, st); s.dirty.forest = true; }
+  if (st.thru) freeThru(s, st);
   const i = st.y * s.w + st.x;
   s.stm[i] = 0;
   if (!(s.track[i] & 0xff)) s.track[i] = 0;
@@ -217,7 +220,7 @@ function joinCompany(s, cmd) {
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...SHAPE_COMMANDS, ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, ...THRU_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

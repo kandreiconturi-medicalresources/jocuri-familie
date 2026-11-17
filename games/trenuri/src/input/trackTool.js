@@ -52,7 +52,7 @@ export function createTrackTool(c) {
       const items = MODES.map(([id, label, small]) => ({ label, small, on: mode === id, fn: () => { if (mode === id) return; cur().reset(); mode = id; api.refresh(); } }));
       if (isTouch()) items.unshift({ label: tmode === 'pan' ? '✋ Mut harta' : '✏️ Desenez șină', small: 'atinge ca să schimbi', on: tmode === 'draw', fn: () => { tmode = tmode === 'pan' ? 'draw' : 'pan'; c.hud().hint(tmode === 'pan' ? 'Un deget mută harta. Desenezi din capătul unei șine sau cu apăsare lungă.' : 'Un deget desenează mereu. Cu două degete muți harta.', false, 4000); c.bar(); } });
       items.push(...cur().bar());
-      if (drawing() && !cur().isActive()) items.push({ label: '🛤️🛤️ Șină paralelă', fn: () => c.switchTool('parallel') });
+      if (drawing() && !cur().isActive()) items.push({ label: '🛤️🛤️ Șină paralelă', fn: () => c.switchTool('parallel') }, { label: '🧩 Forme de șină', small: 'încrucișare, Y, linie dublă', fn: () => c.switchTool('shape') });
       return items;
     },
   };

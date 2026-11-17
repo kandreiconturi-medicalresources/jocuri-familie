@@ -23,6 +23,8 @@ export { signalAspect, syncAuto } from './signals.js';
 export { dirtyChunks, TERRAIN_CHUNK } from './terraform.js';
 export { levelPlan, levelCostOf, fitLevels } from './terraform.js';
 export { maxPlatforms, platformsOf, upgradeCost } from './stations.js';
+export { thruInfo, thruTiles, mainTiles, THRU_MIN, THRU_MAX, THRU_BASE, THRU_TRACK, HOUSE_PAY, TOWER_PAY } from './thru.js';
+export { covers, cityReach } from './catch.js';
 export { weightOf, pullOf, heaviness } from './physics.js';
 export { islandAt, islandOfCo, islandGoods, canBuild, matNeed, matMissing, matHave, missingText, portsOf } from './islands.js';
 export { generateIslands, splitResources, goodsOf, PRIMARY, ISLAND_NAMES } from './islandGen.js';
@@ -35,3 +37,5 @@ export { bridgeInfo, bridgeShape, bridgeCost, bridgeSteel } from './bigBridge.js
 export { landValue, landPrice, landWorth, parcelInfo, industryPrice, parcelsW, parcelId, tileOwner } from './land.js';
 export { repayAmount } from './bank.js';
 export { TEAMS, normTeams, teamMembers, teamPlayers } from './teams.js';
+export { SHAPES, shapePlan, place as shapeTile } from './shapes.js';
+export { waitReason, smartReroute } from './smartRoute.js';

@@ -15,7 +15,7 @@ export const levelOf = (pop) => (pop >= CITY_LEVELS[2] ? 2 : pop >= CITY_LEVELS[
 function free(s, x, y, base) {
   if (x < 0 || y < 0 || x >= s.w || y >= s.h) return false;
   const i = y * s.w + x;
-  return !s.water[i] && !s.occ[i] && !s.roads[i] && !s.track[i] && Math.abs(s.height[i] - base) <= 2 && s.height[i] > WATER_H;
+  return !s.water[i] && !s.occ[i] && !s.roads[i] && !s.track[i] && !(s.keep && s.keep[i]) && Math.abs(s.height[i] - base) <= 2 && s.height[i] > WATER_H;
 }
 
 /** Adaugă clădiri până la ținta orașului. Foloseste rng-ul stării (avansează `s.rng`). */

@@ -1,7 +1,8 @@
 // Marfă: ce acceptă o gară, livrare către orașe și industrii, încărcare, descărcare, venit.
-import { STATION_RADIUS, LOW_PAY, STOCK_CAP } from './consts.js';
+import { LOW_PAY, STOCK_CAP } from './consts.js';
 import { GOODS, CAR_TYPES, CAR_OF, INDUSTRIES, wantOf } from './goods.js';
 import { near } from './industry.js';
+import { covers } from './catch.js';
 import { addNews } from './news.js';
 import { recordIncome } from './expert/report.js';
 import { dropAmount } from './drops.js';
@@ -13,7 +14,7 @@ export function tileDist(a, b) {
   return Math.max(dx, dy) + ((Math.min(dx, dy) * 3) >> 3);
 }
 
-const cityNear = (st, c) => Math.abs(c.x - st.x) <= STATION_RADIUS[st.size] + 2 && Math.abs(c.y - st.y) <= STATION_RADIUS[st.size] + 2;
+const cityNear = covers;
 export const stockOf = (st, g) => (g === 0 ? st.waiting.pass : g === 1 ? st.waiting.mail : st.cargo[g]);
 const takeFrom = (st, g, n) => { if (g === 0) st.waiting.pass -= n; else if (g === 1) st.waiting.mail -= n; else st.cargo[g] -= n; };
 

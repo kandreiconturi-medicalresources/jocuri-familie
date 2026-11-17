@@ -16,6 +16,8 @@ import { createPlatforms, createSwitches } from './platforms.js';
 import { createSignals } from './signals3d.js';
 import { createDepots } from './depot.js';
 import { createTerminals } from './terminal.js';
+import { createThru } from './thru.js';
+import { createStationLights } from './stationLights.js';
 import { createSea } from './ships.js';
 import { createLand } from './land.js';
 import { dirtyChunks } from '../sim/terraform.js';
@@ -39,7 +41,8 @@ function shade(obj) {
 const electric = (m) => ['electric', 'glont', 'intercity', 'tgv', 'regio'].includes(m.key);
 
 export function createView(stage, s) {
-  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null, terminals: null };
+  const g = makeGround(s), root = new Group(), dyn = { forest: null, cities: null, roads: null, track: null, power: null, stations: null, industries: null, upgrades: null, platforms: null, switches: null, terminals: null, thru: null };
+  let lights = null;
   const terrain = createTerrain(s, g), trains = createTrains(s, g, stage.camera), overlay = createOverlay(s, g), ghost = createGhost(s, g, stage), links = createLinks(s, g);
   const clouds = createClouds(s, g, stage.camera), signals = createSignals(s, g);
   let depots = null, platK = '', platT = 0;
@@ -56,6 +59,13 @@ export function createView(stage, s) {
     if (dyn[key]) { root.remove(dyn[key]); dyn[key].traverse((o) => { if (o.isInstancedMesh) o.dispose(); if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); }
     dyn[key] = make(); shade(dyn[key]); root.add(dyn[key]);
   }
+  /** Luminile de noapte: felinarele și ferestrele adunate de straturile gărilor. */
+  function relight() {
+    if (lights) { root.remove(lights.root); lights.dispose(); }
+    const lamps = [], wins = [];
+    for (const k of ['platforms', 'terminals', 'thru', 'stations']) { const u = dyn[k] && dyn[k].userData; if (u && u.lamps) lamps.push(...u.lamps); if (u && u.wins) wins.push(...u.wins); }
+    lights = createStationLights(lamps, wins); root.add(lights.root);
+  }
   function refresh() {
     const d = s.dirty, q = perf.quality();
     if (d.terrain) { // teren nivelat: doar bucățile atinse (sau tot, la încărcare fără dreptunghiuri)
@@ -67,7 +77,7 @@ export function createView(stage, s) {
     if (d.forest) { swap('forest', () => createForest(s, g, q, look.cool)); d.forest = false; }
     if (d.cities || !dyn.roads) { swap('cities', () => createCities(s, g)); swap('roads', () => createRoads(s, g)); d.cities = false; }
     if (d.track) { swap('track', () => createTrack(s, g, q)); powered.clear(); lastPowered = -1; d.track = false; d.stations = true; swap('switches', () => createSwitches(s, g)); }
-    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g, colorOf)); swap('terminals', () => createTerminals(s, g, colorOf)); d.stations = false; }
+    if (d.stations) { swap('stations', () => createStations(s, g, colorOf)); swap('upgrades', () => createUpgrades(s, g)); swap('platforms', () => createPlatforms(s, g, colorOf)); swap('terminals', () => createTerminals(s, g, colorOf)); swap('thru', () => createThru(s, g, colorOf)); relight(); d.stations = false; }
     if (s.islands && (d.land || (s.land && !dyn.land))) { swap('land', () => createLand(s, g, colorOf)); d.land = false; } // parcele cumpărate (7.4)
     if (d.industries) { swap('industries', () => createIndustries(s, g)); d.industries = false; d.forest = true; if (links.visible) links.rebuild(); }
     if (rich() && powered.size !== lastPowered) { swap('power', () => createCatenary(s, g, powered)); lastPowered = powered.size; }
@@ -99,11 +109,12 @@ export function createView(stage, s) {
       if (sea) sea.update(alpha, t);
       if (dyn.terminals) dyn.terminals.userData.update(t);
       terrain.tick(t, stage.night);
+      if (lights) lights.update(stage.night);
       clouds.root.visible = rich() && look.mode !== '2d';
       gulls.update(t);
       people.update(dt);
       if (clouds.root.visible) clouds.update(dt, stage.night);
     },
-    dispose() { off(); off2(); ghost.dispose(); stage.scene.remove(root, clouds.root); root.traverse((o) => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); },
+    dispose() { off(); off2(); ghost.dispose(); if (lights) lights.dispose(); stage.scene.remove(root, clouds.root); root.traverse((o) => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); }); },
   };
 }

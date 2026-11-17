@@ -4,7 +4,7 @@ import { DX, DY, T_PRESENT } from '../sim/consts.js';
 import { Builder } from './geo.js';
 import { platformsOf, stationFrame, topOf } from './stationLayout.js';
 import { planOf } from './stationPlan.js';
-import { bench, lamp, clock, canopy } from './stationProps.js';
+import { bench, lamp, clock, canopy, lampSink } from './stationProps.js';
 import { extras } from './stationExtras.js';
 
 export { platformsOf, stationFrame };
@@ -12,9 +12,10 @@ const lam = new MeshLambertMaterial({ vertexColors: true });
 const CONC = '#cfc7b8';
 
 export function createPlatforms(s, g, colorOf = () => '#c04040') {
-  const root = new Group(), B = new Builder();
+  const root = new Group(), B = new Builder(), lamps = [];
+  lampSink.list = lamps; // felinarele (în lume) pentru luminile de noapte
   for (const st of s.stations) {
-    if (st.big || st.port || !(s.track[st.y * s.w + st.x] & T_PRESENT)) continue; // terminalul mare își desenează singur liniile (render/terminal.js)
+    if (st.big || st.thru || st.port || !(s.track[st.y * s.w + st.x] & T_PRESENT)) continue; // terminalul mare își desenează singur liniile (render/terminal.js)
     const P = planOf(s, st), y0 = g.tileY(st.x, st.y), top = topOf(st), own = colorOf(st.owner), { ax, az, bx, bz } = P;
     const W = (u, v) => [P.ox + ax * u + bx * v, P.oz + az * u + bz * v], c = { P, W, ax, az, bx, bz, top };
     const yAt = (u) => { const pc = P.pieces.find((q) => q.i === Math.round(u / P.l)); return pc ? g.tileY(pc.x, pc.y) : y0; };
@@ -41,6 +42,8 @@ export function createPlatforms(s, g, colorOf = () => '#c04040') {
     if (st.size >= 1) { const [x, y, z] = at(0.5, 0.15); clock(B, x, y, z, ax, az); }
     extras(B, c, y0, own);
   }
+  lampSink.list = null;
+  root.userData.lamps = lamps;
   if (!B.empty) { const m = new Mesh(B.geometry(), lam); m.userData.cast = true; m.userData.recv = true; root.add(m); }
   return root;
 }

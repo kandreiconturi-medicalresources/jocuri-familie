@@ -96,6 +96,6 @@ function bridgeU(eN, eP, uN, uP) {
 export function reservedTiles(s) {
   const out = new Set();
   out.sig = 0; // semnătură: se schimbă când se schimbă plăcile rezervate
-  for (const st of s.stations) if (!st.big && !st.port && s.track[st.y * s.w + st.x] & T_PRESENT) for (const j of planOf(s, st).tiles) if (!out.has(j)) { out.add(j); out.sig = (out.sig * 31 + j) >>> 0; }
+  for (const st of s.stations) if (!st.big && !st.thru && !st.port && s.track[st.y * s.w + st.x] & T_PRESENT) for (const j of planOf(s, st).tiles) if (!out.has(j)) { out.add(j); out.sig = (out.sig * 31 + j) >>> 0; }
   return out;
 }

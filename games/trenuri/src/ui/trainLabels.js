@@ -1,6 +1,7 @@
 // Etichete deasupra trenurilor când camera e aproape: „🚂 Tren de marfă · ⛽ Combustibil”. DOM peste canvas, poziționat cu proiecția camerei.
 import { Vector3 } from 'three';
 import { trainKind } from './trainKind.js';
+import { waitReason } from '../sim/smartRoute.js';
 
 export function createTrainLabels(root, { camera, state, view, zoom }) {
   const layer = document.createElement('div');
@@ -27,7 +28,7 @@ export function createTrainLabels(root, { camera, state, view, zoom }) {
         seen.add(tr.id);
         let el = map.get(tr.id);
         if (!el) { el = document.createElement('div'); el.className = 'tl'; layer.append(el); map.set(tr.id, el); el.dataset.t = ''; }
-        if (refresh || !el.textContent) { const k = trainKind(s, tr).full; if (el.dataset.t !== k) { el.dataset.t = k; el.textContent = k; } }
+        if (refresh || !el.textContent) { const wr = waitReason(s, tr), k = trainKind(s, tr).full + (wr ? ' · ' + wr.split(':')[0] : ''); if (el.dataset.t !== k) { el.dataset.t = k; el.textContent = k; } }
         el.style.transform = `translate(${Math.round((v.x * 0.5 + 0.5) * innerWidth)}px, ${Math.round((-v.y * 0.5 + 0.5) * innerHeight)}px) translate(-50%, -100%)`;
       }
       for (const [id, el] of map) if (!seen.has(id)) { el.remove(); map.delete(id); }

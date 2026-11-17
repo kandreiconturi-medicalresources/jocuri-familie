@@ -3,7 +3,7 @@ import { h } from '../../../../shared/ui/dom.js';
 import { isMuted, setMuted } from '../../../../shared/engine/audio.js';
 import { setAmbient, configureTrainSounds } from '../audio.js';
 
-const DEFAULTS = { tips: true, ambient: false, tutorialDone: false, view: '3d', cool: null, trainSnd: true, trainVol: 0.6 }; // cool: null = pornit pe telefon/tabletă
+const DEFAULTS = { tips: true, ambient: false, tutorialDone: false, view: '3d', cool: null, trainSnd: true, trainVol: 0.6, confirmBuild: false }; // cool: null = pornit pe telefon/tabletă
 
 export function createPrefs(save) {
   const p = { ...DEFAULTS, ...(save.get('prefs', {}) || {}) };
@@ -21,6 +21,7 @@ export function openSettings(card, prefs, act) {
   };
   card.open(h('h3', null, '☰ Meniu'),
     toggle('💡 Sfaturile Ajutorului', () => prefs.get('tips'), (v) => prefs.set('tips', v)),
+    toggle('✅ Confirmă construcțiile', () => prefs.get('confirmBuild'), (v) => prefs.set('confirmBuild', v)),
     toggle('🔊 Sunete', () => !isMuted(), (v) => setMuted(!v)),
     toggle('🚂 Sunete de tren', () => prefs.get('trainSnd'), (v) => { prefs.set('trainSnd', v); configureTrainSounds({ on: v }); }),
     h('label', { class: 'opt vol', style: { display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'space-between' } }, '🔉 Volum trenuri',

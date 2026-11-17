@@ -1,6 +1,7 @@
 // Straturi derivate (nu intră în hash și nu se salvează): drumuri între orașe și plăcile ocupate de clădiri.
 import { createHeap, KEY } from './heap.js';
 import { markYards } from './terminal.js';
+import { markThru } from './thru.js';
 import { markIslands } from './islands.js';
 import { DX, DY } from './consts.js';
 import { rebuildBlocks } from './blocks.js';
@@ -55,6 +56,7 @@ export function deriveLayers(s) {
   }
   for (const o of s.industries) s.occ[o.y * w + o.x] = 1;
   markYards(s);
+  markThru(s);
   rebuildBlocks(s);
   rebuildSignals(s);
   rebuildReserve(s);

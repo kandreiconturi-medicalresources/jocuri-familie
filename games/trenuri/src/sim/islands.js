@@ -58,6 +58,7 @@ export function matNeed(s, cmd, c) {
   if (cmd.type === 'buyShip') { const m = SHIP_MODELS[cmd.model]; return m && s.ships.some((q) => q.owner === c.id) ? m.mat : null; }
   if (cmd.type === 'buildStation' && cmd.big && (cmd.size | 0) === 2) return MATS.big;
   if (cmd.type === 'upgradeStation') return MATS.up;
+  if (cmd.type === 'buildThru') return MATS.big;
   if (cmd.type === 'buildBridge') { const sh = bridgeShape(s, cmd); return sh ? [[BRIDGE.steel, bridgeSteel(sh.n)]] : null; }
   return null;
 }
