@@ -22,6 +22,7 @@ import { BRIDGE_COMMANDS } from './bigBridge.js';
 import { LAND_COMMANDS } from './land.js';
 import { BANK_COMMANDS } from './bank.js';
 import { TEAM_COMMANDS } from './teams.js';
+import { SHAPE_COMMANDS } from './shapes.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
@@ -217,7 +218,7 @@ function joinCompany(s, cmd) {
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...SHAPE_COMMANDS, ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

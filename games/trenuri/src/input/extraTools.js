@@ -2,9 +2,11 @@
 import { levelPlan, maxPlatforms, platformsOf, upgradeCost, depotSpot, TUNNEL, DEPOT, PORT, BRIDGE, T_PRESENT, DX, DY, opp, bridgeInfo, bridgeCost, bridgeSteel, matMissing, missingText, parcelInfo } from '../sim/index.js';
 import { viewer } from '../sim/viewer.js';
 import { lei } from '../ui/hud.js';
+import { createShapeTool } from './shapeTool.js';
 
 const GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', BLUE = '#8fd3ff';
 export const EXTRA_TOOLS = [
+  { id: 'shape', e: '🧩', t: 'Forme de șină', hint: 'Alege o formă (încrucișare, traversare, linie dublă, Y, ocolire) și atinge harta: o pun dintr-o dată, cu macazuri și semnale. R sau 🔄 o rotește.' },
   { id: 'signal', e: '🚦', t: 'Semnal', hint: 'Atinge o șină ca să pui un semnal. Trenul stă la roșu până se eliberează traseul din fața lui.' },
   { id: 'level', e: '⛏️', t: 'Nivelare', hint: 'Atinge două colțuri: nivelez terenul dintre ele sau tai pădurea.' },
   { id: 'tunnel', e: '🕳️', t: 'Tunel', hint: 'Atinge două plăci de aceeași înălțime, de o parte și de alta a dealului (cel mult 6 plăci între ele).' },
@@ -18,6 +20,7 @@ export const EXTRA_TOOLS = [
 export function createExtraTools(c) {
   const o = { twoWay: false, erase: false, mode: 'level' };
   let a = null, hov = null;
+  const shp = createShapeTool(c);
   const S = () => c.S(), ids = EXTRA_TOOLS.map((q) => q.id);
   const rect = (p, q) => ({ x0: p.x, y0: p.y, x1: q.x, y1: q.y });
   const tiles = (r, color) => { const m = []; for (let y = Math.min(r.y0, r.y1); y <= Math.max(r.y0, r.y1); y++) for (let x = Math.min(r.x0, r.x1); x <= Math.max(r.x0, r.x1); x++) m.push({ x, y, color }); return m; };
@@ -35,6 +38,7 @@ export function createExtraTools(c) {
     return o.mode === 'clear' ? { h, r: rect(a, p) } : { h, r: rect(a, p), plan: levelPlan(S(), rect(a, p), h, 0) };
   }
   function paint(id) {
+    if (id === 'shape') return shp.paint();
     if (id === 'level' && a) c.ov().set(hov ? tiles(rect(a, hov), (o.mode === 'level' && !levelInfo(hov).plan.ok) ? RED : GREEN) : [{ x: a.x, y: a.y, color: GOLD }]);
     else if (id === 'tunnel' && a) c.ov().set([{ x: a.x, y: a.y, color: GOLD }]);
     else if (id === 'bridge' && a) bridgePreview();
@@ -91,13 +95,15 @@ export function createExtraTools(c) {
   }
   return {
     ids, has: (id) => ids.includes(id),
-    reset() { a = null; hov = null; lastParcel = ''; },
+    reset() { a = null; hov = null; lastParcel = ''; shp.reset(); },
     paint,
     hover(id, t) {
+      if (id === 'shape') return shp.hover(t);
       if ((id === 'level' || id === 'bridge') && a && t) { hov = t; paint(id); } else if (id === 'land' && t) parcelPreview(t);
     },
     tap(id, t) {
       if (!t) return;
+      if (id === 'shape') { shp.tap(t); return; }
       if (id === 'signal') {
         const i = t.y * S().w + t.x;
         if (!(S().track[i] & T_PRESENT)) { c.hud().hint('Atinge o șină.', true); return; }
@@ -128,6 +134,7 @@ export function createExtraTools(c) {
       paint(id);
     },
     bar(id) {
+      if (id === 'shape') return shp.bar();
       if (id === 'signal') {
         return [
           { label: '→ Un sens', on: !o.twoWay && !o.erase, fn: () => { o.twoWay = false; o.erase = false; c.bar(); } },

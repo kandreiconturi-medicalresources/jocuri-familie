@@ -48,17 +48,29 @@ function opposed(s, t, path, m) {
   return false;
 }
 
-/** Cere rezervarea de la placa j până înaintea următorului semnal (sau capătul drumului). */
-function reserve(s, t, path, j) {
-  const over = t.hold >= SIG_OVER; // după o așteptare lungă intră și când peroanele sunt pline (altfel două trenuri față în față s-ar bloca)
+/** Capătul blocului care începe la j: ultimul indice înaintea următorului semnal (sau capătul drumului). */
+export function blockEnd(s, path, j) {
   let m = j;
   while (m + 1 < path.length && !signalled(s, path, m + 1)) m++;
+  return m;
+}
+
+/** Blocul de la j poate fi rezervat acum? Întoarce indicele de capăt sau -1 (nu ține nimic). */
+export function canReserve(s, t, path, j) {
+  const over = t.hold >= SIG_OVER; // după o așteptare lungă intră și când peroanele sunt pline (altfel două trenuri față în față s-ar bloca)
+  const m = blockEnd(s, path, j);
   for (let k = j; k <= m; k++) {
     const i = path[k];
     if (holds(s, t, i)) continue;
-    if (s.stm[i]) { if (!over && s.pocc[i] >= platformsAt(s, i)) return false; } else if (foreign(s, t, i) || blocked(s, i)) return false;
+    if (s.stm[i]) { if (!over && s.pocc[i] >= platformsAt(s, i)) return -1; } else if (foreign(s, t, i) || blocked(s, i)) return -1;
   }
-  if (m + 1 < path.length && opposed(s, t, path, m)) return false;
+  return m + 1 < path.length && opposed(s, t, path, m) ? -1 : m;
+}
+
+/** Cere rezervarea de la placa j până înaintea următorului semnal (sau capătul drumului). */
+function reserve(s, t, path, j) {
+  const m = canReserve(s, t, path, j);
+  if (m < 0) return false;
   for (let k = j; k <= m; k++) if (!(t.tow && s.resv[path[k]] === t.tow.targetId + 1)) hold(s, t, path[k]);
   return true;
 }
