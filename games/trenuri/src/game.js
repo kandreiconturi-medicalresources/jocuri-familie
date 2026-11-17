@@ -24,7 +24,7 @@ import { createIslandUi } from './ui/islandUi.js';
 import { createContextRun } from './input/contextRun.js';
 import { createPendingRun } from './input/pendingRun.js';
 import { createFlatIcons } from './ui/flatIcons.js';
-import { look, setLook, onLook, MODES } from './render/look.js';
+import { look, setLook, onLook, MODES, ultraOn } from './render/look.js';
 import { simStepCap, renderNeeded } from '../../../shared/engine/pace.js';
 
 const TUTORIAL_SEED = 11;
@@ -85,7 +85,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     expert: () => ex.show(), islands: () => isl.open(), bank: () => isl.bank(),
     todo: () => extras.todo(), planner: () => extras.planner(), catalog: () => extras.catalog(), trains: () => extras.trains(),
     view: () => setView(MODES[(MODES.indexOf(look.mode) + 1) % MODES.length], true),
-    menu: () => openSettings(panels.card, prefs, { cool: { get: () => look.cool, set: (v) => { prefs.set('cool', v); setLook({ cool: v }); hud.hint(v ? '🔋 Mod răcoros: mai puține cadre, fără umbre și iarbă.' : 'Mod răcoros oprit.', false, 3000); } }, tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
+    menu: () => openSettings(panels.card, prefs, { ultra: look.phone ? null : { get: () => look.ultra, set: (v) => { prefs.set('ultra', v); setLook({ ultra: v }); hud.hint(v ? (ultraOn() ? '✨ Grafică Ultra pornită.' : '✨ Ultra pornește când calitatea e maximă și Modul răcoros e oprit.') : 'Grafică Ultra oprită.', false, 3000); } }, cool: { get: () => look.cool, set: (v) => { prefs.set('cool', v); setLook({ cool: v }); hud.hint(v ? '🔋 Mod răcoros: mai puține cadre, fără umbre și iarbă.' : 'Mod răcoros oprit.', false, 3000); } }, tutorial: () => game.startTutorial(), restart: scn() && !np.active ? () => game.startScenario(s.scn.id) : null, saves: openSavesMenu, home: () => { game.save(); onMenu(); } }),
   });
   const tools = createTools({
     state: () => s, view: () => view, hud, panels, exec, errText: (k) => ERR_TEXT[k],

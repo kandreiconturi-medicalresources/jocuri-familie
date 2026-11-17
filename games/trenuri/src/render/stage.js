@@ -4,7 +4,8 @@ import { perf } from '../../../../shared/engine/perf.js';
 import { createSky, SUN_DIR } from './sky.js';
 import { createClassic } from './classic.js';
 import { createStats } from './stats.js';
-import { look, onLook, shadowsOn } from './look.js';
+import { look, onLook, shadowsOn, ultraOn } from './look.js';
+import { createUltra } from './ultra.js';
 import { dprCap } from '../../../../shared/engine/pace.js';
 
 const DAY = { sun: new Color(0xffd29a), hemiSky: new Color(0xd3e6ff), hemiGround: new Color(0xcdae80), fog: new Color(0xe8e6d2) };
@@ -22,13 +23,16 @@ export function createStage(canvas) {
   const classic = createClassic(camera);
   const sky = createSky(scene, camera);
   const stats = createStats(renderer, () => perf.quality() + ' cap' + look.cap);
+  const ultra = createUltra(renderer, scene, camera);
   const target = new Vector3(), fwd = new Vector3(), col = new Color();
   const st = { night: 0, shadowOn: false, half: 0 };
 
   function applyQuality() {
-    const q = perf.quality(), on = shadowsOn(), size = q >= 2 ? 2048 : 1024;
+    const q = perf.quality(), on = shadowsOn(), u = ultraOn(), size = u ? 4096 : q >= 2 ? 2048 : 1024;
+    ultra.set(u);
+    sun.shadow.radius = u ? 3 : 1; sun.shadow.blurSamples = u ? 12 : 8; // umbre moi (PCF cu disc Vogel)
     renderer.toneMapping = q >= 1 ? ACESFilmicToneMapping : NoToneMapping; // filmic și pe telefoane (cost neglijabil)
-    renderer.toneMappingExposure = q >= 2 ? 1.12 : q >= 1 ? 1.08 : 1;
+    renderer.toneMappingExposure = u ? 1.12 : q >= 2 ? 1.12 : q >= 1 ? 1.08 : 1;
     sun.castShadow = on;
     if (on && sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
@@ -48,6 +52,7 @@ export function createStage(canvas) {
     renderer.setSize(innerWidth, innerHeight, false);
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
+    ultra.resize();
   }
   addEventListener('resize', resize);
   perf.onChange(() => { resize(); applyQuality(); });
@@ -69,7 +74,7 @@ export function createStage(canvas) {
     camera.getWorldDirection(fwd);
     const k = fwd.y < -0.01 ? -camera.position.y / fwd.y : 40;
     target.copy(camera.position).addScaledVector(fwd, k);
-    const dist = k / classic.K, half = Math.round(MathUtils.clamp(dist * 0.9, 12, perf.quality() >= 2 ? 36 : 28) / 4) * 4, texel = (2 * half) / sun.shadow.mapSize.x;
+    const dist = k / classic.K, half = Math.round(MathUtils.clamp(dist * 0.9, 12, ultraOn() ? 48 : perf.quality() >= 2 ? 36 : 28) / 4) * 4, texel = (2 * half) / sun.shadow.mapSize.x;
     target.x = Math.round(target.x / texel) * texel; target.z = Math.round(target.z / texel) * texel; target.y = 0;
     sun.target.position.copy(target); sun.target.updateMatrixWorld();
     sun.position.copy(target).addScaledVector(SUN_DIR, 60);
@@ -81,6 +86,6 @@ export function createStage(canvas) {
     renderer, scene, camera, classic, sun, get night() { return st.night; },
     setFog(near, far) { const K = classic.K; scene.fog.near = near * K; scene.fog.far = far * K; },
     frame,
-    render() { classic.tick(); renderer.render(scene, camera); stats.update(); },
+    render() { classic.tick(); if (ultra.on) ultra.render(st.night, classic.K); else renderer.render(scene, camera); stats.update(); },
   };
 }

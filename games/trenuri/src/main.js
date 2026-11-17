@@ -62,7 +62,7 @@ function fpsMeter() {
 async function boot() {
   const bar = $('bootbar'), pct = $('bootpct');
   const p0 = save.get('prefs', {}) || {}; // înainte de scenă: modul răcoros și vederea (pe telefon, răcoros e pornit implicit)
-  setLook({ cool: p0.cool === null || p0.cool === undefined ? look.phone : !!p0.cool, mode: MODES.includes(p0.view) ? p0.view : '3d' });
+  setLook({ ultra: p0.ultra !== false, cool: p0.cool === null || p0.cool === undefined ? look.phone : !!p0.cool, mode: MODES.includes(p0.view) ? p0.view : '3d' });
   const stage = createStage($('c'));
   await loadModels(MODEL_LIST, (p) => { bar.style.width = Math.round(p * 100) + '%'; pct.textContent = Math.round(p * 100) + '%'; });
   if (missing.length) $('bootnote').textContent = `Unele modele lipsesc (${missing.length}); folosesc forme simple.`;
