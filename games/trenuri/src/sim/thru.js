@@ -4,6 +4,7 @@
 // iar pe rândul liniei principale casele dispar ca să încapă șina. Gara acoperă tot orașul ei (vezi catch.js).
 import { WATER_H, T_PRESENT, T_OWNER_SHIFT, UPGRADES, STATION_COST, COST } from './consts.js';
 import { levelCostOf, markTerrain, layPath } from './terraform.js';
+import { fanPaths } from './thruFan.js';
 import { frameOf } from './terminal.js';
 import { NG } from './goods.js';
 import { addNews } from './news.js';
@@ -82,8 +83,10 @@ export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1) {
     const tx = x + f.ax * a, ty = y + f.ay * a;
     if (tx >= 0 && ty >= 0 && tx < w && ty < s.h && (s.track[ty * w + tx] & T_PRESENT)) a < 0 ? lay.unshift([tx, ty]) : lay.push([tx, ty]);
   }
-  const fresh = lay.filter(([tx, ty]) => !(s.track[ty * w + tx] & T_PRESENT)).length;
-  return { ok: true, houses, pay, dir, n, lvl, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, layCost: fresh * COST.tile };
+  const fan = fanPaths(s, x, y, dir, A, rowsOf(n), by >= 0 ? by : (s.track[i0] >> T_OWNER_SHIFT) & 7, h0); // intrări separate la capete
+  const seen = new Set();
+  for (const [tx, ty] of [...lay, ...fan.flat()]) { const i = ty * w + tx; if (!(s.track[i] & T_PRESENT)) seen.add(i); }
+  return { ok: true, houses, pay, dir, n, lvl, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, fan, layCost: seen.size * COST.tile };
 }
 
 /** Prima direcție bună (cele mai puține case dărâmate), după linia care trece prin placă. null dacă nu încape. */
@@ -123,6 +126,7 @@ function claim(s, st, p) {
     markTerrain(s, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
   }
   if (p.lay && p.lay.length > 1) layPath(s, p.lay, { id: st.owner });
+  for (const q of p.fan || []) layPath(s, q, { id: st.owner });
   markOne(s, st);
   for (const [x, y] of thruTiles(st.x, st.y, st.dir, st.platforms)) s.forest[y * s.w + x] = 0;
   for (const [x, y] of mainTiles(st.x, st.y, st.dir, st.platforms)) if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.forest[y * s.w + x] = 0;
@@ -214,6 +218,7 @@ function setThruTracks(s, cmd, c) {
   if (!spend(s, c, r.cost)) return fail('bani');
   st.platforms = r.n;
   claim(s, st, r);
+  syncAuto(s);
   addNews(s, '🏙️', `${st.name} are acum ${st.platforms} linii!`);
   return { ok: true, cost: r.cost };
 }
