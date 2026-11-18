@@ -3,7 +3,7 @@ import { DX, DY } from '../sim/consts.js';
 import { EXPERT_ALLOWED } from '../sim/expert/index.js';
 
 /** Ce poate trimite un jucător. setSpeed e doar al gazdei; joinCompany e generat doar de gazdă. */
-export const ALLOWED = new Set(['buildTrack', 'removeTrack', 'buildStation', 'removeStation', 'buyTrain', 'setRoute', 'sellTrain', 'buildUpgrade', 'executePlan', 'setOrders', 'pauseTrain', 'resumeTrain', 'placeSignal', 'removeSignal', 'setAutoSignals', 'levelTerrain', 'clearArea', 'buildTunnel', 'upgradeStation', 'buildDepot', 'sendToDepot', 'rescueTrain', 'setAutoBlock', 'setCars', 'buildPort', 'buyShip', 'setShipRoute', 'sellShip', 'buildBridge', 'buyLand', 'buyIndustry', 'setAutoRepay', 'buildThru', 'setThruTracks', 'buildShape', ...EXPERT_ALLOWED]);
+export const ALLOWED = new Set(['buildTrack', 'removeTrack', 'buildStation', 'removeStation', 'buyTrain', 'setRoute', 'sellTrain', 'buildUpgrade', 'executePlan', 'setOrders', 'pauseTrain', 'resumeTrain', 'placeSignal', 'removeSignal', 'setAutoSignals', 'levelTerrain', 'clearArea', 'buildTunnel', 'upgradeStation', 'buildDepot', 'sendToDepot', 'rescueTrain', 'setAutoBlock', 'setCars', 'buildPort', 'buyShip', 'setShipRoute', 'sellShip', 'buildBridge', 'buyLand', 'buyIndustry', 'setAutoRepay', 'buildThru', 'setThruTracks', 'buildCorridor', 'buildShape', ...EXPERT_ALLOWED]);
 
 export function wire(cmd) {
   if (cmd.type !== 'buildTrack' || !Array.isArray(cmd.path) || !cmd.path.length) return cmd;

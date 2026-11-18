@@ -28,6 +28,7 @@ export function createContextRun(env) {
       case 'track': tools.startTrack(t); break;
       case 'station': tools.choose({ tool: 'station', size: tools.state.size === 2 ? 1 : tools.state.size }); tools.tap(t); break;
       case 'thru': tools.setTool('thru'); tools.tap(t); break; // alege direct locul de lângă placă; rămâne doar ✅ Construiește (sau alt număr de linii)
+      case 'corridor': tools.setTool('corridor'); tools.tap(t); break;
       case 'terminal': tools.choose({ tool: 'station', size: 2 }); tools.tap(t); break;
       case 'infoTrain': case 'infoShip': case 'infoDepot': case 'infoStation': case 'infoIndustry': case 'infoCity': tools.infoAt(t); break;
       case 'trainFrom': env.extras.buy({ stops: [hit.station.id] }); break;

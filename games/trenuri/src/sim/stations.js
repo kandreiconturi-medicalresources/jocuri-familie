@@ -10,7 +10,7 @@ export const platformsOf = (st) => st.platforms || 1;
 
 /** Câte peroane poate avea gara: sat 2, oraș 3, metropolă 4; fără oraș, după câte industrii sunt în rază (1→2, 2→3, 3+→4). */
 export function maxPlatforms(s, st) {
-  if (st.thru) return THRU_MAX; // gara mare de trecere: 2–10 linii
+  if (st.thru) return st.cor ? st.platforms : THRU_MAX; // culoarul are liniile alese la construire; gara mare de trecere: 2–10 linii
   if (st.big) return BIG_MAX; // terminalul mare: 4 linii de la început, până la 6
   const c = st.cityId >= 0 ? s.cities[st.cityId] : null;
   let m = c ? 2 + c.level : 1;

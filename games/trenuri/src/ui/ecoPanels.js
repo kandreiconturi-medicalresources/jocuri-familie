@@ -21,11 +21,12 @@ export function createEcoPanels(card, ev) {
     const me = ev.me ? ev.me() : 0;
     if (st.port || st.big || st.owner !== me || !ev.thru) return null;
     const opts = [];
-    for (let n = st.thru ? st.platforms + 1 : 2; n <= THRU_MAX && opts.length < 4; n++) {
+    for (let n = st.thru ? st.platforms + 1 : 2; n <= THRU_MAX && opts.length < 4 && !st.cor; n++) {
       const r = thruInfo(s, me, st.x, st.y, n, st.thru ? st.dir : undefined);
       if (r.ok) opts.push(h('button', { class: 'opt', onclick: () => { if (st.thru ? ev.thru(st.id, n) : ev.toThru(st.x, st.y, n)) api.station(s, st); } }, `🏙️ ${n} linii · ${lei(r.cost)}`, r.houses.length ? h('small', null, `${r.houses.length} case mutate`) : null));
     }
     const busy = s.trains.filter((t) => t.state === 2 && t.to === st.id).length;
+    if (st.cor) return [row('🛤️ Linii ocupate (culoar)', `${busy} din ${st.platforms} trenuri`), h('div', { class: 'note' }, '🛤️ Culoar prin oraș: o singură gară pentru toate liniile; acoperă tot orașul (pasageri, poștă, cererea de marfă).')];
     return st.thru ? [row('🛤️ Linii (trenuri deodată)', `${busy} ocupate din ${st.platforms}`), h('div', { class: 'note' }, '🏙️ Acoperă tot orașul: toți locuitorii, poșta și cererea de marfă.'), ...opts]
       : st.cityId >= 0 && opts.length ? [h('div', null, h('b', null, 'Fă-o gară mare de trecere')), h('div', { class: 'note' }, 'Linii paralele, peroane, pasarelă, clădire mare; acoperă tot orașul.'), ...opts] : null;
   };

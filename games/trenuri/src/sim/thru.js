@@ -9,6 +9,7 @@ import { frameOf } from './terminal.js';
 import { NG } from './goods.js';
 import { addNews } from './news.js';
 import { syncAuto } from './signals.js';
+import { corTiles, markCor } from './corGeo.js';
 
 export const THRU_MIN = 2, THRU_MAX = 10, THRU_BASE = 9000, THRU_TRACK = 2500, HOUSE_PAY = 350, TOWER_PAY = 700;
 /** Jumătatea lungimii (în plăci) de-a lungul liniei: 7 plăci, 9 la peste 6 linii. */
@@ -35,14 +36,14 @@ export function mainTiles(x, y, dir, n) {
 }
 const alongMask = (dir) => { const d = (dir + 2) & 7; return (1 << d) | (1 << ((d + 4) & 7)); };
 
-function houseAt(s, i) {
+export function houseAt(s, i) {
   for (const c of s.cities) for (let k = 0; k < c.buildings.length; k++) { const b = c.buildings[k]; if (b[1] * s.w + b[0] === i) return { c, b }; }
   return null;
 }
-const payOf = (b) => (b[2] >= 8 ? TOWER_PAY : HOUSE_PAY);
+export const payOf = (b) => (b[2] >= 8 ? TOWER_PAY : HOUSE_PAY);
 
 /** Planul gării: { ok, err?, houses: [indici], pay, dir, n }. `st` = gara existentă (transformare sau linii în plus). */
-export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1) {
+export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1, cor = 0) {
   n = clampN(n);
   if (dir !== 0 && dir !== 2 && dir !== 4 && dir !== 6) return fail('teren');
   const w = s.w, i0 = y * w + x, h0 = s.height[i0], mask = alongMask(dir), houses = [];
@@ -83,7 +84,7 @@ export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1) {
     const tx = x + f.ax * a, ty = y + f.ay * a;
     if (tx >= 0 && ty >= 0 && tx < w && ty < s.h && (s.track[ty * w + tx] & T_PRESENT)) a < 0 ? lay.unshift([tx, ty]) : lay.push([tx, ty]);
   }
-  const fr = fanPaths(s, x, y, dir, A, rowsOf(n), by >= 0 ? by : (s.track[i0] >> T_OWNER_SHIFT) & 7, h0, { house: (i) => !!houseAt(s, i), center, levelMax: LEVEL_MAX }); // intrări separate la capete
+  const fr = fanPaths(s, x, y, dir, A, rowsOf(n), by >= 0 ? by : (s.track[i0] >> T_OWNER_SHIFT) & 7, h0, { house: (i) => !!houseAt(s, i), center, levelMax: LEVEL_MAX, ...(cor ? { R: n - 1, reach: cor } : {}) }); // intrări separate la capete
   const fan = fr.paths, done = new Set(houses);
   for (const [tx, ty] of fan.flat()) { const i = ty * w + tx; if (s.occ[i] && !done.has(i)) { done.add(i); demolish(i); } } // casele din calea intrărilor se mută
   const flv = fr.levels.filter(([i]) => !lvl.includes(i)); // pe deal intrările urcă treptat: nivelare plătită
@@ -113,14 +114,14 @@ export function thruCost(p, st = null) {
 }
 
 /** Orașul gării: cel mai apropiat centru (≤ 8 plăci) sau -1. */
-function cityOf(s, x, y) {
+export function cityOf(s, x, y) {
   let best = -1, bd = 1e9;
   for (const c of s.cities) { const d = Math.max(Math.abs(c.x - x), Math.abs(c.y - y)); if (d < bd && d <= 8) { bd = d; best = c.id; } }
   return best;
 }
 
 /** Dărâmă casele, ocupă plăcile, șterge pădurea. */
-function claim(s, st, p) {
+export function claim(s, st, p) {
   const gone = new Set(p.houses);
   if (gone.size) for (const c of s.cities) { const n0 = c.buildings.length; c.buildings = c.buildings.filter((b) => !gone.has(b[1] * s.w + b[0])); if (c.buildings.length !== n0) s.dirty.cities = true; }
   for (const i of gone) s.occ[i] = 0;
@@ -135,12 +136,14 @@ function claim(s, st, p) {
   markOne(s, st);
   for (const [x, y] of thruTiles(st.x, st.y, st.dir, st.platforms)) s.forest[y * s.w + x] = 0;
   for (const [x, y] of mainTiles(st.x, st.y, st.dir, st.platforms)) if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.forest[y * s.w + x] = 0;
+  if (st.cor) for (const [x, y] of corTiles(st.x, st.y, st.dir, st.platforms, st.cor)) if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.forest[y * s.w + x] = 0;
   s.dirty.forest = s.dirty.stations = s.dirty.track = true;
 }
 function markOne(s, st) {
   if (!s.keep) s.keep = new Uint8Array(s.w * s.h);
   for (const [x, y] of thruTiles(st.x, st.y, st.dir, st.platforms)) { const i = y * s.w + x; s.occ[i] = 1; s.roads[i] = 0; }
   for (const [x, y] of mainTiles(st.x, st.y, st.dir, st.platforms)) if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.keep[y * s.w + x] = 1;
+  if (st.cor) markCor(s, st);
 }
 /** Strat derivat: plăcile gărilor de trecere sunt ocupate, rândul liniei principale e păstrat liber (orașul nu mai construiește acolo). */
 export function markThru(s) {
@@ -153,7 +156,7 @@ export function freeThru(s, st) {
   s.dirty.forest = true;
 }
 
-const spend = (s, c, amt) => { if (!s.sandbox && c.cash < amt) return false; if (!s.sandbox) c.cash -= amt; return true; };
+export const spend = (s, c, amt) => { if (!s.sandbox && c.cash < amt) return false; if (!s.sandbox) c.cash -= amt; return true; };
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
 
 /** Informații pentru previzualizare (fără să schimbe starea): { ok, err?, cost, houses, dir, n, st }. */
@@ -220,6 +223,7 @@ function setThruTracks(s, cmd, c) {
   const st = s.stations.find((q) => q.id === cmd.id);
   if (!st || !st.thru) return fail('inexistent');
   if (st.owner !== c.id) return fail('proprietar');
+  if (st.cor) return fail('limita'); // culoarul are liniile alese la construire
   if ((cmd.n | 0) > THRU_MAX) return fail('limita');
   const r = thruInfo(s, c.id, st.x, st.y, cmd.n, st.dir);
   if (!r.ok) return r;

@@ -11,7 +11,7 @@ const FAN_AT = 5; // evantaiul începe la 5 plăci de gară: gara (max ±4) poat
 /** { paths: [[ [x,y], ... ]], levels: [[i, h]] } — căile pornesc din capătul liniei principale; ramurile blocate (apă, industrie, șina altuia) se sar. */
 export function fanPaths(s, x, y, dir, A, rows, by, h0, opt = {}) {
   const house = opt.house || (() => false), center = opt.center || new Set(), lmax = opt.levelMax || 1;
-  const f = frameOf(dir), w = s.w, R = Math.min(3, rows), paths = [], lv = new Map();
+  const f = frameOf(dir), w = s.w, R = opt.R !== undefined ? opt.R : Math.min(3, rows), paths = [], lv = new Map();
   const at = (a, c) => [x + f.ax * a + f.cx * c, y + f.ay * a + f.cy * c];
   /** Înălțimea la care pui placa după cea de înălțime `prev`, sau -1 dacă nu se poate. */
   const fit = ([tx, ty], prev) => {
@@ -35,7 +35,7 @@ export function fanPaths(s, x, y, dir, A, rows, by, h0, opt = {}) {
     for (let r = 0; r <= R; r++) {
       const p = lead.slice();
       for (let i = 1; i <= r; i++) p.push(at(a0 + e * i, i)); // diagonala macazelor
-      for (let k = 1; k <= STUB; k++) p.push(at(a0 + e * (r + k), r)); // capătul drept, de legat
+      for (let k = 1, K = opt.reach ? opt.reach - a0 - r : STUB; k <= K; k++) p.push(at(a0 + e * (r + k), r)); // capătul drept, de legat (la culoar: până la capătul fâșiei)
       const hs = walk(p);
       if (!hs) continue;
       paths.push(p);

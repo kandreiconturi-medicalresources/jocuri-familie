@@ -12,6 +12,7 @@ import { SIGNAL_COMMANDS, syncAuto } from './signals.js';
 import { TERRAIN_COMMANDS, applyLevels, layPath, markTerrain } from './terraform.js';
 import { STATION_COMMANDS } from './stations.js';
 import { THRU_COMMANDS, freeThru } from './thru.js';
+import { COR_COMMANDS } from './corridor.js';
 import { hold, releaseAll } from './reserve.js';
 import { DEPOT_COMMANDS } from './depots.js';
 import { validOrders, cleanOrders } from './orders.js';
@@ -32,6 +33,7 @@ export const ERR_TEXT = {
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
   tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', legatura: 'Gările din rută nu sunt toate legate cu șină. Leagă-le sau scoate una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
+  culoar: 'Culoarul are 2–5 linii, pe axa orizontală sau verticală, prin centrul orașului sau pe marginea lui.', culoar1: 'Orașul are deja un culoar cu gara lui: un oraș poate avea un singur culoar.',
   loc: 'Terminalul mare sau gara de trecere au nevoie de loc plat lângă gară (fără alte șine, industrii sau apă; casele se mută) și de o linie dreaptă.',
   insula: 'Insula asta e a altei companii: aici nu poți construi. Cumpără teren 🏠 sau fă comerț prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
   pod: 'Podul mare e o linie dreaptă (orizontală, verticală sau în diagonală), de pe uscat pe uscat, cu cel puțin o placă de apă între capete.', ocupat: 'Pe parcela asta sunt gări sau depouri ale altcuiva: nu se poate vinde.',
@@ -209,7 +211,7 @@ function joinCompany(s, cmd) {
 }
 
 const planRun = (s, cmd, c) => executePlan(s, cmd, c, applyCommand);
-const TABLE = { ...SHAPE_COMMANDS, ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, ...THRU_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
+const TABLE = { ...SHAPE_COMMANDS, ...TEAM_COMMANDS, ...BRIDGE_COMMANDS, ...LAND_COMMANDS, ...BANK_COMMANDS, ...PORT_COMMANDS, ...SHIP_COMMANDS, ...CONSIST_COMMANDS, ...DEPOT_COMMANDS, executePlan: planRun, ...SIGNAL_COMMANDS, ...TERRAIN_COMMANDS, ...STATION_COMMANDS, ...THRU_COMMANDS, ...COR_COMMANDS, joinCompany, buildTrack, removeTrack, buildStation, removeStation, buyTrain, setRoute, sellTrain, buildUpgrade, setOrders, pauseTrain, resumeTrain: pauseTrain };
 
 export function applyCommand(s, cmd) {
   if (!cmd || typeof cmd.type !== 'string') return fail('drum');

@@ -23,6 +23,8 @@ export { signalAspect, syncAuto } from './signals.js';
 export { dirtyChunks, TERRAIN_CHUNK } from './terraform.js';
 export { levelPlan, levelCostOf, fitLevels } from './terraform.js';
 export { maxPlatforms, platformsOf, upgradeCost } from './stations.js';
+export { corInfo, corVariants } from './corridor.js';
+export { corTiles, COR_MIN, COR_MAX } from './corGeo.js';
 export { thruInfo, thruNear, thruTiles, mainTiles, THRU_MIN, THRU_MAX, THRU_BASE, THRU_TRACK, HOUSE_PAY, TOWER_PAY } from './thru.js';
 export { covers, cityReach } from './catch.js';
 export { weightOf, pullOf, heaviness } from './physics.js';
