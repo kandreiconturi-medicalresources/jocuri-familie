@@ -109,8 +109,7 @@ test('tren între două gări legate: ajunge, încarcă, livrează, compania câ
 test('trenul nu pleacă dacă gările nu sunt legate', () => {
   const s = createWorld({ seed: 21, size: 'S', year: 1950 });
   const { g1, g2 } = setup(s);
-  const t = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 0, stationId: g1 }));
-  ok(applyCommand(s, { type: 'setRoute', by: 0, trainId: t.id, route: [g1, g2] }));
+  ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 0, stationId: g1, route: [g1, g2] }));
   for (let i = 0; i < 600; i++) stepWorld(s);
   const tr = s.trains[0];
   assert.equal(tr.state, 2); assert.equal(tr.speed, 0); assert.equal(tr.to, g1);

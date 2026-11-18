@@ -68,6 +68,7 @@ export function createTrainPanel(card, ev) {
       h('div', { class: 'btns' },
         h('button', { class: 'opt' + (t.paused ? ' on' : ''), onclick: () => { ev.pause(t.id, !t.paused); again(); } }, t.paused ? '▶ Continuă' : '⏸ Pauză', h('small', null, t.paused ? 'Pleacă iar' : 'Oprește la gară')),
         h('button', { class: 'opt no', onclick: () => { ev.sell(t.id); close(); } }, 'Vinde trenul')),
+      ev.editRoute ? h('button', { class: 'opt go', onclick: () => { close(); ev.editRoute(t.id); } }, '🗺️ Schimbă ruta', h('small', null, 'Alege altă rută pentru acest tren')) : null,
       row('Merge spre', dest ? dest.name : '—'), row('Viteză', `${m.vmax * 4} km/h`), row('Trage bine', `${m.power} vagoane`),
       row('Fiabilitate', `${rel}% (nou: ${m.rel}%)`), row('Vârstă', ageText(ageMonths(s, t))), row('Întreținere', lei(m.maint) + '/lună'),
       t.cars > m.power ? h('div', null, '⚠️ Are prea multe vagoane pentru locomotivă, așa că merge mai încet.') : null,

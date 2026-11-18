@@ -63,6 +63,7 @@ export function createGame({ stage, canvas, uiRoot, save, saves, savesWhere = 'l
     rescue: (id) => exec({ type: 'rescueTrain', trainId: id }),
     show: (x, y) => extras.show(x, y),
     makeRoute: (preset) => extras.buy(preset),
+    editRoute: (id) => extras.buy({ edit: id }),
     plan: (preset) => extras.planner(preset),
     buyIndustry: (id) => exec({ type: 'buyIndustry', id }).ok,
     me: () => viewer.co,

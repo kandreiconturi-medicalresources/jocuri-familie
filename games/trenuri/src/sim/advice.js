@@ -99,13 +99,13 @@ export function trainAdvice(s, t) {
   if (relOf(t) < 60) out.push(`Fiabilitate mică (${relOf(t)}%): du-l la un atelier.`);
   if (t.route.length >= 2 && !t.lost) {
     const sts = t.route.map((id) => stOf(s, id)).filter(Boolean);
-    const have = [], noCar = [];
-    for (const st of sts) for (let g = 0; g < NG; g++) {
+    const have = [], noCar = [], pureFreight = !t.kinds.some((k) => k < 2); // tren de marfă: pasagerii și poșta din gări nu-l privesc
+    for (const st of sts) for (let g = pureFreight ? 2 : 0; g < NG; g++) {
       if (stockOf(st, g) <= 0 || !sts.some((q) => q !== st && accepts(s, q, g))) continue;
       if (t.kinds.includes(CAR_OF[g])) have.push(g); else if (!noCar.includes(g)) noCar.push(g);
     }
     if (noCar.length) out.push(`Nu are vagoane de ${noCar.map((g) => CAR_TYPES[CAR_OF[g]].name.toLowerCase()).filter((v, i, a) => a.indexOf(v) === i).join(' și ')}.`);
-    else if (!have.length && !t.load.length && !sts.some((st) => st.waiting.pass + st.waiting.mail > 0)) out.push('Gara nu are marfă de dus încă.');
+    else if (!have.length && !t.load.length && (pureFreight || !sts.some((st) => st.waiting.pass + st.waiting.mail > 0))) out.push(pureFreight ? 'Gările din rută nu au încă marfă de dus (sau nimeni n-o cere).' : 'Gara nu are marfă de dus încă.');
   }
   return out;
 }

@@ -11,6 +11,9 @@ import { lei } from './hud.js';
 import { trainPreview } from './trainPreview.js';
 import { newAssist, assistReduce, pruneStops, kindsOf } from './assistState.js';
 import { routeStep } from './routeStep.js';
+import { editState, routeCommand, hasFreight } from './routeEdit.js';
+
+const EDIT_NOTE = 'Trenul în mers termină drumul început. Apoi merge mai departe în ruta nouă; dacă gara spre care mergea nu mai e în rută, pornește spre prima gară din ea. Marfa din vagoane rămâne.';
 
 /** Propunere pentru marfa g: cea mai apropiată pereche sursă → destinație { src, dst, d, stSrc, stDst } sau null. */
 export function proposal(s, g) {
@@ -38,7 +41,9 @@ export function big(icon, title, sub, { on, dis, click, extra } = {}) {
  */
 export function openBuyWizard(env, preset) {
   const { tools, hud } = env, S = () => env.state(), co = () => viewer.co;
-  let a = newAssist({ model: tools.state.model, ...(preset || {}) }), min = false, closed = false, last = '';
+  const { edit: editId, ...pre } = preset || {}, tr0 = editId !== undefined ? S().trains.find((q) => q.id === editId) : null;
+  if (editId !== undefined && !tr0) return { isOpen: () => false, close() {}, update() {}, resume() {}, tap: () => false, state: () => null };
+  let a = tr0 ? editState(tr0, tr0.model) : newAssist({ model: tools.state.model, ...pre }), min = false, closed = false, last = '';
   const dock = h('div', { class: 'asst' });
   env.root.append(dock);
   const steps = ['Ce transporți', 'Ce marfă', 'Locomotiva', 'Vagoanele', 'Ruta'];
@@ -80,7 +85,17 @@ export function openBuyWizard(env, preset) {
       h('button', { class: 'opt go', onclick: () => next(5) }, '🛤️ Alege ruta'),
     ];
   };
+  const trainNow = () => S().trains.find((q) => q.id === editId);
+  const editRoute = () => {
+    const t = trainNow();
+    return t ? routeStep({ env, a: () => a, upd: (x) => { a = x; draw(); }, buy: save, pickOn, price, cash, tools, edit: { cmd: routeCommand(a, t), label: '💾 Salvează ruta', note: EDIT_NOTE, drops: hasFreight(t) } }) : [h('div', { class: 'note' }, 'Trenul nu mai există.')];
+  };
   const stepFns = [s1, s2, s3, s4, () => routeStep({ env, a: () => a, upd: (x) => { a = x; draw(); }, buy, pickOn, price, cash, tools })];
+  function save(cmd) {
+    if (!env.exec(cmd).ok) return;
+    hud.hint('Ruta trenului e salvată!', false, 4000);
+    api.close();
+  }
 
   function price() {
     const m = MODELS[a.model], k = kindsOf(a) || (a.stops.length > 1 ? suggestKinds(S(), a.stops.map((x) => x.id), m.power) : [0, 0, 1]);
@@ -101,15 +116,15 @@ export function openBuyWizard(env, preset) {
     if (closed) return;
     a = pruneStops(a, S(), co());
     const old = dock.querySelector('.asst-body'), top = old ? old.scrollTop : 0;
-    const back = a.step > 1 ? h('button', { class: 'rb', 'aria-label': 'Înapoi', onclick: () => next(a.type !== 'freight' && a.step === 3 ? 1 : a.step - 1) }, '◀') : null;
+    const back = a.step > 1 && !tr0 ? h('button', { class: 'rb', 'aria-label': 'Înapoi', onclick: () => next(a.type !== 'freight' && a.step === 3 ? 1 : a.step - 1) }, '◀') : null;
     dock.classList.toggle('min', min);
     dock.replaceChildren(...[
-      h('div', { class: 'wz-head' }, back, h('h3', null, `🚂 Tren nou · pasul ${a.step}/5`),
+      h('div', { class: 'wz-head' }, back, h('h3', null, tr0 ? `🗺️ Ruta trenului ${tr0.id}` : `🚂 Tren nou · pasul ${a.step}/5`),
         h('button', { class: 'rb', 'aria-label': min ? 'Arată' : 'Ascunde', onclick: () => { min = !min; draw(); } }, min ? '▴' : '▾'),
         h('button', { class: 'rb', 'aria-label': 'Închide asistentul', onclick: () => api.close() }, '✖')),
       min ? h('div', { class: 'note' }, a.stops.length ? `Gări alese: ${a.stops.length}. Selecția rămâne cât timp asistentul e deschis.` : 'Asistentul e ascuns.') : null,
-      min ? null : h('div', { class: 'wz-steps' }, steps.map((t, i) => h('span', { class: i + 1 === a.step ? 'on' : i + 1 < a.step ? 'ok' : '' }, t))),
-      min ? null : h('div', { class: 'asst-body' }, stepFns[a.step - 1]())].filter(Boolean));
+      min || tr0 ? null : h('div', { class: 'wz-steps' }, steps.map((t, i) => h('span', { class: i + 1 === a.step ? 'on' : i + 1 < a.step ? 'ok' : '' }, t))),
+      min ? null : h('div', { class: 'asst-body' }, tr0 ? editRoute() : stepFns[a.step - 1]())].filter(Boolean));
     const b = dock.querySelector('.asst-body');
     if (b) b.scrollTop = top;
     last = tools.state.tool; sync();

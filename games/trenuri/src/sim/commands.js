@@ -24,12 +24,13 @@ import { LAND_COMMANDS } from './land.js';
 import { BANK_COMMANDS } from './bank.js';
 import { TEAM_COMMANDS } from './teams.js';
 import { SHAPE_COMMANDS } from './shapes.js';
+import { setRoute } from './routeCmd.js';
 
 const fail = (err) => ({ ok: false, err });
 export const ERR_TEXT = {
   bani: 'Nu ai destui bani încă!', apa: 'Aici e apă: podul nu poate fi atât de lung (cel mult 30 de plăci pentru podul mare).', cladire: 'Aici e o casă!', panta: 'Dealul e prea abrupt.',
   proprietar: 'Aici e șina altcuiva.', drum: 'Traseul nu e bun.', harta: 'Ești în afara hărții.', teren: 'Aici nu se poate construi.',
-  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
+  tren: 'Un tren trece pe aici!', ruta: 'Un tren folosește gara asta.', inexistent: 'Nu găsesc asta.', gara: 'Aici e o gară sau lipsește una.', legatura: 'Gările din rută nu sunt toate legate cu șină. Leagă-le sau scoate una.', model: 'Alege un tren.', epoca: 'Locomotiva asta nu a fost inventată încă!', vagoane: 'Vagoanele nu sunt bune.', exista: 'Gara are deja asta.', timp: 'Gazda n-a răspuns la timp.',
   limita: 'Gara nu poate crește: orașul și producția din jur sunt prea mici.', expert: 'Asta merge doar în modul expert.', rating: 'Banca nu mai dă împrumuturi: ratingul e prea mic.', actiuni: 'Nu se poate cu acțiunile astea.', depou: 'Ai nevoie de un depou, iar trenul să nu fie deja acolo.',
   loc: 'Terminalul mare sau gara de trecere au nevoie de loc plat lângă gară (fără alte șine, industrii sau apă; casele se mută) și de o linie dreaptă.',
   insula: 'Insula asta e a altei companii: aici nu poți construi. Cumpără teren 🏠 sau fă comerț prin port ⚓🚢.', material: 'Îți lipsesc materiale de construcție (oțel, cherestea sau bunuri) în port.',
@@ -166,18 +167,6 @@ function setOrders(s, cmd, c) {
   if (tr.owner !== c.id) return fail('proprietar');
   if (cmd.orders === undefined || !validOrders(cmd.orders)) return fail('drum');
   tr.orders = cleanOrders(cmd.orders);
-  return { ok: true, cost: 0 };
-}
-
-function setRoute(s, cmd, c) {
-  const tr = s.trains.find((t) => t.id === cmd.trainId);
-  if (!tr) return fail('inexistent');
-  if (tr.owner !== c.id) return fail('proprietar');
-  const route = cmd.route;
-  if (!Array.isArray(route) || route.length < 1 || route.length > 8 || route.some((id) => !s.stations.some((st) => st.id === id && st.owner === c.id))) return fail('gara');
-  tr.route = route.slice();
-  const k = tr.route.indexOf(tr.to);
-  tr.at = k >= 0 ? k : 0;
   return { ok: true, cost: 0 };
 }
 
