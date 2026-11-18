@@ -48,11 +48,11 @@ function platform(B, pl, k, own, bridgeU) {
 }
 
 function one(s, g, st, colorOf) {
-  const n = nOf(st), G = thruGeo(n), F = thruFrame(st), own = colorOf(st.owner), root = new Group(), B = new Builder(), GL = new Builder(), wins = [];
+  const n = nOf(st), G = thruGeo(n, !!st.ln), F = thruFrame(st), own = colorOf(st.owner), root = new Group(), B = new Builder(), GL = new Builder(), wins = [];
   const lamps = [];
   lampSink.list = lamps;
-  box(B, 0.08, G.vB1, -G.E, G.E, -0.4, 0.04, '#a39a8a'); // platforma gării (ascunde denivelările)
-  tracks(B, G);
+  box(B, 0.08, G.vB1, -G.E, G.E, -0.4, G.wide ? 0.0 : 0.04, '#a39a8a'); // platforma gării (ascunde denivelările)
+  if (!G.wide) tracks(B, G); // liniile independente sunt șină reală (tracks.js), fiecare dreaptă prin gară
   G.plats.forEach((pl, k) => { platform(B, pl, k, own, G.uB); stairs(B, pl.v, TOP, G.uU, 0, 1, own); });
   hall(B, GL, G, own, wins);
   lampSink.list = null;

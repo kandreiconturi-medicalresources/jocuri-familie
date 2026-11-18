@@ -61,9 +61,10 @@ test('5 trenuri pe 5 șine diferite ajung toate în gară și nimic nu se bloche
     most = Math.max(most, trains.filter((t) => t.state === 2 && t.to === st.id).length);
     trains.forEach((t, k) => { if (!first[k] && t.state === 2 && t.to === st.id) first[k] = i; });
   }
-  // gara e o singură placă logică: trenurile de pe cele 5 șine intră pe rând prin gâtul scurt dinaintea ei (fiecare linie are însă capătul și semnalele ei)
+  // liniile sunt independente (peron pe fiecare linie, fără gât comun): cele 5 trenuri sosesc în aceeași fereastră și opresc toate deodată
   assert.ok(first.every(Boolean), 'toate cele 5 au intrat în gară: ' + first);
-  assert.ok(most >= 2, 'mai multe trenuri în gară deodată: ' + most);
+  assert.ok(Math.max(...first) - Math.min(...first) < 20, 'au intrat împreună, nu pe rând: ' + first);
+  assert.equal(most, 5, 'toate 5 în gară deodată: ' + most);
   assert.ok(trains.every((t) => t.money > 0), 'toate au câștigat, nimic nu s-a blocat');
 });
 

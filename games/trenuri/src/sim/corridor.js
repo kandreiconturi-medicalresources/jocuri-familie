@@ -1,6 +1,7 @@
 // „Culoar prin oraș”: gara de trecere extinsă. n (2–5) linii paralele drepte traversează tot orașul (de la o margine la alta + 2 plăci
 // în afară), cu o singură gară la mijloc: toate liniile se adună în ea, deci n trenuri opresc deodată. Fiecare linie are capete proprii
-// la ambele margini ale culoarului (nu se unesc), ca jucătorul să lege fiecare linie la altă șină din afară.
+// la ambele margini ale culoarului (nu se unesc), ca jucătorul să lege fiecare linie la altă șină din afară. Liniile sunt independente
+// (`st.ln`, vezi laneGeo.js): fiecare are peronul ei în gară, deci n trenuri opresc deodată fără să se încurce.
 // Refolosește gara de trecere (`thru.js`: loc, despăgubiri, intrări în evantai extinse până la capete); `st.cor` = jumătatea lungimii culoarului.
 import { WATER_H, T_PRESENT, T_OWNER_SHIFT, UPGRADES } from './consts.js';
 import { NG } from './goods.js';
@@ -48,7 +49,7 @@ function corOne(s, by, city, axis, side, n, dir) {
   }
   const p = thruPlan(s, x, y, dir, n, st, by, E);
   if (!p.ok) return p;
-  if (p.fan.length !== 2 * n) return fail('panta'); // o linie nu ajunge până la capăt (deal prea abrupt)
+  if (p.fan.length !== 2 * n || p.sides !== 2 * (n - 1)) return fail('panta'); // o linie nu ajunge până la capăt (deal prea abrupt)
   const all = new Set(p.houses);
   let pay = p.pay;
   for (const i of houses) if (!all.has(i)) { all.add(i); pay += payOf(houseAt(s, i).b); }

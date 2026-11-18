@@ -59,7 +59,7 @@ export function signalAspect(s, id) {
   const st = s.stm[i] ? s.stations.find((q) => q.y * s.w + q.x === i) : null;
   let inside = 0; // roșu doar când locul e ținut de trenuri care au trecut deja de semnal (cele care se apropie au drum liber)
   for (const t of s.trains) if (t.rv.includes(i) && (t.state === 2 || t.path.indexOf(i) <= t.seg + 1)) inside++;
-  return inside >= (st ? st.platforms || 1 : 1) ? 0 : 1;
+  return inside >= (st && !st.ln ? st.platforms || 1 : 1) ? 0 : 1;
 }
 
 function placeSignal(s, cmd, c) {

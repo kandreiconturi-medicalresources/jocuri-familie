@@ -5,25 +5,28 @@ import { frameOf } from '../sim/terminal.js';
 
 export const SLOPE = 1.5, PHW = 0.17, TOP = 0.1, DECK = 0.74, UNDER = -0.32;
 export const nOf = (st) => Math.max(2, Math.min(THRU_MAX, st.platforms | 0));
-export const laneV = (k) => lane10(k) / 10;
+/** Linia k la v plăci de linia principală; `wide` = liniile independente (`st.ln`): câte o linie pe rând de plăci, drepte prin toată gara. */
+export const laneV = (k, wide = false) => (wide ? k : lane10(k) / 10);
 /** Capătul gării de-a lungul liniei și începutul porțiunii drepte a liniei k (după scara de macaze). */
 export const edgeOf = (n) => halfLen(n) + 0.5;
-export const straightU = (n, k) => edgeOf(n) - 0.1 - laneV(k) / SLOPE;
+export const straightU = (n, k, wide = false) => (wide ? edgeOf(n) - 0.1 : edgeOf(n) - 0.1 - laneV(k) / SLOPE);
 
 const cache = new Map();
-/** { n, E, lanes: [v], plats: [{ v, hw, u0, u1, lanes }], vB0, vB1, uB (pasarela), uU (pasajul), rows } */
-export function thruGeo(n) {
-  let G = cache.get(n);
+/** { n, E, wide, lanes: [v], plats: [{ v, hw, u0, u1, lanes }], vB0, vB1, uB (pasarela), uU (pasajul), rows }.
+ * `wide`: liniile independente (șina lor e șină reală, desenată de tracks.js; aici doar peroanele, mai late, și clădirea). */
+export function thruGeo(n, wide = false) {
+  const key = n * 2 + (wide ? 1 : 0);
+  let G = cache.get(key);
   if (G) return G;
-  const E = edgeOf(n), lanes = [], plats = [];
-  for (let k = 0; k < n; k++) lanes.push(laneV(k));
-  const span = (ks) => { const m = Math.min(...ks.map((k) => straightU(n, k))) - 0.12; return [-m, m]; };
-  for (let j = 0; 2 * j + 1 < n; j++) { const [u0, u1] = span([2 * j, 2 * j + 1]); plats.push({ v: (lanes[2 * j] + lanes[2 * j + 1]) / 2, hw: PHW, u0, u1, lanes: [2 * j, 2 * j + 1] }); }
+  const E = edgeOf(n), lanes = [], plats = [], hw = wide ? 0.3 : PHW;
+  for (let k = 0; k < n; k++) lanes.push(laneV(k, wide));
+  const span = (ks) => { const m = Math.min(...ks.map((k) => straightU(n, k, wide))) - 0.12; return [-m, m]; };
+  for (let j = 0; 2 * j + 1 < n; j++) { const [u0, u1] = span([2 * j, 2 * j + 1]); plats.push({ v: (lanes[2 * j] + lanes[2 * j + 1]) / 2, hw, u0, u1, lanes: [2 * j, 2 * j + 1] }); }
   const last = lanes[n - 1], [s0, s1] = span([n - 1]);
   plats.push({ v: last + 0.3, hw: PHW, u0: s0, u1: s1, lanes: [n - 1], side: true }); // peronul clădirii
-  const rows = rowsOf(n), vB0 = last + 0.5, vB1 = rows + 0.45;
-  G = { n, E, lanes, plats, vB0, vB1, rows, uB: 0.85, uU: -0.85 };
-  cache.set(n, G);
+  const rows = rowsOf(n, wide), vB0 = last + 0.5, vB1 = rows + 0.45;
+  G = { n, E, wide, lanes, plats, vB0, vB1, rows, uB: 0.85, uU: -0.85 };
+  cache.set(key, G);
   return G;
 }
 

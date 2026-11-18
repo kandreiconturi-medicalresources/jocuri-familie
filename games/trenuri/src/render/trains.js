@@ -35,6 +35,7 @@ function bays(s) {
   const out = new Map();
   for (const [id, b] of bayMap(s, (t, st) => headingOf(s, t, st))) {
     if (!b.lane) continue;
+    if (b.real) continue; // linii independente: trenul e desenat pe drumul lui, chiar pe linia lui
     const st = b.st, f = frameOf(st.dir), t = s.trains.find((q) => q.id === id);
     if (st.thru) out.set(id, { st, f, c: laneV(b.lane), a0: ((t ? t.cars : 0) * CAR_GAP) / 512, sg: b.sg, thru: true });
     else out.set(id, { st, f, c: b.lane * LANE, a0: 1.2, sg: 1, thru: false });
@@ -110,8 +111,8 @@ export function createTrains(s, g, camera) {
         if (t.state === 3) continue;
         let path = t.path, stub = false;
         if (path.length < 2) {
-          const st = s.stations.find((z) => z.id === t.to);
-          if (st) { path = stubPath(s, st); stub = path.length > 1; }
+          const st = s.stations.find((z) => z.id === t.to), at = st && t.org ? { id: st.id, x: (t.org - 1) % s.w, y: ((t.org - 1) / s.w) | 0 } : st; // nou cumpărat: pe peronul lui
+          if (st) { path = stubPath(s, at); stub = path.length > 1; }
           else if (!path.length) continue; // remorca stă pe placa depoului: path are o placă
         }
         const d = stub ? cumOf(s, path)[1] : it.prev + (it.cur - it.prev) * alpha, moving = it.cur !== it.prev;

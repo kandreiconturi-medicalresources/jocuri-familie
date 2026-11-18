@@ -15,7 +15,8 @@ export function rebuildReserve(s) {
   }
 }
 
-const platformsAt = (s, i) => { const st = s.stations.find((q) => q.y * s.w + q.x === i); return st ? st.platforms || 1 : 1; };
+/** Câte trenuri încap pe locul de gară i: liniile independente au câte un peron pe placă (P_k), altfel peroanele gării. */
+export const platformsAt = (s, i) => { const st = s.stations.find((q) => q.y * s.w + q.x === i); return st && !st.ln ? st.platforms || 1 : 1; };
 /** Gara de pe placa i are toate peroanele ocupate (rezervate)? */
 export const pfull = (s, i) => s.stm[i] === 1 && s.pocc[i] >= platformsAt(s, i);
 /** Placa i e rezervată de alt tren (remorca nu se sperie de trenul pe care îl ia). */

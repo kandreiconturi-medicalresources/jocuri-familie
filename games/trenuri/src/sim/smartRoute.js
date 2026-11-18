@@ -4,6 +4,7 @@ import { findRail, segLen } from './trains.js';
 import { blocked, linkCount, tailTiles } from './blocks.js';
 import { pfull, canReserve, releaseFrom, blockEnd } from './reserve.js';
 import { SIG_ALT } from './consts.js';
+import { destOf } from './lanes.js';
 
 const H = 14; // orizontul (plăci): ce e ocupat mai departe se eliberează până ajunge trenul
 const pathLen = (w, p) => { let L = 0; for (let k = 0; k + 1 < p.length; k++) L += segLen(w, p, k); return L; };
@@ -38,10 +39,10 @@ export function blockerOf(s, t, path, j) {
 export function smartReroute(s, t) {
   const last = t.path.length - 1, j = t.seg + 2;
   if (j > last || t.tow || !blockerOf(s, t, t.path, j)) return false;
-  const w = s.w, here = t.path[t.seg + 1], back = t.path[t.seg], dest = t.path[last], hx = here % w, hy = (here / w) | 0;
+  const w = s.w, here = t.path[t.seg + 1], back = t.path[t.seg], D = destOf(s, t), hx = here % w, hy = (here / w) | 0;
   const near = (i) => Math.max(Math.abs((i % w) - hx), Math.abs(((i / w) | 0) - hy)) <= H;
   const bad = (i) => pfull(s, i) || (!s.stm[i] && (blocked(s, i) || (s.resv[i] && s.resv[i] !== t.id + 1)));
-  const alt = findRail(s, here, dest, (i) => i === back || (near(i) && bad(i)));
+  const alt = findRail(s, here, D.g, (i) => i === back || (near(i) && bad(i)), D.pen);
   if (!alt || alt.length < 2) return false;
   const path = t.path.slice(0, j).concat(alt.slice(1));
   if (path.length === t.path.length && path.every((v, k) => v === t.path[k])) return false;

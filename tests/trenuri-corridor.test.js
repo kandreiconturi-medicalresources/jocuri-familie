@@ -9,6 +9,7 @@ import { deriveLayers } from '../games/trenuri/src/sim/roads.js';
 import { growBuildings } from '../games/trenuri/src/sim/growth.js';
 import { ALLOWED } from '../games/trenuri/src/net/wire.js';
 import { THRU_BASE, THRU_TRACK } from '../games/trenuri/src/sim/thru.js';
+import { platsOf } from '../games/trenuri/src/sim/laneGeo.js';
 import { createHub } from './trenuri-hub.js';
 
 const ok = (r) => { assert.ok(r.ok, r.err); return r; };
@@ -86,14 +87,15 @@ test('5 trenuri pe 5 linii opresc deodată în aceeași gară, iar gara adună d
   const s = world(), c = s.cities[0];
   s.companies[0].cash = 1e6;
   const { A, T, r } = withLine(s, 5);
-  const st = s.stations.find((q) => q.id === T), i0 = r.y * s.w + r.x;
-  assert.equal(st.platforms, 5);
+  const st = s.stations.find((q) => q.id === T), P = platsOf(s, st), busy = () => P.reduce((a, i) => a + s.pocc[i], 0);
+  assert.equal(st.platforms, 5); assert.equal(P.length, 5, 'câte un peron pe fiecare linie');
   const trs = [];
   for (let i = 0; i < 5; i++) { const id = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: T, kinds: [0], route: [T, A] })).id; trs.push(s.trains.find((t) => t.id === id)); }
   assert.ok(trs.every((t) => t.state === 2 && t.to === T), 'toate 5 stau deodată în gară');
-  assert.equal(s.pocc[i0], 5);
+  assert.equal(busy(), 5);
+  assert.ok(P.every((i) => s.pocc[i] === 1), 'fiecare tren pe peronul lui');
   run(s, 600);
-  assert.ok(s.pocc[i0] <= 5);
+  assert.ok(busy() <= 5 && P.every((i) => s.pocc[i] <= 1));
   // gara acoperă tot orașul, chiar și casele de la 7+ plăci de ea
   assert.ok(covers(st, c));
   const s2 = world();

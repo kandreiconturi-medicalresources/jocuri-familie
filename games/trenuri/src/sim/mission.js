@@ -2,6 +2,7 @@
 import { MODELS, RETRY } from './consts.js';
 import { tailTiles, mark } from './blocks.js';
 import { findRail, segLen } from './trains.js';
+import { standAt } from './lanes.js';
 import { addNews } from './news.js';
 import { hold, releaseAll, releaseFrom } from './reserve.js';
 
@@ -111,7 +112,7 @@ export function missionPath(s, t) {
   if (t.tow) return towPath(s, t);
   const dep = depotById(s, t.toDepot), A = s.stations.find((q) => q.id === t.to);
   if (!dep || !A) { t.toDepot = 0; return undefined; }
-  const p = findRail(s, t.org ? t.org - 1 : A.y * s.w + A.x, tileOf(s, dep));
+  const p = findRail(s, standAt(s, t, A), tileOf(s, dep));
   if (!p) { t.toDepot = 0; addNews(s, '🤔', `Trenul ${t.id} nu găsește drumul la ${dep.name}.`); return undefined; }
   if (p.length < 2) { t.wait = RETRY; return null; }
   return { p, k0: 0 };

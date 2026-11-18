@@ -6,6 +6,7 @@ import { covers } from '../games/trenuri/src/sim/catch.js';
 import { spawnCargo } from '../games/trenuri/src/sim/economy.js';
 import { deriveLayers } from '../games/trenuri/src/sim/roads.js';
 import { growBuildings } from '../games/trenuri/src/sim/growth.js';
+import { platsOf } from '../games/trenuri/src/sim/laneGeo.js';
 import { createHub } from './trenuri-hub.js';
 
 const ok = (r) => { assert.ok(r.ok, r.err); return r; };
@@ -35,8 +36,10 @@ test('gara de trecere: ocupă locul, dărâmă casele cu despăgubire, preț cor
   const set = new Set([...tiles, ...main].map(([x, y]) => y * s.w + x));
   assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'nicio casă în locul gării');
   const gone = n0 - c.buildings.length;
-  assert.equal(gone, 7, 'șapte case mutate (cea de la 25,27 rămâne)');
-  assert.equal(cash - s.companies[0].cash, THRU_BASE + 6 * THRU_TRACK + 6 * HOUSE_PAY + 700 + info.layCost + info.levelCost, 'gară + linii + despăgubiri + linia principală pusă de gară (blocul înalt costă mai mult)');
+  assert.equal(gone, info.houses.length, 'casele din loc și din calea liniilor s-au mutat');
+  assert.ok(gone >= 7, 'cel puțin cele 7 din locul gării');
+  assert.equal(info.pay, (gone - 1) * HOUSE_PAY + 700, 'blocul înalt costă mai mult');
+  assert.equal(cash - s.companies[0].cash, THRU_BASE + 6 * THRU_TRACK + info.pay + info.layCost + info.levelCost, 'gară + linii + despăgubiri + linia principală pusă de gară');
   assert.ok(main.every(([x, y]) => !s.occ[y * s.w + x]), 'rândul liniei principale e liber');
   growBuildings(s, c, 60);
   assert.ok(c.buildings.every((b) => !set.has(b[1] * s.w + b[0])), 'orașul nu mai construiește în locul gării sau pe linia ei');
@@ -45,16 +48,17 @@ test('gara de trecere: ocupă locul, dărâmă casele cu despăgubire, preț cor
   assert.equal(applyCommand(s, { type: 'buildStation', by: 0, x: tiles[0][0], y: tiles[0][1], size: 0 }).err, 'cladire');
   // mai multe linii: doar în sus, plătești diferența
   const before = s.companies[0].cash;
-  ok(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 9 }));
-  assert.equal(st.platforms, 9);
-  assert.ok(before - s.companies[0].cash >= 3 * THRU_TRACK);
-  assert.equal(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 8 }).err, 'exista');
-  ok(applyCommand(s, { type: 'upgradeStation', by: 0, id: st.id }));
-  assert.equal(st.platforms, 10);
-  assert.equal(applyCommand(s, { type: 'upgradeStation', by: 0, id: st.id }).err, 'limita');
+  ok(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 7 })); // liniile independente: câte un rând pe linie (centrul orașului e pe rândul 8)
+  assert.equal(st.platforms, 7);
+  assert.ok(before - s.companies[0].cash >= THRU_TRACK);
+  assert.equal(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 6 }).err, 'exista');
+  assert.equal(applyCommand(s, { type: 'upgradeStation', by: 0, id: st.id }).err, 'loc', 'linia a 8-a ar trece prin centrul orașului');
+  assert.equal(applyCommand(s, { type: 'setThruTracks', by: 0, id: st.id, n: 11 }).err, 'limita');
+  assert.ok(thruTiles(30, 30, 0, 7, true).every(([x, y]) => s.occ[y * s.w + x]), 'locul gării cu 7 linii e ocupat');
   // demolarea eliberează locul
   ok(applyCommand(s, { type: 'removeStation', by: 0, id: st.id }));
-  assert.ok(thruTiles(30, 30, 0, 10).every(([x, y]) => !s.occ[y * s.w + x]));
+  assert.ok(thruTiles(30, 30, 0, 7, true).every(([x, y]) => !s.occ[y * s.w + x]));
+  assert.ok(!s.stAt.some(Boolean), 'liniile nu mai sunt ale niciunei gări');
 });
 
 test('gara de trecere: refuzată pe linie în diagonală sau peste apă; o gară normală se poate transforma', () => {
@@ -93,18 +97,21 @@ function line(s, n) {
 }
 
 test('gara de trecere: n trenuri stau deodată (fiecare pe linia lui), niciodată mai multe decât liniile', () => {
-  const s = world(), { A, T } = line(s, 6), i0 = 30 * s.w + 30;
+  const s = world(), { A, T } = line(s, 6), P = platsOf(s, s.stations.find((q) => q.id === T)), busy = () => P.reduce((a, i) => a + s.pocc[i], 0);
   s.companies[0].cash = 1e6;
+  assert.equal(P.length, 6, 'linii independente: câte un peron pe linie');
   const trs = [];
   for (let i = 0; i < 6; i++) { const id = ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: T, kinds: [0], route: [T, A] })).id; trs.push(s.trains.find((t) => t.id === id)); }
   assert.ok(trs.every((t) => t.state === 2 && t.to === T), 'toate 6 stau deodată în gară');
-  assert.equal(s.pocc[i0], 6);
+  assert.equal(busy(), 6);
+  assert.ok(P.every((i) => s.pocc[i] === 1), 'fiecare tren pe peronul liniei lui');
   // se duc pe rând la A și se întorc; la întoarcere rămân în gara mare (pauză): la final toate 6 stau iar deodată
   let most = 0, i = 0;
   for (; i < 30000; i++) {
     stepWorld(s);
     for (const t of trs) if (t.state === 2 && t.to === T && t.from === A) t.paused = 1;
-    most = Math.max(most, s.pocc[i0]);
+    most = Math.max(most, busy());
+    assert.ok(P.every((i) => s.pocc[i] <= 1), 'un singur tren pe un peron');
     if (trs.every((t) => t.paused && t.state === 2 && t.to === T)) break;
   }
   assert.ok(most <= 6, 'niciodată mai multe trenuri decât linii');
@@ -145,21 +152,24 @@ test('gara de trecere: serializare, determinism și lockstep cu 3 noduri', async
 });
 
 test('gara de trecere cu 10 linii încape în orice oraș (caută locul, pune linia dreaptă, nivelează)', () => {
+  let wide = 0, all = 0;
   for (const seed of [1, 2, 3]) {
     const s = createWorld({ seed, size: 'M', year: 2025 });
     s.sandbox = 1;
-    for (const c of s.cities) {
-      const r = thruNear(s, 0, c.x, c.y, 10);
-      assert.ok(r.ok, `${seed} ${c.name}: ${r.err}`);
-      assert.ok(r.fan.length >= 4, `${seed} ${c.name}: doar ${r.fan.length} intrări`); // casele se mută, dealul se nivelează treptat
+    for (const c of s.cities) { // liniile independente cer 10 rânduri de plăci: unde nu încap, rămâne intrarea comună
+      const r = thruNear(s, 0, c.x, c.y, 10), j = r.ok ? r : thruNear(s, 0, c.x, c.y, 10, 5, 'join');
+      all++; if (r.ok) wide++;
+      assert.ok(j.ok, `${seed} ${c.name}: ${r.err} / ${j.err}`);
+      assert.ok(j.fan.length >= 4, `${seed} ${c.name}: doar ${j.fan.length} intrări`); // casele se mută, dealul se nivelează treptat
     }
-    const c = s.cities[0], r = thruNear(s, 0, c.x, c.y, 10);
-    const b = applyCommand(s, { type: 'buildThru', by: 0, x: r.x, y: r.y, n: 10, dir: r.dir });
+    const c = s.cities[0], sep = thruNear(s, 0, c.x, c.y, 10), r = sep.ok ? sep : thruNear(s, 0, c.x, c.y, 10, 5, 'join');
+    const b = applyCommand(s, { type: 'buildThru', by: 0, x: r.x, y: r.y, n: 10, dir: r.dir, join: !sep.ok });
     assert.ok(b.ok, b.err);
     const st = s.stations.find((q) => q.id === b.id);
     assert.equal(st.platforms, 10);
     assert.ok(mainTiles(st.x, st.y, st.dir, 10).every(([x, y]) => s.track[y * s.w + x] & 0x4000), 'linia principală e pusă');
   }
+  assert.ok(wide * 3 >= all * 2, `liniile separate încap în majoritatea orașelor: ${wide} din ${all}`);
 });
 
 test('gara mare are intrări separate: 5 linii din 5 locuri diferite, trenurile lor intră toate în gară', () => {
@@ -172,11 +182,10 @@ test('gara mare are intrări separate: 5 linii din 5 locuri diferite, trenurile 
   const trains = [];
   for (const p of info.fan.slice(0, 5)) {
     const end = p[p.length - 1], prev = p[p.length - 2], dx = end[0] - prev[0], dy = end[1] - prev[1];
-    const far = [end[0] + dx * 7, end[1] + dy * 7];
+    const far = [end[0] + dx * 7, end[1] + dy * 7], path = [];
+    for (let k = 0; k <= 7; k++) path.push([end[0] + dx * k, end[1] + dy * k]); // fiecare intrare cu șina ei dreaptă, separată
+    ok(applyCommand(s, { type: 'buildTrack', by: 0, path }));
     const A = ok(applyCommand(s, { type: 'buildStation', by: 0, x: far[0], y: far[1], size: 0 })).id;
-    const path = planTrack(s, far, end, 0);
-    assert.ok(path, 'drum spre intrare');
-    ok(applyCommand(s, { type: 'buildTrack', by: 0, path: path.path }));
     trains.push(ok(applyCommand(s, { type: 'buyTrain', by: 0, model: 3, stationId: A, kinds: [0], route: [A, T] })).id);
   }
   const seen = new Set();
@@ -188,5 +197,5 @@ test('gara mare are intrări separate: 5 linii din 5 locuri diferite, trenurile 
     most = Math.max(most, here.length);
   }
   assert.equal(seen.size, trains.length, 'toate trenurile au ajuns în gara mare');
-  assert.ok(most >= 2, 'mai multe trenuri deodată în gară: ' + most);
+  assert.equal(most, 5, 'toate 5 deodată în gară, fiecare pe linia lui: ' + most);
 });

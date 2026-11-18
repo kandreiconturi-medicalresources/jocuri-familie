@@ -4,14 +4,15 @@
 // Casele din cale se mută (cu despăgubire), iar pe deal intrările urcă/coboară treptat (cel mult o treaptă pe placă), cu nivelare.
 import { WATER_H, T_PRESENT, T_OWNER_SHIFT } from './consts.js';
 import { frameOf } from './terminal.js';
+import { FAN_AT, halfLen } from './laneGeo.js';
 
 const STUB = 2; // plăci drepte la capătul fiecărei intrări
-const FAN_AT = 5; // evantaiul începe la 5 plăci de gară: gara (max ±4) poate crește fără să-l atingă
+// evantaiul începe la FAN_AT = 5 plăci de gară: gara (max ±4) poate crește fără să-l atingă
 
-/** { paths: [[ [x,y], ... ]], levels: [[i, h]] } — căile pornesc din capătul liniei principale; ramurile blocate (apă, industrie, șina altuia) se sar. */
+/** { paths: [[ [x,y], ... ]], keys: [[e, r]] (latura și linia fiecărei căi), levels: [[i, h]] } — căile pornesc din capătul liniei principale; ramurile blocate (apă, industrie, șina altuia) se sar. */
 export function fanPaths(s, x, y, dir, A, rows, by, h0, opt = {}) {
   const house = opt.house || (() => false), center = opt.center || new Set(), lmax = opt.levelMax || 1;
-  const f = frameOf(dir), w = s.w, R = opt.R !== undefined ? opt.R : Math.min(3, rows), paths = [], lv = new Map();
+  const f = frameOf(dir), w = s.w, R = opt.R !== undefined ? opt.R : Math.min(3, rows), paths = [], keys = [], lv = new Map();
   const at = (a, c) => [x + f.ax * a + f.cx * c, y + f.ay * a + f.cy * c];
   /** Înălțimea la care pui placa după cea de înălțime `prev`, sau -1 dacă nu se poate. */
   const fit = ([tx, ty], prev) => {
@@ -35,14 +36,14 @@ export function fanPaths(s, x, y, dir, A, rows, by, h0, opt = {}) {
     for (let r = 0; r <= R; r++) {
       const p = lead.slice();
       for (let i = 1; i <= r; i++) p.push(at(a0 + e * i, i)); // diagonala macazelor
-      for (let k = 1, K = opt.reach ? opt.reach - a0 - r : STUB; k <= K; k++) p.push(at(a0 + e * (r + k), r)); // capătul drept, de legat (la culoar: până la capătul fâșiei)
+      for (let k = 1, K = opt.reach ? opt.reach - FAN_AT - r : STUB; k <= K; k++) p.push(at(a0 + e * (r + k), r)); // capătul drept, de legat (la culoar: până la capătul fâșiei)
       const hs = walk(p);
       if (!hs) continue;
-      paths.push(p);
+      paths.push(p); keys.push([e, r]);
       p.forEach(([tx, ty], k) => { const i = ty * w + tx; if (k && hs[k] !== s.height[i] && !lv.has(i)) lv.set(i, hs[k]); });
     }
   }
-  return { paths, levels: [...lv.entries()].sort((a, b) => a[0] - b[0]) };
+  return { paths, keys, levels: [...lv.entries()].sort((a, b) => a[0] - b[0]) };
 }
 
 /** Capetele libere ale intrărilor (unde legi șina), pentru indicii pe hartă. */
@@ -55,6 +56,10 @@ export function laneExits(st) {
   if (!st.sep) return out;
   for (const e of [-1, 1]) for (let r = 0; r < st.platforms; r++) for (const k of r ? [FAN_AT + r + 1] : [2, 3, 4]) { // r = 0: gâtul dintre gară și evantai e împărțit în blocuri de o placă, ca trenurile să intre unul după altul
     const a = e * k;
+    out.push({ x: st.x + f.ax * a + f.cx * r, y: st.y + f.ay * a + f.cy * r, ox: st.x + f.ax * (a + e) + f.cx * r, oy: st.y + f.ay * (a + e) + f.cy * r });
+  }
+  if (st.ln) for (const e of [-1, 1]) for (let r = 1; r < st.platforms; r++) { // liniile independente: semnal și la ieșirea din corpul gării
+    const a = e * (halfLen(st.platforms) + 1);
     out.push({ x: st.x + f.ax * a + f.cx * r, y: st.y + f.ay * a + f.cy * r, ox: st.x + f.ax * (a + e) + f.cx * r, oy: st.y + f.ay * (a + e) + f.cy * r });
   }
   return out;

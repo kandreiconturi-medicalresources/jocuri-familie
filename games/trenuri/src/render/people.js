@@ -53,7 +53,7 @@ export function createPeople(s, g, camera) {
   /** Poziția (în u, de-a lungul peronului) a vagonului i (0 = primul după locomotivă). */
   function carU(t, st, L, lane, i) {
     if (L.big && lane > 0) return 1.2 - ((i + 1) * CAR_GAP) / 256; // la fel ca în trains.js (bays)
-    if (L.thru && lane > 0) return sgOf(st, t) * ((t.cars * CAR_GAP) / 512 - ((i + 1) * CAR_GAP) / 256);
+    if (L.thru && lane > 0 && !st.ln) return sgOf(st, t) * ((t.cars * CAR_GAP) / 512 - ((i + 1) * CAR_GAP) / 256);
     const moving = t.path.length > 1, path = moving ? t.path : stubPath(s, st), d = moving ? travelled(s, t) : path.length > 1 ? cumOf(s, path)[1] : 0, o = poseAt(s, g, path, d - (i + 1) * CAR_GAP);
     return (o.x - L.ox) * L.ax + (o.z - L.oz) * L.az;
   }

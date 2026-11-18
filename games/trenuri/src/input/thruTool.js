@@ -22,7 +22,9 @@ export function createThruTool(c) {
     const dir = r.ok ? r.dir : st && st.thru ? st.dir : (s.track[t.y * s.w + t.x] & 0x11) ? 2 : 0;
     const gone = new Set(r.ok ? r.houses : []), out = [{ x: px, y: py, color: GOLD }];
     const inb = ([x, y]) => x >= 0 && y >= 0 && x < s.w && y < s.h;
-    for (const [x, y] of [...thruTiles(px, py, dir, o.n), ...mainTiles(px, py, dir, o.n)].filter(inb)) out.push({ x, y, color: gone.has(y * s.w + x) ? ORANGE : r.ok ? GREEN : RED });
+    const wide = r.ok ? !!r.wide : !o.join; // liniile independente: câte un rând de plăci pe linie
+    for (const [x, y] of [...thruTiles(px, py, dir, o.n, wide), ...mainTiles(px, py, dir, o.n)].filter(inb)) out.push({ x, y, color: gone.has(y * s.w + x) ? ORANGE : r.ok ? GREEN : RED });
+    if (r.ok && r.inner) for (const q of r.inner) q.forEach(([x, y], k) => { if (k && inb([x, y])) out.push({ x, y, color: BLUE }); }); // fiecare linie dreaptă prin gară
     if (r.ok && r.fan) for (const q of r.fan) q.forEach(([x, y], k) => { if (k && inb([x, y])) out.push({ x, y, color: k === q.length - 1 ? GOLD : BLUE }); }); // intrările (capăt auriu = aici legi o linie)
     c.ov().set(out);
     const k = `${t.x},${t.y},${o.n},${r.ok ? r.cost : r.err},${armed ? 1 : 0}`;
@@ -37,12 +39,12 @@ export function createThruTool(c) {
       const f = info(t);
       if (!f.ok) { key = ''; paint(t); return; }
       const st = s0().stations.find((q) => q.x === f.x && q.y === f.y);
-      armed = { x: f.x, y: f.y, dir: f.dir, n: o.n, cost: f.cost, fan: f.fan, houses: f.houses, pay: f.pay, levelCost: f.levelCost, up: st && st.thru ? st.id : -1, t: { x: f.x, y: f.y } };
+      armed = { x: f.x, y: f.y, dir: f.dir, n: o.n, cost: f.cost, fan: f.fan, inner: f.inner, wide: f.wide, houses: f.houses, pay: f.pay, levelCost: f.levelCost, up: st && st.thru ? st.id : -1, t: { x: f.x, y: f.y } };
       c.bar(); key = ''; paint(t);
       c.hud().hint(`🏙️ ${o.n} linii · ${lei(f.cost)}: apasă ✅ Construiește (sau Enter / atinge încă o dată). ❌ sau clic dreapta anulează.`, false, 8000);
       return;
     }
-    const inside = [[armed.x, armed.y], ...thruTiles(armed.x, armed.y, armed.dir, armed.n), ...mainTiles(armed.x, armed.y, armed.dir, armed.n)].some(([x, y]) => x === t.x && y === t.y);
+    const inside = [[armed.x, armed.y], ...thruTiles(armed.x, armed.y, armed.dir, armed.n, armed.wide), ...mainTiles(armed.x, armed.y, armed.dir, armed.n)].some(([x, y]) => x === t.x && y === t.y);
     if (inside) build(); else { armed = null; tap(t); } // atingere în afara locului ales = alegi alt loc
   }
   function build() {

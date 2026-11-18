@@ -13,31 +13,34 @@ import { accelEvery, slopeVmax } from './physics.js';
 import { missionPath, arriveMission, towWatch } from './mission.js';
 import { breakHeavy, deadTick } from './depots.js';
 import { smartReroute } from './smartRoute.js';
+import { standAt, goalsOf, destOf, laneRetarget } from './lanes.js';
 export { capacity, tileDist } from './cargo.js';
 
-/** Cel mai scurt drum pe șine între două plăci (indici), sau null. Dijkstra, ordine deterministă. */
+/** Cel mai scurt drum pe șine între două plăci (indici), sau null. Dijkstra, ordine deterministă.
+ * `a` / `b` pot fi și liste de plăci (oricare start, oricare țintă: peroanele unei gări cu linii independente). */
 export function findRail(s, a, b, avoid = null, pen = null) {
-  const { w, track } = s, n = w * s.h;
+  const { w, track } = s, n = w * s.h, many = Array.isArray(b), goal = many ? (i) => b.includes(i) : (i) => i === b;
   const g = new Int32Array(n).fill(-1), prev = new Int32Array(n).fill(-1);
   const heap = createHeap();
-  g[a] = 0; heap.push(a);
+  for (const a0 of Array.isArray(a) ? a : [a]) if (g[a0] < 0) { g[a0] = 0; heap.push(a0); }
+  let end = -1;
   while (heap.size) {
     const key = heap.pop(), cur = key % KEY;
     if (g[cur] * KEY + cur !== key) continue;
-    if (cur === b) break;
+    if (goal(cur)) { end = cur; break; }
     const x = cur % w, y = (cur / w) | 0, t = track[cur];
     for (let d = 0; d < 8; d++) {
       if (!((t >> d) & 1)) continue;
       const ni = (y + DY[d]) * w + x + DX[d], ng = g[cur] + LEN[d] + (pen ? pen(ni) : 0);
-      if (avoid && ni !== b && avoid(ni)) continue;
+      if (avoid && !goal(ni) && avoid(ni)) continue;
       if (g[ni] >= 0 && g[ni] <= ng) continue;
       g[ni] = ng; prev[ni] = cur;
       heap.push(ng * KEY + ni);
     }
   }
-  if (g[b] < 0) return null;
+  if (end < 0) return null;
   const path = [];
-  for (let c = b; c !== -1; c = prev[c]) path.push(c);
+  for (let c = end; c !== -1; c = prev[c]) path.push(c);
   return path.reverse();
 }
 
@@ -72,14 +75,14 @@ function depart(s, t) {
   const at = cur >= 0 ? cur : t.at, nxt = (at + 1) % len;
   const A = s.stations.find((q) => q.id === t.to), B = s.stations.find((q) => q.id === t.route[nxt]);
   if (!A || !B || A.id === B.id) { t.wait = RETRY; return; }
-  const a0 = t.org ? t.org - 1 : A.y * s.w + A.x, b0 = B.y * s.w + B.x;
-  let p = findRail(s, a0, b0);
+  const a0 = A.ln ? standAt(s, t, A) : t.org ? t.org - 1 : A.y * s.w + A.x, G = goalsOf(s, t, B), b0 = G.g, gp = G.pen; // linii independente: de pe peronul trenului, spre oricare peron liber
+  let p = findRail(s, a0, b0, null, gp);
   if (p) { // dacă drumul cel mai scurt e ocupat sau pe el vine alt tren, caută linia liberă (linie dublă, macazuri), dacă nu e un ocol prea mare
     const ahead = new Set();
     for (const o of s.trains) if (o !== t && o.state === 1) for (let k = o.seg; k < o.path.length; k++) ahead.add(o.path[k]);
     const busy = (i) => pfull(s, i) || (!s.stm[i] && linkCount(s.track[i]) < 3 && (blocked(s, i) || ahead.has(i) || (s.resv[i] && s.resv[i] !== t.id + 1))); // macazurile sunt comune celor două linii
     if (p.some((i, k) => k > 0 && busy(i))) {
-      const alt = findRail(s, a0, b0, busy) || findRail(s, a0, b0, null, (i) => (busy(i) ? 2048 : 0)); // altfel, drumul cu cele mai puține plăci ocupate
+      const alt = findRail(s, a0, b0, busy, gp) || findRail(s, a0, b0, null, (i) => (busy(i) ? 2048 : 0) + (gp ? gp(i) : 0)); // altfel, drumul cu cele mai puține plăci ocupate
       if (alt && pathLen(s.w, alt) <= pathLen(s.w, p) * 2 + 768) p = alt;
     }
   }
@@ -135,7 +138,8 @@ function reroute(s, t) {
   const last = t.path.length - 1, here = t.path[t.seg + 1], back = t.path[t.seg];
   if (t.seg + 2 > last) return false;
   const bad = (i) => blocked(s, i) || pfull(s, i) || (!s.stm[i] && s.resv[i] && s.resv[i] !== t.id + 1);
-  const alt = findRail(s, here, t.path[last], (i) => i === back || bad(i)) || findRail(s, here, t.path[last], (i) => i === back, (i) => (bad(i) ? 2048 : 0));
+  const D = destOf(s, t), gp = D.pen; // linii independente: oricare peron al gării
+  const alt = findRail(s, here, D.g, (i) => i === back || bad(i), gp) || findRail(s, here, D.g, (i) => i === back, (i) => (bad(i) ? 2048 : 0) + (gp ? gp(i) : 0));
   if (!alt || alt.length < 2) return false;
   const rest = t.path.slice(t.seg + 1);
   if (alt.length === rest.length && alt.every((v, k) => v === rest[k])) return false; // același drum: nimic de schimbat
@@ -170,6 +174,7 @@ function move(s, t) {
     else if (t.speed < vm) t.speed++;
     else if (t.speed > vm) t.speed--;
   }
+  if (((s.tick + t.id) & 3) === 2) laneRetarget(s, t); // peronul lui s-a ocupat: trece pe altă linie liberă a aceleiași gări
   const last = t.path.length - 2;
   let adv = Math.min(t.speed, t.left), stop = false;
   let gate = t.seg < last ? enter(s, t, t.path, t.seg + 2) : GO; // semnal: GO / ocupat / roșu

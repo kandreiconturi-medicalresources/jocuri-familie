@@ -1,5 +1,6 @@
 // Singura cale prin care jucătorul schimbă starea: applyCommand(state, cmd) → { ok, err?, cost? }.
 import { START_CASH, DX, DY, opp, T_BRIDGE, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, STATION_COST, STATION_NAMES, MODELS, CAR_PRICE, MAX_CARS, WATER_H, UPGRADES } from './consts.js';
+import { platsOf } from './laneGeo.js';
 import { CONSIST_COMMANDS } from './consist.js';
 import { BIG_COST, BIG_PLATFORMS, autoDir, yardProblem, claimYard, freeYard } from './terminal.js';
 import { pathCost } from './plan.js';
@@ -61,7 +62,7 @@ function removeTrack(s, cmd, c) {
   const i = y * s.w + x, t = s.track[i];
   if (!(t & T_PRESENT)) return fail('inexistent');
   if (ownerOf(t) !== c.id) return fail('proprietar');
-  if (s.stations.some((st) => st.y * s.w + st.x === i) || s.depots.some((d) => d.y * s.w + d.x === i)) return fail('gara');
+  if (s.stations.some((st) => st.y * s.w + st.x === i) || s.depots.some((d) => d.y * s.w + d.x === i) || (s.stAt && s.stAt[i])) return fail('gara'); // și liniile gării mari
   if (s.trains.some((tr) => tr.path.indexOf(i, tr.seg) >= 0)) return fail('tren');
   for (let d = 0; d < 8; d++) {
     if (!((t >> d) & 1)) continue;
@@ -146,7 +147,9 @@ function buyTrain(s, cmd, c) {
   if (!spend(s, c, cost)) return fail('bani');
   const tr = { id: s.nextId++, owner: c.id, model: m.id, cars: kinds.length, kinds: kinds.slice(), route: route.slice(), orders: cleanOrders(cmd.orders === undefined ? null : cmd.orders), at: 0, from: st.id, to: st.id, seg: 0, pos: 0, left: 0, speed: 0, path: [], state: 2, wait: 10, load: [], money: 0, lost: 0, hold: 0, broken: 0, rel: m.rel, paused: 0, noteT: -9999, born: s.date.y * 12 + s.date.m, rv: [], rl: 0, redAt: 0 };
   s.trains.push(tr);
-  hold(s, tr, st.y * s.w + st.x); // trenul stă pe un peron
+  const pl = st.ln ? platsOf(s, st).find((i) => !s.pocc[i]) : undefined; // linii independente: pe primul peron liber
+  if (pl !== undefined) tr.org = pl + 1;
+  hold(s, tr, pl !== undefined ? pl : st.y * s.w + st.x); // trenul stă pe un peron
   s.dirty.trains = true;
   return { ok: true, cost, id: tr.id };
 }

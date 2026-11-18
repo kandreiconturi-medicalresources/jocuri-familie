@@ -1,4 +1,5 @@
 // Semnalizare simplă: plăcile de șină ocupate de trenuri (derivat, nu se salvează). Gările nu blochează.
+import { markLanes } from './laneGeo.js';
 const CAR_GAP = 218;
 export const tailTiles = (t) => (((t.cars + 1) * CAR_GAP + 255) >> 8) + 1;
 
@@ -16,6 +17,7 @@ export function rebuildBlocks(s) {
   s.stm = new Uint8Array(s.w * s.h);
   for (const st of s.stations) s.stm[st.y * s.w + st.x] = 1;
   for (const d of s.depots || []) s.stm[d.y * s.w + d.x] = 1; // depoul se poartă ca o gară: intrarea e un singur loc
+  markLanes(s); // peroanele liniilor independente ale gărilor mari (câte un loc pe linie)
   for (const t of s.trains) mark(s, t, 1);
 }
 

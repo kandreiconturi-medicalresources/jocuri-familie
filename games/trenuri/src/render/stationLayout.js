@@ -33,10 +33,10 @@ export function layoutOf(s, st) {
 
 /** Gara de trecere: peroanele din thruLayout.js; ieșirea e pe pasarelă spre clădire (out = [[u, v, z]]). */
 function thruLayout(st) {
-  const key = 't' + st.id + ':' + st.x + ',' + st.y + ',' + st.dir + ',' + nOf(st);
+  const key = 't' + st.id + ':' + st.x + ',' + st.y + ',' + st.dir + ',' + nOf(st) + (st.ln ? 'w' : '');
   let L = bigCache.get(key);
   if (L) return L;
-  const G = thruGeo(nOf(st)), f = frameOf(st.dir);
+  const G = thruGeo(nOf(st), !!st.ln), f = frameOf(st.dir);
   const plats = G.plats.map((pl) => ({ v: pl.v, hw: HW, u0: pl.u0, u1: pl.u1, top: TOP, lanes: pl.lanes, exit: [G.uB, G.vB0 + 0.22] }));
   for (const pl of plats) pl.out = (under) => walkPath(G, pl, null, under);
   L = { big: false, thru: true, multi: true, G, ox: st.x + 0.5, oz: st.y + 0.5, ax: f.ax, az: f.ay, bx: f.cx, bz: f.cy, lanes: G.lanes.slice(), plats };
