@@ -8,11 +8,11 @@ const BLUE = '#4dabf7', GOLD = '#ffd23f', GREEN = '#5bd66f', RED = '#ff5a6a', OR
 export const THRU_TOOL = { id: 'thru', e: '🏙️', t: 'Gară mare de trecere', hint: 'Alege câte linii (2–10), apoi atinge orașul: gara își caută singură locul (auriu), își pune linia dreaptă, nivelează terenul și mută casele cu despăgubire. Acoperă tot orașul.' };
 
 export function createThruTool(c) {
-  const o = { n: 4 };
+  const o = { n: 4, join: false }; // join = „intrare comună” (scara veche de macaze); implicit liniile ies separat, drepte
   let key = '';
   const S = () => c.S(), s0 = S, me = () => (S().companies[viewer.co] ? viewer.co : 0);
   let memo = null, armed = null; // armed = locul ales la prima atingere { x, y, dir, n, cost, houses, t }: rămâne fix până la ✅ / ❌ // căutarea în jur e ceva mai grea: o refacem doar când se schimbă placa, linii sau starea
-  const info = (t) => { const s = S(), k = `${t.x},${t.y},${o.n},${s.tick},${s.companies[me()].cash}`; if (!memo || memo.k !== k) memo = { k, r: thruNear(s, me(), t.x, t.y, o.n) }; return memo.r; };
+  const info = (t) => { const s = S(), k = `${t.x},${t.y},${o.n},${s.tick},${s.companies[me()].cash}`; if (!memo || memo.k !== k) memo = { k, r: thruNear(s, me(), t.x, t.y, o.n, 5, o.join ? 'join' : '') }; return memo.r; };
 
   function paint(t) {
     if (armed) t = armed.t; // locul ales nu fuge după mouse
@@ -49,15 +49,16 @@ export function createThruTool(c) {
     if (!armed) return;
     const a = armed;
     armed = null; c.bar();
-    const r = a.up >= 0 ? c.exec({ type: 'setThruTracks', id: a.up, n: a.n }) : c.exec({ type: 'buildThru', x: a.x, y: a.y, n: a.n, dir: a.dir });
+    const r = a.up >= 0 ? c.exec({ type: 'setThruTracks', id: a.up, n: a.n }) : c.exec({ type: 'buildThru', x: a.x, y: a.y, n: a.n, dir: a.dir, join: o.join || undefined });
     memo = null; key = '';
-    if (r && r.ok) c.hud().hint(a.up >= 0 ? `Gata: ${a.n} linii · ${lei(r.cost)}.` : `🏙️ Gară mare cu ${a.n} linii · ${lei(r.cost)}. Are ${a.fan ? a.fan.length : 2} intrări (capetele aurii): leagă la fiecare câte o linie din alt loc, iar trenurile intră toate în aceeași gară.`, false, 6000);
+    if (r && r.ok) c.hud().hint(a.up >= 0 ? `Gata: ${a.n} linii · ${lei(r.cost)}.` : `🏙️ Gară mare cu ${a.n} linii · ${lei(r.cost)}. Are ${a.fan ? a.fan.length : 2} capete (aurii): leagă la fiecare câte o șină din alt loc, iar trenurile intră toate în aceeași gară.`, false, 6000);
     else c.hud().hint((r && (ERR_TEXT[r.err] || r.err)) || 'Nu s-a putut construi gara.', true, 5000);
     if (r && r.ok) c.ov().clear(); else paint(a.t); // după construire nu mai lăsăm previzualizarea pe hartă
   }
   function bar() {
     const out = [];
     if (armed) out.push({ label: '✅ Construiește', small: lei(armed.cost), cls: 'go', fn: build }, { label: '❌ Anulează', fn: cancel });
+    out.push({ label: o.join ? '🔀 Intrare comună' : '↔️ Linii separate', small: o.join ? 'o singură linie în față' : 'câte o șină pe linie', on: !o.join, fn: () => { o.join = !o.join; key = ''; const t = armed && armed.t; armed = null; if (t) tap(t); c.bar(); } });
     for (let n = THRU_MIN; n <= THRU_MAX; n++) out.push({ label: `${n} linii`, small: lei(THRU_BASE + n * THRU_TRACK) + '+', on: o.n === n, fn: () => { o.n = n; key = ''; const t = armed && armed.t; armed = null; if (t) tap(t); c.bar(); } }); // alt număr de linii: același loc, se re-alege
     return out;
   }

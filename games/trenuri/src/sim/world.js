@@ -44,6 +44,7 @@ function arr(h, a) { for (let i = 0; i < a.length; i++) h = fnv(h, a[i]); return
 
 function hashDepotTrain(h, t) {
   h = num(num(num(h, t.dead | 0), t.dq | 0), (t.toDepot | 0) * 7 + (t.cpl | 0) + (t.resc | 0) * 3);
+  if (t.lf) h = num(h, t.lf);
   return t.tow ? num(h, t.tow.targetId * 9 + (t.tow.ph === 'haul' ? 1 : 0)) : h;
 }
 const PH = { lift: 1, repair: 2, lower: 3 };
@@ -68,7 +69,7 @@ export function hashState(s) {
   for (let i = 0; i < s.track.length; i++) h = fnv(fnv(h, s.track[i]), s.track[i] >> 8);
   for (const c of s.cities) { h = num(num(num(h, c.pop), c.level), c.buildings.length); h = arr(h, c.got); }
   for (const o of s.industries) { h = num(num(num(h, o.type), o.x * 256 + o.y), o.boost); h = arr(arr(h, o.in), o.out); }
-  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); if (t.port) h = num(h, 900 + t.dock); if (t.thru) h = num(h, 1300 + t.dir); if (t.cor) h = num(h, 2000 + t.cor); }
+  for (const t of s.stations) { h = num(num(num(num(h, t.id), t.x * 256 + t.y), t.waiting.pass), t.waiting.mail); h = num(num(num(h, t.owner), t.size), t.platforms | 0); h = arr(arr(h, t.cargo), t.up); if (t.big) h = num(h, 500 + t.dir); if (t.port) h = num(h, 900 + t.dock); if (t.thru) h = num(h, 1300 + t.dir); if (t.cor) h = num(h, 2000 + t.cor); if (t.sep) h = num(h, 3000 + t.sep); }
   for (const t of s.trains) {
     h = num(num(num(num(h, t.id), t.seg), t.pos), t.speed); h = num(num(num(h, t.left), t.state), t.money);
     h = num(num(num(h, t.to), t.at), t.wait); h = num(num(h, t.hold), t.broken); h = arr(h, t.kinds);

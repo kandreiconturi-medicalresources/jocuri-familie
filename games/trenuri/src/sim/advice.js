@@ -89,7 +89,7 @@ export function trainAdvice(s, t) {
   const out = [];
   if (t.tow) return ['🚑 Remorcă: merge după un tren defect.'];
   if (t.state === 3) return [t.cpl ? '🚑 E remorcat spre depou.' : '🏭 E la depou: așteaptă la coadă sau se repară.'];
-  if (t.dead) return [t.resc ? '🚨 E defect pe traseu. Remorca vine.' : '🚨 E defect pe traseu și blochează linia: trimite remorcă (🚑).'];
+  if (t.dead) return [t.resc ? '🚨 E defect pe traseu. Remorca vine.' : '🚨 E defect pe traseu și blochează linia: trimite remorcă (🚑) sau ridică-l cu macaraua (🏗️).'];
   if (t.toDepot) out.push('🏭 Merge la depou, la reparat.');
   if (t.paused) out.push(t.state === 2 ? '⏸ E în pauză, stă în gară.' : '⏸ Pauză: se oprește la gara următoare.');
   if (t.route.length < 2) out.push('Nu are rută: alege două gări.');

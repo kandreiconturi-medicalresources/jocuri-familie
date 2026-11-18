@@ -6,6 +6,7 @@ import { addNews } from './news.js';
 import { roll } from './rand.js';
 import { syncAuto } from './signals.js';
 import { makeTow, tileOf } from './mission.js';
+import { liftNow, liftTrain } from './lift.js';
 
 const fail = (err) => ({ ok: false, err });
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -92,17 +93,14 @@ export function breakHeavy(s, t) {
   return true;
 }
 
-/** Un pas cu trenul defect: în modul simplu remorca pleacă după o zi; altfel, dacă nu vine nimeni, e reparat pe loc (scump și lent). */
+/** Un pas cu trenul defect: în modul simplu remorca pleacă după o zi (și iar, din 5 în 5 zile, dacă n-a putut); dacă nimeni nu-l poate atinge ~10 zile, macaraua îl ridică singură. */
 export function deadTick(s, t) {
   t.speed = 0; t.dead++;
-  if (t.resc) return;
-  if (s.mode !== 'expert' && t.dead === DEPOT.auto + 1) startRescue(s, t);
-  else if (t.dead > DEPOT.self) {
-    const c = s.companies[t.owner];
-    if (c && !s.sandbox) c.cash -= DEPOT.selfCost;
-    t.dead = 0; t.rel = MODELS[t.model].rel;
-    addNews(s, '🔧', `Trenul ${t.id} a fost reparat pe loc, încet și scump (${DEPOT.selfCost} lei).`);
-  }
+  const tw = t.resc ? s.trains.find((q) => q.id === t.resc) : null;
+  if (t.resc && !tw) t.resc = 0;
+  if (!t.resc && s.mode !== 'expert' && t.dead >= DEPOT.auto + 1 && (t.dead - DEPOT.auto - 1) % DEPOT.retry === 0) startRescue(s, t);
+  const stuck = !tw || tw.state !== 1 || tw.hold >= 20;
+  if ((t.dead > DEPOT.liftAuto && stuck) || t.dead > DEPOT.self) { const c = s.companies[t.owner]; if (c && !s.sandbox) c.cash -= DEPOT.liftCost; liftNow(s, t, true, true); }
 }
 
-export const DEPOT_COMMANDS = { buildDepot, sendToDepot, rescueTrain };
+export const DEPOT_COMMANDS = { buildDepot, sendToDepot, rescueTrain, liftTrain };

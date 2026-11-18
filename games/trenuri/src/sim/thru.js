@@ -4,7 +4,7 @@
 // iar pe rândul liniei principale casele dispar ca să încapă șina. Gara acoperă tot orașul ei (vezi catch.js).
 import { WATER_H, T_PRESENT, T_OWNER_SHIFT, UPGRADES, STATION_COST, COST } from './consts.js';
 import { levelCostOf, markTerrain, layPath } from './terraform.js';
-import { fanPaths } from './thruFan.js';
+import { fanPaths, sepReach } from './thruFan.js';
 import { frameOf } from './terminal.js';
 import { NG } from './goods.js';
 import { addNews } from './news.js';
@@ -91,18 +91,18 @@ export function thruPlan(s, x, y, dir, n, st = null, by = st ? st.owner : -1, co
   for (const [i, hh] of flv) vol += Math.abs(s.height[i] - hh);
   const seen = new Set();
   for (const [tx, ty] of [...lay, ...fan.flat()]) { const i = ty * w + tx; if (!(s.track[i] & T_PRESENT)) seen.add(i); }
-  return { ok: true, houses, pay, dir, n, lvl, flv, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, fan, layCost: seen.size * COST.tile };
+  return { ok: true, sep: cor, houses, pay, dir, n, lvl, flv, h0, levelCost: vol ? levelCostOf(vol) : 0, lay, fan, layCost: seen.size * COST.tile };
 }
 
 /** Prima direcție bună (cele mai puține case dărâmate), după linia care trece prin placă. null dacă nu încape. */
-export function thruAuto(s, x, y, n, st = null, by = -1) {
+export function thruAuto(s, x, y, n, st = null, by = -1, cor = 0) {
   const t = s.track[y * s.w + x] & 0xff;
   let order = [0, 2, 4, 6];
   if (t & 0x11) order = [2, 6]; // linie N–S: gara la est sau vest
   else if (t & 0x44) order = [0, 4];
   else if (t) return null;
   let best = null, err = 'loc';
-  for (const d of order) { const p = thruPlan(s, x, y, d, n, st, by); if (!p.ok) { err = p.err; continue; } if (!best || thruCost(p, st) < thruCost(best, st)) best = p; }
+  for (const d of order) { const p = thruPlan(s, x, y, d, n, st, by, cor); if (!p.ok) { err = p.err; continue; } if (!best || thruCost(p, st) < thruCost(best, st)) best = p; }
   return best || fail(err);
 }
 
@@ -159,37 +159,41 @@ export function freeThru(s, st) {
 export const spend = (s, c, amt) => { if (!s.sandbox && c.cash < amt) return false; if (!s.sandbox) c.cash -= amt; return true; };
 const inMap = (s, x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < s.w && y < s.h;
 
-/** Informații pentru previzualizare (fără să schimbe starea): { ok, err?, cost, houses, dir, n, st }. */
-export function thruInfo(s, by, x, y, n, dir) {
+/** Informații pentru previzualizare (fără să schimbe starea): { ok, err?, cost, houses, dir, n, st }.
+ * `mode`: 'join' = intrare comună (scara de macaze veche); 'split' = desparte intrările unei gări existente; altfel gara nouă are intrări separate (câte o linie dreaptă pe linia gării). */
+export function thruInfo(s, by, x, y, n, dir, mode = '') {
   if (!inMap(s, x, y)) return fail('harta');
   const i = y * s.w + x, st = s.stations.find((q) => q.y * s.w + q.x === i) || null;
   if (st && (st.owner !== by || st.big || st.port)) return fail(st.owner !== by ? 'proprietar' : 'teren');
-  if (st && st.thru && clampN(n) <= st.platforms) return fail('exista');
+  if (mode === 'split') { if (!st || !st.thru || st.sep || st.cor) return fail('exista'); n = st.platforms; }
+  else if (st && st.thru && clampN(n) <= st.platforms) return fail('exista');
   const t = s.track[i];
   if (!st && (t & T_PRESENT) && ((t >> T_OWNER_SHIFT) & 7) !== by) return fail('proprietar');
   if (!st && (s.water[i] || s.height[i] <= WATER_H)) return fail('teren');
-  const p = st && st.thru ? thruPlan(s, x, y, st.dir, n, st, by) : dir === undefined || dir < 0 ? thruAuto(s, x, y, n, st, by) : thruPlan(s, x, y, dir | 0, n, st, by);
+  const sep = mode === 'join' || (st && st.thru && !st.sep && mode !== 'split') ? 0 : sepReach(clampN(n));
+  const p = st && st.thru ? thruPlan(s, x, y, st.dir, n, st, by, sep) : dir === undefined || dir < 0 ? thruAuto(s, x, y, n, st, by, sep) : thruPlan(s, x, y, dir | 0, n, st, by, sep);
   if (!p || !p.ok) return p || fail('loc');
+  if (sep && p.fan.length < p.n) return fail('intrari'); // intrări separate: măcar atâtea capete câte linii
   return { ...p, cost: thruCost(p, st), st };
 }
 
 /** Cel mai bun loc din jurul plăcii atinse (rază 5): întâi placa însăși, apoi cel mai ieftin, cu preferință pentru aproape. */
-export function thruNear(s, by, x, y, n, R = 5) {
-  const here = thruInfo(s, by, x, y, n);
+export function thruNear(s, by, x, y, n, R = 5, mode = '') {
+  const here = thruInfo(s, by, x, y, n, undefined, mode);
   let best = null, bs = Infinity;
   if (here.ok) { // placa atinsă are un mic avantaj, dar nu dacă în jur e un loc cu mai multe intrări
     const ci = cityOf(s, x, y), cd = ci >= 0 ? Math.max(Math.abs(s.cities[ci].x - x), Math.abs(s.cities[ci].y - y)) : 9;
-    best = { ...here, x, y }; bs = here.cost + cd * 2500 + (8 - here.fan.length) * 2500 - 1000;
+    best = { ...here, x, y }; bs = here.cost + cd * 2500 + Math.max(0, 8 - here.fan.length) * 2500 - 1000;
   }
   for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
     const tx = x + dx, ty = y + dy;
     if ((!dx && !dy) || !inMap(s, tx, ty)) continue;
     const t = s.track[ty * s.w + tx];
     if ((t & 0xff) && !(t & 0x55)) continue; // pe diagonală nu se poate
-    const r = thruInfo(s, by, tx, ty, n);
+    const r = thruInfo(s, by, tx, ty, n, undefined, mode);
     if (!r.ok) continue;
     const ci = cityOf(s, tx, ty), cd = ci >= 0 ? Math.max(Math.abs(s.cities[ci].x - tx), Math.abs(s.cities[ci].y - ty)) : 9;
-    const score = r.cost + cd * 2500 + Math.max(Math.abs(dx), Math.abs(dy)) * 300 + (t & T_PRESENT ? 0 : 1500) + (8 - (r.fan ? r.fan.length : 0)) * 2500; // cât mai în oraș, cu intrări la ambele capete
+    const score = r.cost + cd * 2500 + Math.max(Math.abs(dx), Math.abs(dy)) * 300 + (t & T_PRESENT ? 0 : 1500) + Math.max(0, 8 - (r.fan ? r.fan.length : 0)) * 2500; // cât mai în oraș, cu intrări la ambele capete
     if (score < bs) { bs = score; best = { ...r, x: tx, y: ty }; }
   }
   return best || here;
@@ -197,7 +201,7 @@ export function thruNear(s, by, x, y, n, R = 5) {
 
 /** buildThru { x, y, n, dir? }: gară nouă de trecere sau transformarea gării tale normale de pe placă. */
 function buildThru(s, cmd, c) {
-  const r = thruInfo(s, c.id, cmd.x, cmd.y, cmd.n === undefined ? 4 : cmd.n, cmd.dir);
+  const r = thruInfo(s, c.id, cmd.x, cmd.y, cmd.n === undefined ? 4 : cmd.n, cmd.dir, cmd.join ? 'join' : '');
   if (!r.ok) return r;
   if (r.st && r.st.thru) return fail('exista');
   if (!spend(s, c, r.cost)) return fail('bani');
@@ -211,6 +215,7 @@ function buildThru(s, cmd, c) {
   }
   const cityId = st.cityId >= 0 ? st.cityId : cityOf(s, st.x, st.y), city = cityId >= 0 ? s.cities[cityId] : null;
   const same = city ? s.stations.filter((q) => q.thru && q.cityId === cityId).length : 0;
+  if (r.sep) st.sep = r.sep;
   Object.assign(st, { thru: 1, dir: r.dir, platforms: r.n, size: 2, cityId, name: city ? `Gara Mare ${city.name}${same ? ' ' + (same + 1) : ''}` : `Gara Mare ${st.id}` });
   claim(s, st, r);
   syncAuto(s);
@@ -228,11 +233,26 @@ function setThruTracks(s, cmd, c) {
   const r = thruInfo(s, c.id, st.x, st.y, cmd.n, st.dir);
   if (!r.ok) return r;
   if (!spend(s, c, r.cost)) return fail('bani');
-  st.platforms = r.n;
+  st.platforms = r.n; if (st.sep) st.sep = r.sep;
   claim(s, st, r);
   syncAuto(s);
   addNews(s, '🏙️', `${st.name} are acum ${st.platforms} linii!`);
   return { ok: true, cost: r.cost };
 }
 
-export const THRU_COMMANDS = { buildThru, setThruTracks };
+/** splitThru { id }: „Desparte intrările” — gara de trecere veche primește linii drepte separate în față (plătit: șină nouă, nivelare, case mutate). */
+function splitThru(s, cmd, c) {
+  const st = s.stations.find((q) => q.id === cmd.id);
+  if (!st || !st.thru) return fail('inexistent');
+  if (st.owner !== c.id) return fail('proprietar');
+  const r = thruInfo(s, c.id, st.x, st.y, st.platforms, st.dir, 'split');
+  if (!r.ok) return r;
+  if (!spend(s, c, r.cost)) return fail('bani');
+  st.sep = r.sep;
+  claim(s, st, r);
+  syncAuto(s);
+  addNews(s, '🏙️', `${st.name}: fiecare linie iese acum separat în față (${r.fan.length} capete).`);
+  return { ok: true, cost: r.cost };
+}
+
+export const THRU_COMMANDS = { buildThru, setThruTracks, splitThru };

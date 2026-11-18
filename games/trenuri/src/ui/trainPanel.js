@@ -51,7 +51,9 @@ export function createTrainPanel(card, ev) {
   /** Depou: „Trimite remorcă” la un tren defect, „Trimite la depou” la reparat. */
   function depotRows(s, t, again) {
     if (t.tow || t.state === 3) return null;
-    if (t.dead) return h('button', { class: 'opt go', disabled: !!t.resc, onclick: () => { ev.rescue(t.id); again(); } }, t.resc ? '🚑 Remorca vine' : '🚑 Trimite remorcă', h('small', null, 'Pleacă de la cel mai apropiat depou'));
+    if (t.dead) return h('div', null,
+      s.depots.some((d) => d.owner === t.owner) ? h('button', { class: 'opt go', disabled: !!t.resc, onclick: () => { ev.rescue(t.id); again(); } }, t.resc ? '🚑 Remorca vine' : '🚑 Trimite remorcă', h('small', null, 'Pleacă de la cel mai apropiat depou')) : null,
+      h('button', { class: 'opt', onclick: () => { ev.lift(t.id); again(); } }, '🏗️ Ridică de pe linie', h('small', null, 'Macaraua îl scoate pe loc (1500 lei): la depou, sau repară pe loc în câteva zile')));
     if (!s.depots.some((d) => d.owner === t.owner)) return h('div', { class: 'note' }, '🏭 Depoul repară trenurile uzate. Construiește-l la capătul unei linii: 🧰 Mai mult → Depou.');
     return h('button', { class: 'opt', disabled: !!t.toDepot, onclick: () => { ev.depot(t.id); again(); } }, t.toDepot ? '🏭 Merge la depou' : '🏭 Trimite la depou', h('small', null, 'Se repară, apoi își reia ruta'));
   }

@@ -4,6 +4,7 @@ import { relOf } from './wear.js';
 import { addNews } from './news.js';
 import { hold } from './reserve.js';
 import { tileOf } from './mission.js';
+import { liftStep } from './lift.js';
 
 const repairTicks = (t) => DEPOT.repairBase + (100 - relOf(t)) * DEPOT.repairPer;
 const craneBusy = (dep) => dep.jobs.some((j) => j.phase !== 'repair');
@@ -40,5 +41,6 @@ function stepDepot(s, dep) {
 
 export function depotStep(s) {
   for (const d of s.depots) stepDepot(s, d);
+  liftStep(s);
   for (let k = s.trains.length - 1; k >= 0; k--) if (s.trains[k].gone) { s.trains.splice(k, 1); s.dirty.trains = true; }
 }

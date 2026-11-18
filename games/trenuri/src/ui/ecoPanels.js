@@ -27,7 +27,9 @@ export function createEcoPanels(card, ev) {
     }
     const busy = s.trains.filter((t) => t.state === 2 && t.to === st.id).length;
     if (st.cor) return [row('🛤️ Linii ocupate (culoar)', `${busy} din ${st.platforms} trenuri`), h('div', { class: 'note' }, '🛤️ Culoar prin oraș: o singură gară pentru toate liniile; acoperă tot orașul (pasageri, poștă, cererea de marfă).')];
-    return st.thru ? [row('🛤️ Linii (trenuri deodată)', `${busy} ocupate din ${st.platforms}`), h('div', { class: 'note' }, '🏙️ Acoperă tot orașul: toți locuitorii, poșta și cererea de marfă.'), ...opts]
+    const sp = st.thru && !st.sep && ev.split ? thruInfo(s, me, st.x, st.y, st.platforms, st.dir, 'split') : null;
+    const splitBtn = sp && sp.ok ? [h('button', { class: 'opt go', onclick: () => { if (ev.split(st.id)) api.station(s, st); } }, `🛤️ Desparte intrările · ${lei(sp.cost)}`, h('small', null, `Fiecare linie iese separat în față, cu capătul ei${sp.houses.length ? ` · ${sp.houses.length} case mutate` : ''}`))] : [];
+    return st.thru ? [row('🛤️ Linii (trenuri deodată)', `${busy} ocupate din ${st.platforms}`), h('div', { class: 'note' }, st.sep ? '🏙️ Fiecare linie iese separat în față, ca șine paralele: leagă la fiecare capăt altă șină. Acoperă tot orașul.' : '🏙️ Intrare comună: liniile se strâng într-una. Acoperă tot orașul.'), ...splitBtn, ...opts]
       : st.cityId >= 0 && opts.length ? [h('div', null, h('b', null, 'Fă-o gară mare de trecere')), h('div', { class: 'note' }, 'Linii paralele, peroane, pasarelă, clădire mare; acoperă tot orașul.'), ...opts] : null;
   };
   /** „Cumpără industria” (etapa 7.4): industrie de pe insula altuia; marfa ei merge apoi la gările tale. */

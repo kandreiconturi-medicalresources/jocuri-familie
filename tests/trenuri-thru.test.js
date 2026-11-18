@@ -24,7 +24,7 @@ const world = () => town(createWorld({ seed: 4, size: 'S', year: 1960 }));
 
 test('gara de trecere: ocupă locul, dărâmă casele cu despăgubire, preț corect', () => {
   const s = world(), c = s.cities[0], cash = s.companies[0].cash, n0 = c.buildings.length;
-  const info = thruInfo(s, 0, 30, 30, 6);
+  const info = thruInfo(s, 0, 30, 30, 6, 0);
   assert.ok(info.ok, info.err);
   const r = ok(applyCommand(s, { type: 'buildThru', by: 0, x: 30, y: 30, n: 6, dir: 0 }));
   const st = s.stations.find((q) => q.id === r.id);
@@ -125,13 +125,13 @@ test('gara de trecere: serializare, determinism și lockstep cu 3 noduri', async
   const cfg = { mode: 'coop', seed: 7, size: 'S', year: 1960, players: PL };
   const mk = () => town(createNetWorld(cfg));
   const probe = mk();
-  const sa = ok(applyCommand(probe, { type: 'buildStation', by: 0, x: 8, y: 30, size: 0 })).id, sb = ok(applyCommand(probe, { type: 'buildThru', by: 0, x: 30, y: 30, n: 4 })).id;
+  const sa = ok(applyCommand(probe, { type: 'buildStation', by: 0, x: 8, y: 30, size: 0 })).id, sb = ok(applyCommand(probe, { type: 'buildThru', by: 0, x: 30, y: 30, n: 4, dir: 0 })).id;
   const path = planTrack(probe, [8, 30], [50, 30], 0).path;
   const hub = createHub({ latency: 0.1 });
   const nodes = PL.map((p) => hub.add(p.id, { world: mk(), hostId: 'a', speed: 4, raw: false }));
   const [n1, n2, n3] = nodes;
   await hub.run(1); n1.submit({ type: 'buildStation', x: 8, y: 30, size: 0 });
-  await hub.run(0.5); n2.submit({ type: 'buildThru', x: 30, y: 30, n: 4 });
+  await hub.run(0.5); n2.submit({ type: 'buildThru', x: 30, y: 30, n: 4, dir: 0 });
   await hub.run(0.5); n3.submit({ type: 'buildTrack', path });
   await hub.run(0.5); n2.submit({ type: 'buyTrain', model: 3, kinds: [0, 0], stationId: sb, route: [sb, sa] });
   await hub.run(0.5); n1.submit({ type: 'setThruTracks', id: sb, n: 6 });

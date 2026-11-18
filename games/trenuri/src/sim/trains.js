@@ -10,7 +10,7 @@ import { terminalService } from './terminal.js';
 import { relOf, repairTicks, serviceAt } from './wear.js';
 import { enter, GO, RED, pfull, releaseTail, releaseFrom, holdOnlyStation } from './reserve.js';
 import { accelEvery, slopeVmax } from './physics.js';
-import { missionPath, arriveMission } from './mission.js';
+import { missionPath, arriveMission, towWatch } from './mission.js';
 import { breakHeavy, deadTick } from './depots.js';
 import { smartReroute } from './smartRoute.js';
 export { capacity, tileDist } from './cargo.js';
@@ -149,6 +149,7 @@ function reroute(s, t) {
 function move(s, t) {
   const m = MODELS[t.model];
   if (t.state === 3) return; // la depou sau cuplat la remorcă
+  if (t.tow && towWatch(s, t)) return;
   if (t.state === 2) { // oprit în gară
     if (t.wait > 0) { t.wait--; return; }
     if (t.paused) return;

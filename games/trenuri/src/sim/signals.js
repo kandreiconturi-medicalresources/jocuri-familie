@@ -2,6 +2,7 @@
 import { DX, DY, opp, T_PRESENT, T_OWNER_MASK, T_OWNER_SHIFT, SIGNAL_COST, BLOCK_MIN, BLOCK_MAX } from './consts.js';
 import { linkCount } from './blocks.js';
 import { blockSignals } from './blocksig.js';
+import { laneExits } from './thruFan.js';
 
 const DIR = new Int8Array(9).fill(-1);
 for (let d = 0; d < 8; d++) DIR[(DY[d] + 1) * 3 + DX[d] + 1] = d;
@@ -33,6 +34,14 @@ export function syncAuto(s) {
         const dir = opp(d);
         mk(x, y, dir, t);
       }
+    }
+  }
+  if (s.autoSig !== false) { // gările cu intrări separate: câte un semnal pe fiecare linie, la ieșire (în ambele sensuri)
+    for (const st of s.stations) for (const q of laneExits(st)) {
+      if (q.x < 0 || q.y < 0 || q.ox < 0 || q.oy < 0 || q.x >= s.w || q.y >= s.h || q.ox >= s.w || q.oy >= s.h) continue;
+      const i = q.y * s.w + q.x, o = q.oy * s.w + q.ox, t = s.track[i];
+      if (!(t & T_PRESENT) || !(s.track[o] & T_PRESENT) || !((t >> dirOf(s.w, i, o)) & 1)) continue;
+      mk(q.x, q.y, dirOf(s.w, i, o), t); mk(q.x, q.y, dirOf(s.w, o, i), t);
     }
   }
   if (s.autoBlock > 0) blockSignals(s, s.autoBlock, dirOf, (i, dir) => mk(i % s.w, (i / s.w) | 0, dir, s.track[i]));

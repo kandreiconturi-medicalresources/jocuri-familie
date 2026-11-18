@@ -1,9 +1,9 @@
 // Misiuni de depou: drumul trenului trimis la reparat și al remorcii (spre trenul defect, cuplare, înapoi). Folosește semnalele și rezervarea ca orice tren.
 import { MODELS, RETRY } from './consts.js';
 import { tailTiles, mark } from './blocks.js';
-import { findRail } from './trains.js';
+import { findRail, segLen } from './trains.js';
 import { addNews } from './news.js';
-import { hold, releaseAll } from './reserve.js';
+import { hold, releaseAll, releaseFrom } from './reserve.js';
 
 const byId = (s, id) => s.trains.find((q) => q.id === id);
 export const depotById = (s, id) => s.depots.find((q) => q.id === id);
@@ -28,7 +28,7 @@ export function dropTrain(s, t) {
 
 function abortTow(s, t, why) {
   const tg = byId(s, t.tow.targetId);
-  if (tg) tg.resc = 0;
+  if (tg && tg.resc === t.id) tg.resc = 0;
   dropTrain(s, t);
   if (why) addNews(s, '🚑', why);
 }
@@ -68,13 +68,42 @@ function towPath(s, t) {
     return null;
   }
   if (!tg.dead || tg.state !== 1) { abortTow(s, t, ''); return null; }
-  const body = new Set(bodyOf(tg)), full = findRail(s, here, tg.path[Math.max(0, tg.seg - tailTiles(tg))]);
-  if (!full) { abortTow(s, t, `Remorca nu găsește drumul spre trenul ${tg.id}.`); return null; }
-  let k = 1;
-  while (k < full.length && !body.has(full[k])) k++;
-  const p = full.slice(0, k);
+  const p = approach(s, here, tg);
+  if (!p) { abortTow(s, t, `Remorca nu găsește drumul spre trenul ${tg.id}.`); return null; }
   if (p.length < 2) { couple(s, t, tg, p); return 'done'; }
   return { p, k0: 0 };
+}
+
+/** Drumul de la `here` până la placa dinaintea trupului trenului defect `tg`, sau null. */
+function approach(s, here, tg) {
+  const body = new Set(bodyOf(tg)), full = findRail(s, here, tg.path[Math.max(0, tg.seg - tailTiles(tg))]);
+  if (!full) return null;
+  let k = 1;
+  while (k < full.length && !body.has(full[k])) k++;
+  return full.slice(0, k);
+}
+
+const pathLen = (w, p) => { let L = 0; for (let k = 0; k + 1 < p.length; k++) L += segLen(w, p, k); return L; };
+
+/** Remorca din mers: dacă ținta nu mai e defectă sau a luat-o altă remorcă, dispare spre depou; dacă o oprește alt tren defect, îl ia pe acela întâi; blocată de altă remorcă, se retrage. Întoarce true dacă a tratat pasul. */
+export function towWatch(s, t) {
+  if (t.state !== 1 || t.tow.ph !== 'go') return false;
+  const tg = byId(s, t.tow.targetId);
+  if (!tg || !tg.dead || tg.state !== 1 || tg.resc !== t.id) { abortTow(s, t, ''); return true; }
+  if (t.hold < 25 || t.seg + 2 >= t.path.length) return false;
+  const o = byId(s, s.resv[t.path[t.seg + 2]] - 1);
+  if (!o || o === tg) return false;
+  if (o.tow) { if (t.hold >= 100) abortTow(s, t, `Remorca a făcut loc la linia ocupată și se întoarce la depou.`); return t.hold >= 100; }
+  if (!o.dead || o.state !== 1 || o.owner !== t.owner) return false;
+  const here = t.path[t.seg + 1], p = approach(s, here, o);
+  if (!p) return false;
+  if (tg.resc === t.id) tg.resc = 0;
+  o.resc = t.id; t.tow.targetId = o.id;
+  const path = t.path.slice(0, t.seg + 1).concat(p), done = pathLen(s.w, t.path.slice(0, t.seg + 1)) + t.pos;
+  releaseFrom(s, t, t.seg + 2);
+  t.path = path; t.left = pathLen(s.w, path) - done; t.hold = 0;
+  addNews(s, '🚑', `Remorca ia întâi trenul ${o.id}, care stă în drum.`);
+  return false;
 }
 
 /** Drumul unei misiuni la plecare: { p, k0 }, null (așteaptă), 'done' (s-a făcut deja ce trebuia) sau undefined (misiunea s-a anulat: trenul merge normal). */

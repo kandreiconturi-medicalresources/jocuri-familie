@@ -46,4 +46,18 @@ export function fanPaths(s, x, y, dir, A, rows, by, h0, opt = {}) {
 }
 
 /** Capetele libere ale intrărilor (unde legi șina), pentru indicii pe hartă. */
+/** Intrări separate: jumătatea lungimii (plăci de la gară) până la capetele liniilor drepte, pentru n linii (diagonala cea mai lungă + 3 plăci drepte). */
+export const sepReach = (n) => FAN_AT + n + 2;
+
+/** Plăcile unde pui semnale (în ambele sensuri) la o gară cu intrări separate: prima placă dreaptă a fiecărei linii (ieșirea ei) și plăcile gâtului de pe linia principală. */
+export function laneExits(st) {
+  const f = frameOf(st.dir), out = [];
+  if (!st.sep) return out;
+  for (const e of [-1, 1]) for (let r = 0; r < st.platforms; r++) for (const k of r ? [FAN_AT + r + 1] : [2, 3, 4]) { // r = 0: gâtul dintre gară și evantai e împărțit în blocuri de o placă, ca trenurile să intre unul după altul
+    const a = e * k;
+    out.push({ x: st.x + f.ax * a + f.cx * r, y: st.y + f.ay * a + f.cy * r, ox: st.x + f.ax * (a + e) + f.cx * r, oy: st.y + f.ay * (a + e) + f.cy * r });
+  }
+  return out;
+}
+
 export const fanEnds = (paths) => paths.map((p) => p[p.length - 1]);

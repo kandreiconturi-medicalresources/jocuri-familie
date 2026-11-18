@@ -65,7 +65,7 @@ export const LOCO_W = [20, 24, 26, 30, 28, 32]; // greutatea locomotivei pe mode
 export const CAR_W = 12;
 
 // Etapa 6.6, runda 2: depouri, defecțiuni, remorcare, semnale de bloc. Duratele sunt în pași (10 pași = o zi).
-export const DEPOT = { cost: 6000, lift: 30, repairBase: 40, repairPer: 6, tracks: 2, towModel: 0, auto: TICKS_PER_DAY, self: 400, selfCost: 2000 };
+export const DEPOT = { cost: 6000, lift: 30, repairBase: 40, repairPer: 6, tracks: 2, towModel: 0, auto: TICKS_PER_DAY, self: 400, selfCost: 2000, liftCost: 1500, liftAuto: 100, lfTicks: 60, retry: 50 };
 export const BLOCK_MIN = 3, BLOCK_MAX = 12; // „Semnale automate pe linie lungă”: unul la fiecare N plăci
 
 // Faza 7: insule, porturi și vapoare. speed în 1/256 placă/pas, cap = tone în cală, mat = materiale [marfă, tone] cerute din portul tău.
